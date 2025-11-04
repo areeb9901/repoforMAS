@@ -16,7 +16,7 @@ function loadSortedPendingRequests(column, order) {
     });
 
     j.ajax({
-        url: "$request.contextPath/secure/ShowCollateralPendingApprovalRequestsAjax.action",
+        url: "$request.contextPath/secure/CollateralPendingApprovalRequestsAjax.action",
         type: "GET",
         dataType: "json",
         data: {
@@ -34,7 +34,7 @@ function loadSortedPendingRequests(column, order) {
             console.error("Error fetching sorted data", xhr);
             j.confirm({
                 title: 'Error',
-                content: 'Unable to fetch sorted data (Server 500). Check backend logs for details.',
+                content: 'Unable to show sorted data. Please check logs or backend mapping.',
                 buttons: { "OK": function () { } }
             });
         }
@@ -43,9 +43,9 @@ function loadSortedPendingRequests(column, order) {
 
 function renderSortedPendingTable(data) {
     let tbody = "";
-    if (data && data.length > 0) {
-        const showLimit = (window.location.href.includes("CollateralDashboardView") ? 5 : 10);
+    const showLimit = 5;  // show only 5 rows in dashboard portlet
 
+    if (data && data.length > 0) {
         data.slice(0, showLimit).forEach(function (row) {
             const docId = row[12] || "";
             const agreementId = row[0] || "";
