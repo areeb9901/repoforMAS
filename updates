@@ -1,102 +1,201 @@
-function mapSortColumn(col) {
-    switch (col) {
-        case "CMOLocation": return "CMO_LOCATION_SORT_CRITERIA";
-        case "Counterparty": return "COUNTERPARTY_SORT_CRITERIA";
-        case "CRDSCode": return "CRDS_CODE_SORT_CRITERIA";
-        case "CreationDate": return "COLLATERAL_DATE_SORT_CRITERIA";
-        default: return "COLLATERAL_DATE_SORT_CRITERIA";
-    }
-}
+#macro (renderButton $n $ma_id)
+  #if($action.isCanRedirect())
+    <button id="redirectLoc_$ma_id" value="$ma_id" name="$n"
+      class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">Redirect</button>
+  #elseif($action.isCanChase())
+    <button id="chaseRequest" value="$ma_id" name="$n"
+      class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">Chase</button>
+  #end
+#end
 
-function loadSortedPendingRequests(column, order) {
-    j.blockUI({
-        message: '<h4><img src="$request.contextPath/images/ajax-loader.gif"/> Sorting...</h4>',
-        css: { border: "2px solid #B8B8B8", left: "45%", top: "45%", width: "160px", height: "50px" },
-        overlayCSS: { opacity: 0.01 }
-    });
+#set($agreements = $action.getCollateralStatusDisplay(5))
 
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <script language="javascript" type="text/javascript">
+    var j = jQuery;
+    jQuery.noConflict();
+  </script>
+</head>
+
+<input type="hidden" id="PendingSize" name="totalPendingSize" value="$agreements.size()">
+#set($n = 1)
+#set($rowCounter = 0)
+
+#if($agreements.size() > 0)
+
+<table class="table table-bnp table-responsive" id="PendingFinalApprovalTable">
+  <thead>
+    <tr>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor sortable" data-col="Agreement">Agreement</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Group</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Collateral Segment Id</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Agreement Type</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Standard</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Document Category</th>
+      <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor sortable" data-col="CRDSCode">CRDS Code</th>
+      <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor">LEI Number</th>
+      <th class="w-20 table-th-portlets-collateral table-header-bg-nocolor sortable" data-col="Counterparty">Counterparty</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor sortable" data-col="CreationDate">Creation Date</th>
+      <th colspan="0" class="w-20 table-th-portlets-collateral table-header-bg-nocolor sortable" data-col="CMOLocation">CMO Location</th>
+      <th class="table-th-portlets-collateral table-header-bg-nocolor">Comments</th>
+    </tr>
+  </thead>
+  <tbody id="PendingFinalApprovalBody">
+
+  #foreach($agreement in $agreements)
+    #if($agreement.segId && $agreement.segId.size()>0)
+      #if($agreement.docStatus=='PendingFinalApproval')
+        #set($rowCounter = $rowCounter + 1)
+        #if($rowCounter <= 5)
+          <tr id="$agreement.docId">
+            <td>
+              <a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=$agreement.agreementId&amp;view=#COLLATERAL">
+                <font class="a-link-table-bnp">$agreement.agreementId</font>
+              </a>
+            </td>
+            <td>$agreement.groupId</td>
+            <td>$agreement.collateralSegmentId</td>
+            <td>$agreement.agreementType</td>
+            <td>$agreement.docClass</td>
+            <td>$!agreement.collateralDocumentCategory</td>
+            <td>$agreement.counterpartyEntityMarketPlayerCode</td>
+            <td>$agreement.cpLeiVal</td>
+            <td>$agreement.entity</td>
+            <td>$agreement.docStartDate</td>
+            <td id="cmoLocation_$agreement.collateralSegmentId">
+              <table class="table table-borderless">
+                <tr>
+                  #if($agreement.chasedUser=='')
+                    <td class="w-50">$!agreement.cmoLocation</td>
+                  #else
+                    <td class="w-50">
+                      $!agreement.cmoLocation
+                      <br/>Last Chased By: $agreement.chasedUser
+                      <br/>On: $agreement.chasedDate
+                    </td>
+                  #end
+                  <td class="w-25">
+                    #renderButton($!agreement.cmoLocation $!agreement.collateralSegmentId)
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td width="10%" class="shrink">$!agreement.comments</td>
+          </tr>
+        #end
+      #end
+    #end
+  #end
+  </tbody>
+</table>
+
+<div id="allLink_PendingFinalApproval" class="showAllLink">
+  <a href="${request.contextPath}/secure/CollateralApprovalRequest.action?mode=hide" title="Show more agreements">
+    <span class="badge badge-home-bnp">Show More &gt;&gt;</span>
+  </a>
+</div>
+
+#else
+  <div class="text-center">No agreements found.</div>
+#end
+
+<!-- ✅ AJAX Sorting Script -->
+<script type="text/javascript">
+j(function() {
+  var currentSort = { column: '', order: 'asc' };
+
+  j(document).on('click', 'th.sortable', function() {
+    var column = j(this).data('col');
+    var order = (currentSort.column === column && currentSort.order === 'asc') ? 'desc' : 'asc';
+    currentSort = { column: column, order: order };
+    loadSortedData(column, order);
+  });
+
+  function loadSortedData(column, order) {
     j.ajax({
-        url: "$request.contextPath/secure/CollateralPendingApprovalRequestsAjax.action",
-        type: "GET",
-        dataType: "json",
-        data: {
-            sortAgreementCriteria: mapSortColumn(column),
-            sortingOrderDesc: (order === "desc"),
-            view: "json"
-        },
-        success: function (resp) {
-            renderSortedPendingTable(resp.parametersList);
-        },
-        complete: function () {
-            j.unblockUI();
-        },
-        error: function (xhr) {
-            console.error("Error fetching sorted data", xhr);
-            j.confirm({
-                title: 'Error',
-                content: 'Unable to show sorted data. Please check logs or backend mapping.',
-                buttons: { "OK": function () { } }
-            });
+      url: '$request.contextPath/secure/CollateralPendingApprovalRequestsAjax.action',
+      type: 'GET',
+      dataType: 'json',
+      data: {
+        sortAgreementCriteria: mapSortColumn(column),
+        sortingOrderDesc: (order === "desc"),
+        view: "json"
+      },
+      success: function(response) {
+        if (response && response.parametersList) {
+          populateSortedTable(response.parametersList);
+        } else {
+          j.alert('No data found.');
         }
+      },
+      error: function(xhr) {
+        console.error('Sorting Error:', xhr);
+        j.alert('Unable to fetch sorted data.');
+      }
     });
-}
+  }
 
-function renderSortedPendingTable(data) {
-    let tbody = "";
-    const showLimit = 5;  // show only 5 rows in dashboard portlet
-
-    if (data && data.length > 0) {
-        data.slice(0, showLimit).forEach(function (row) {
-            const docId = row[12] || "";
-            const agreementId = row[0] || "";
-            const group = row[1] || "";
-            const segmentId = row[2] || "";
-            const agreementType = row[3] || "";
-            const standard = row[4] || "";
-            const category = row[5] || "";
-            const crds = row[6] || "";
-            const lei = row[7] || "";
-            const counterparty = row[8] || "";
-            const date = row[9] || "";
-            const cmoLoc = (row[10] || "").replace(/\[[A-Z]+\]\s*/g, '');
-            const comments = row[11] || "";
-
-            tbody += `
-            <tr id="${docId}">
-                <td><a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=${agreementId}&view=#COLLATERAL">
-                    <font class="a-link-table-bnp">${agreementId}</font></a></td>
-                <td>${group}</td>
-                <td>${segmentId}</td>
-                <td>${agreementType}</td>
-                <td>${standard}</td>
-                <td>${category}</td>
-                <td>${crds}</td>
-                <td>${lei}</td>
-                <td>${counterparty}</td>
-                <td>${date}</td>
-                <td id="cmoLocation_${segmentId}">
-                    <table class="table table-borderless">
-                        <tr>
-                            <td class="w-50">${cmoLoc}</td>
-                            <td class="w-25">
-                                <button class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
-                                    value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Redirect</button>
-                                <button class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
-                                    value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Chase</button>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-                <td>${comments}</td>
-            </tr>`;
-        });
-    } else {
-        tbody = `<tr><td colspan="12" class="text-center">No agreements found.</td></tr>`;
+  function mapSortColumn(col) {
+    switch (col) {
+      case "CMOLocation": return "CMO_LOCATION_SORT_CRITERIA";
+      case "Counterparty": return "COUNTERPARTY_SORT_CRITERIA";
+      case "CRDSCode": return "CRDS_CODE_SORT_CRITERIA";
+      case "CreationDate": return "COLLATERAL_DATE_SORT_CRITERIA";
+      default: return "COLLATERAL_DATE_SORT_CRITERIA";
     }
+  }
 
-    j("#PendingFinalApproval_1 tr:gt(0)").remove();
-    j("#PendingFinalApproval_1").append(tbody);
+  function populateSortedTable(data) {
+    var rows = '';
+    var displayLimit = 5;
 
-    bindRedirect();
-    bindChase();
-}
+    j.each(data.slice(0, displayLimit), function(index, row) {
+      var docId = row[12] || '';
+      var agreementId = row[0] || '';
+      var group = row[1] || '';
+      var segmentId = row[2] || '';
+      var agreementType = row[3] || '';
+      var standard = row[4] || '';
+      var category = row[5] || '';
+      var crds = row[6] || '';
+      var lei = row[7] || '';
+      var counterparty = row[8] || '';
+      var date = row[9] || '';
+      var cmoLoc = (row[10] || '').replace(/\[[A-Z]+\]\s*/g, '');
+      var comments = row[11] || '';
+
+      rows += `
+      <tr id="${docId}">
+        <td><a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=${agreementId}&view=#COLLATERAL">
+          <font class="a-link-table-bnp">${agreementId}</font></a></td>
+        <td>${group}</td>
+        <td>${segmentId}</td>
+        <td>${agreementType}</td>
+        <td>${standard}</td>
+        <td>${category}</td>
+        <td>${crds}</td>
+        <td>${lei}</td>
+        <td>${counterparty}</td>
+        <td>${date}</td>
+        <td id="cmoLocation_${segmentId}">
+          <table class="table table-borderless">
+            <tr>
+              <td class="w-50">${cmoLoc}</td>
+              <td class="w-25">
+                <button class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                  value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Redirect</button>
+                <button class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                  value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Chase</button>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td>${comments}</td>
+      </tr>`;
+    });
+
+    j('#PendingFinalApprovalBody').html(rows);
+  }
+});
+</script>
