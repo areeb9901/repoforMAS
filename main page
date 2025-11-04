@@ -1,0 +1,201 @@
+<script type="text/javascript">
+j(function () {
+    var tableId = "#PendingFinalApproval_1";
+    var currentSortColumn = "";
+    var sortDirection = "asc";
+
+    // --- Enable AJAX sorting on 4 columns ---
+    j(tableId + " th").each(function (index) {
+        var headerText = j(this).text().trim();
+        if (["CMO Location", "Counterparty", "CRDS Code", "Creation Date"].includes(headerText)) {
+            j(this).css("cursor", "pointer").append(" <span class='sort-icon'>&#x21C5;</span>");
+            j(this).off("click").on("click", function () {
+                var colKey = headerText.replace(/\s+/g, '');
+                sortDirection = (currentSortColumn === colKey && sortDirection === "asc") ? "desc" : "asc";
+                currentSortColumn = colKey;
+                fetchAndRenderTable(colKey, sortDirection);
+            });
+        }
+    });
+
+    // --- Fetch & render AJAX table data ---
+    function fetchAndRenderTable(sortColumn, sortOrder) {
+        j.blockUI({
+            message: '<h4 style="margin-top:12px"><img src="$request.contextPath/images/ajax-loader.gif" /> Loading...</h4>',
+            css: { border: "2px solid #B8B8B8", left: "45%", top: "45%", width: "160px", height: "50px", align: "center" },
+            overlayCSS: { opacity: 0.01 }
+        });
+
+        j.ajax({
+            url: "$request.contextPath/secure/ShowCollateralPendingApprovalRequestsAjax.action",
+            type: "GET",
+            dataType: "json",
+            data: {
+                sort: sortColumn,
+                order: sortOrder,
+                view: "json"
+            },
+            success: function (response) {
+                renderTableRows(response.parametersList);
+            },
+            complete: function () {
+                j.unblockUI();
+            },
+            error: function () {
+                console.error("Error loading sorted data");
+            }
+        });
+    }
+
+    // --- Render table rows dynamically ---
+    function renderTableRows(data) {
+        var tbody = "";
+        if (data && data.length > 0) {
+            data.slice(0, 10).forEach(function (row) {
+                var docId = row[12] || "";
+                var agreementId = row[0] || "";
+                var group = row[1] || "";
+                var segmentId = row[2] || "";
+                var agreementType = row[3] || "";
+                var docClass = row[4] || "";
+                var category = row[5] || "";
+                var crds = row[6] || "";
+                var lei = row[7] || "";
+                var entity = row[8] || "";
+                var creationDate = row[9] || "";
+                var cmoLocation = (row[10] || "").replace(/\[[A-Z]+\]\s*/g, '');
+                var comments = row[11] || "";
+
+                tbody += `
+                <tr id="${docId}">
+                    <td><a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=${agreementId}&view=#COLLATERAL">
+                        <font class="a-link-table-bnp">${agreementId}</font></a></td>
+                    <td>${group}</td>
+                    <td>${segmentId}</td>
+                    <td>${agreementType}</td>
+                    <td>${docClass}</td>
+                    <td>${category}</td>
+                    <td>${crds}</td>
+                    <td>${lei}</td>
+                    <td>${entity}</td>
+                    <td>${creationDate}</td>
+                    <td id="cmoLocation_${segmentId}">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="w-50">${cmoLocation}</td>
+                                <td class="w-25">
+                                    <button class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs" value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Redirect</button>
+                                    <button class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs" value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Chase</button>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td>${comments}</td>
+                </tr>`;
+            });
+        } else {
+            tbody = `<tr><td colspan="12" class="text-center">No agreements found.</td></tr>`;
+        }
+        j(tableId + " tr:gt(0)").remove(); // clear all except headers
+        j(tableId).append(tbody);
+
+        // Rebind Chase and Redirect
+        bindRedirect();
+        bindChase();
+    }
+
+    // --- Reuse your existing redirect logic ---
+    function bindRedirect() {
+        j(".redirectClass").off("click").on("click", function () {
+            var button = j(this);
+            var ma_id = button.data("maid");
+            var collateralSegment_Id = button.val();
+            var doc_id = button.data("docid");
+
+            j.confirm({
+                title: 'Redirect CMO Location',
+                content: '<table>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="LON"> London</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="BRU"> Brussels</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="HKG"> Hong Kong</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="NYK"> New York</td></tr>' +
+                    '</table>',
+                buttons: {
+                    "Yes": function () {
+                        var cmo_loc = j('input[name="cmoLocation"]:checked').val();
+                        j.ajax({
+                            url: '$request.contextPath/secure/RedirectCmoLocation.ajax',
+                            type: 'POST',
+                            data: {
+                                masterAgreementId: ma_id,
+                                cmoLocation: cmo_loc,
+                                collateralSegmentId: collateralSegment_Id,
+                                documentId: doc_id
+                            },
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Request redirected and email sent to CMO',
+                                    buttons: { "OK": function () { } }
+                                });
+                                j('#cmoLocation_' + collateralSegment_Id).find("td.w-50").html(resp.cmoLocationText.replace(/\[[A-Z]+\]\s*/g, ''));
+                            }
+                        });
+                    },
+                    "No": function () { }
+                }
+            });
+        });
+    }
+
+    // --- Reuse your existing chase logic ---
+    function bindChase() {
+        j(".chaseClass").off("click").on("click", function () {
+            var button = j(this);
+            var ma_id = button.data("maid");
+            var collateralSegment_Id = button.val();
+            var doc_id = button.data("docid");
+
+            j.confirm({
+                title: 'Chase PFA request',
+                content: 'Do you want to proceed?',
+                buttons: {
+                    "Yes": function () {
+                        j.ajax({
+                            url: '$request.contextPath/secure/ChasePFA.ajax',
+                            type: 'POST',
+                            data: {
+                                masterAgreementId: ma_id,
+                                collateralSegmentId: collateralSegment_Id,
+                                documentId: doc_id
+                            },
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Email sent to CMO',
+                                    buttons: {
+                                        "OK": function () {
+                                            if (resp && resp.cmoLocationText) {
+                                                j('#cmoLocation_' + collateralSegment_Id)
+                                                    .find("td.w-50")
+                                                    .html(resp.cmoLocationText.replace(/\[[A-Z]+\]\s*/g, ''));
+                                            } else {
+                                                location.reload();
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    },
+                    "No": function () { }
+                }
+            });
+        });
+    }
+
+    // --- Initial binding for first render ---
+    bindRedirect();
+    bindChase();
+});
+</script>
