@@ -14,3 +14,89 @@ function loadSortedPendingRequests(column, order) {
         css: { border: "2px solid #B8B8B8", left: "45%", top: "45%", width: "160px", height: "50px" },
         overlayCSS: { opacity: 0.01 }
     });
+
+    j.ajax({
+        url: "$request.contextPath/secure/ShowCollateralPendingApprovalRequestsAjax.action",
+        type: "GET",
+        dataType: "json",
+        data: {
+            sortAgreementCriteria: mapSortColumn(column),
+            sortingOrderDesc: (order === "desc"),
+            view: "json"
+        },
+        success: function (resp) {
+            renderSortedPendingTable(resp.parametersList);
+        },
+        complete: function () {
+            j.unblockUI();
+        },
+        error: function (xhr) {
+            console.error("Error fetching sorted data", xhr);
+            j.confirm({
+                title: 'Error',
+                content: 'Unable to fetch sorted data (Server 500). Check backend logs for details.',
+                buttons: { "OK": function () { } }
+            });
+        }
+    });
+}
+
+function renderSortedPendingTable(data) {
+    let tbody = "";
+    if (data && data.length > 0) {
+        const showLimit = (window.location.href.includes("CollateralDashboardView") ? 5 : 10);
+
+        data.slice(0, showLimit).forEach(function (row) {
+            const docId = row[12] || "";
+            const agreementId = row[0] || "";
+            const group = row[1] || "";
+            const segmentId = row[2] || "";
+            const agreementType = row[3] || "";
+            const standard = row[4] || "";
+            const category = row[5] || "";
+            const crds = row[6] || "";
+            const lei = row[7] || "";
+            const counterparty = row[8] || "";
+            const date = row[9] || "";
+            const cmoLoc = (row[10] || "").replace(/\[[A-Z]+\]\s*/g, '');
+            const comments = row[11] || "";
+
+            tbody += `
+            <tr id="${docId}">
+                <td><a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=${agreementId}&view=#COLLATERAL">
+                    <font class="a-link-table-bnp">${agreementId}</font></a></td>
+                <td>${group}</td>
+                <td>${segmentId}</td>
+                <td>${agreementType}</td>
+                <td>${standard}</td>
+                <td>${category}</td>
+                <td>${crds}</td>
+                <td>${lei}</td>
+                <td>${counterparty}</td>
+                <td>${date}</td>
+                <td id="cmoLocation_${segmentId}">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="w-50">${cmoLoc}</td>
+                            <td class="w-25">
+                                <button class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                                    value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Redirect</button>
+                                <button class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                                    value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Chase</button>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>${comments}</td>
+            </tr>`;
+        });
+    } else {
+        tbody = `<tr><td colspan="12" class="text-center">No agreements found.</td></tr>`;
+    }
+
+    j("#PendingFinalApproval_1 tr:gt(0)").remove();
+    j("#PendingFinalApproval_1").append(tbody);
+
+    bindRedirect();
+    bindChase();
+}
