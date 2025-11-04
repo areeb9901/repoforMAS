@@ -1,0 +1,16 @@
+function mapSortColumn(col) {
+    switch (col) {
+        case "CMOLocation": return "CMO_LOCATION_SORT_CRITERIA";
+        case "Counterparty": return "COUNTERPARTY_SORT_CRITERIA";
+        case "CRDSCode": return "CRDS_CODE_SORT_CRITERIA";
+        case "CreationDate": return "COLLATERAL_DATE_SORT_CRITERIA";
+        default: return "COLLATERAL_DATE_SORT_CRITERIA";
+    }
+}
+
+function loadSortedPendingRequests(column, order) {
+    j.blockUI({
+        message: '<h4><img src="$request.contextPath/images/ajax-loader.gif"/> Sorting...</h4>',
+        css: { border: "2px solid #B8B8B8", left: "45%", top: "45%", width: "160px", height: "50px" },
+        overlayCSS: { opacity: 0.01 }
+    });
