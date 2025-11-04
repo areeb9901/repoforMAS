@@ -1,0 +1,382 @@
+#macro (renderButton $n $ma_id)
+    #if($action.isCanRedirect())
+        <button id="redirectLoc_$ma_id" value="$ma_id" name="$n"
+            class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">
+            Redirect
+        </button>
+    #elseif($action.isCanChase())
+        <button id="chaseRequest" value="$ma_id" name="$n"
+            class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">
+            Chase
+        </button>
+    #end
+#end
+
+#set($agreements = $action.getCollateralStatusDisplay(10))
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+    <script language="javascript" type="text/javascript">
+        var j = jQuery;
+        jQuery.noConflict();
+    </script>
+</head>
+
+<input type="hidden" id="PendingSize" name="totalPendingSize" value="$agreements.size()">
+
+#set($n = 1)
+#set ($rowCounter = 0)
+
+#if($agreements.size() > 0)
+
+<table class="table table-bnp table-responsive" id="PendingFinalApproval_$n">
+<tr>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Agreement</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Group</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Collateral Segment Id</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Agreement Type</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Standard</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Document Category</th>
+    <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor">CRDS Code</th>
+    <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor">LEI Number</th>
+    <th class="w-20 table-th-portlets-collateral table-header-bg-nocolor">Counterparty</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Creation Date</th>
+    <th colspan="0" class="w-20 table-th-portlets-collateral table-header-bg-nocolor">CMO Location</th>
+    <th class="table-th-portlets-collateral table-header-bg-nocolor">Comments</th>
+</tr>
+
+#foreach( $agreement in $agreements )
+    #if($agreement.segId && $agreement.segId.size()>0)
+        #if($agreement.docStatus=='PendingFinalApproval')
+            #set ($rowCounter = $rowCounter+1)
+            #if($rowCounter<=10)
+                <tr id="$agreement.docId">
+                    <td>
+                        <a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=$agreement.agreementId&amp;view=#COLLATERAL">
+                            <font class="a-link-table-bnp">$agreement.agreementId</font>
+                        </a>
+                    </td>
+                    <td>$agreement.groupId</td>
+                    <td>$agreement.collateralSegmentId</td>
+                    <td>$agreement.agreementType</td>
+                    <td>$agreement.docClass</td>
+                    <td>$!agreement.collateralDocumentCategory</td>
+                    <td>$agreement.counterpartyEntityMarketPlayerCode</td>
+                    <td>$agreement.cpLeiVal</td>
+                    <td>$agreement.entity</td>
+                    <td>$agreement.docStartDate</td>
+                    <td id="cmoLocation_$agreement.collateralSegmentId">
+                        <table class="table table-borderless">
+                            <tr>
+                                #if($agreement.chasedUser=='')
+                                    <td class="w-50">$!agreement.cmoLocation</td>
+                                #end
+                                #if($agreement.chasedUser!='')
+                                    <td class="w-50">
+                                        $!agreement.cmoLocation
+                                        <br/>Last Chased By : $agreement.chasedUser <br/>On : $agreement.chasedDate<br/>
+                                    </td>
+                                    <td class="w-25">
+                                        #renderButton($!agreement.cmoLocation $!agreement.collateralSegmentId)
+                                    </td>
+                                #else
+                                    <td class="w-25">
+                                        #renderButton($!agreement.cmoLocation $!agreement.collateralSegmentId)
+                                    </td>
+                                #end
+                            </tr>
+                        </table>
+                    </td>
+                    <td width="10%" class="shrink">
+                        #if($!agreement.comments.length()>20)
+                            #set ($completeText = $!agreement.comments)
+                            #set ($dots = '...')
+                            #set ($more = 'more')
+                            #set ($less = 'less')
+                            #set ($toggleclass = 'half')
+                            #set ($firstPartText = $!agreement.comments.substring(0,20))
+                            <span class="$toggleclass">
+                                <span id="first_$agreement.agreementId">$firstPartText</span>
+                                <span id="complete_$agreement.agreementId" style="display:none;">$completeText</span>
+                                <span id="dots_$agreement.agreementId">$dots</span>
+                                <a href="#" id="a_$agreement.agreementId" class="$toggleclass a-link"
+                                   onclick="textToggler('a_$agreement.agreementId','$agreement.agreementId','$toggleclass')">
+                                   <span id="more_$agreement.agreementId">$more</span>
+                                   <span id="less_$agreement.agreementId" style="display:none;">$less</span>
+                                </a>
+                            </span>
+                        #else
+                            $!agreement.comments
+                        #end
+                    </td>
+                </tr>
+            #end
+        #end
+    #else
+        #set ($rowCounter = $rowCounter+1)
+        #if($rowCounter<=10)
+            <tr>
+                <td>
+                    <a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=$agreement.agreementId&amp;view=#COLLATERAL">
+                        $agreement.agreementId
+                    </a>
+                </td>
+                <td>$agreement.groupId</td>
+                <td></td>
+                <td>$agreement.agreementType</td>
+                <td>$!agreement.collateralDocumentClass</td>
+                <td>$!agreement.collateralDocumentCategoryForAgreement</td>
+                <td>$agreement.counterpartyEntityMarketPlayerCode</td>
+                <td>$agreement.cpLeiVal</td>
+                <td>$agreement.entity</td>
+                <td>$!agreement.docCreateDateForAgreement</td>
+                <td id="cmoLocation_$agreement.agreementId">$!agreement.cmoLocationForAgreement</td>
+                <td>#renderButton($!agreement.cmoLocationForAgreement $agreement.agreementId)</td>
+                <td width="10%" class="more">$!agreement.docComments</td>
+            </tr>
+        #end
+    #end
+#set($n=$n+1)
+#end
+
+<tr>
+<td class="border-none">
+<div id="locationRedirect" title="Redirect CMO Location" style="display: none;">
+<form action="RedirectCmoLocation.action" method="post" name="redirectLocationForm" autocomplete="off" id="redirectLocation">
+<div style="padding-top: 10px">
+<table>
+<tr class="LONDON"><td><input type="radio" id="LONDON" name="cmoLocation" value="LON"></td><td>LONDON</td></tr>
+<tr class="BRUSSELS"><td><input type="radio" id="BRUSSELS" name="cmoLocation" value="BRU"></td><td>BRUSSELS</td></tr>
+<tr class="HONG KONG"><td><input type="radio" id="HONG KONG" name="cmoLocation" value="HKG"></td><td>HONG KONG</td></tr>
+<tr class="NEW YORK"><td><input type="radio" id="NEW YORK" name="cmoLocation" value="NYK"></td><td>NEW YORK</td></tr>
+</table>
+</div>
+</form>
+</div>
+
+<div id="chase" title="Chase PFA request" style="display: none;">
+<form action="ChasePFA.action" method="post" name="chaseForm" id="chaseForm">
+<div style="padding-top: 10px"><pre>Do you want to proceed?</pre></div>
+</form>
+</div>
+</td>
+</tr>
+</table>
+
+#else
+<div class="text-center">No agreements found.</div>
+#end
+
+#if($rowCounter>=10)
+<div id="allLink_PendingFinalApproval" class="showAllLink">
+    <a href="${request.contextPath}/secure/CollateralApprovalRequest.action?mode=hide" title="Show more agreements">
+        <span class="badge badge-home-bnp">Show More &gt;&gt;</span>
+    </a>
+</div>
+#else
+<div id="excelExport_PendingFinalApproval" class="showAllLink">
+    <a href="javascript:modalWindowForExcelExport('excelExportPopupCollPen','Excel Export')">
+        <span class="badge badge-home-bnp">Excel Export</span>
+    </a>
+</div>
+#end
+
+#* Existing scripts retained *#
+
+<!-- ========================================= -->
+<!-- ✅ NEW AJAX SORTING IMPLEMENTATION BELOW -->
+<!-- ========================================= -->
+<script type="text/javascript">
+j(function () {
+    const tableSelector = "#PendingFinalApproval_1";
+    let currentSortCol = "";
+    let currentSortDir = "asc";
+
+    // Enable AJAX sorting on specific columns
+    j(tableSelector + " th").each(function () {
+        const text = j(this).text().trim();
+        if (["CMO Location", "Counterparty", "CRDS Code", "Creation Date"].includes(text)) {
+            j(this).css("cursor", "pointer").append(" <span class='sort-icon'>&#x21C5;</span>");
+            j(this).off("click").on("click", function () {
+                const col = text.replace(/\s+/g, '');
+                currentSortDir = (currentSortCol === col && currentSortDir === "asc") ? "desc" : "asc";
+                currentSortCol = col;
+                loadSortedPendingRequests(col, currentSortDir);
+            });
+        }
+    });
+
+    function loadSortedPendingRequests(column, order) {
+        j.blockUI({
+            message: '<h4><img src="$request.contextPath/images/ajax-loader.gif"/> Sorting...</h4>',
+            css: { border: "2px solid #B8B8B8", left: "45%", top: "45%", width: "160px", height: "50px" },
+            overlayCSS: { opacity: 0.01 }
+        });
+
+        j.ajax({
+            url: "$request.contextPath/secure/ShowCollateralPendingApprovalRequestsAjax.action",
+            type: "GET",
+            dataType: "json",
+            data: { sort: column, order: order, view: "json" },
+            success: function (resp) {
+                renderSortedPendingTable(resp.parametersList);
+            },
+            complete: function () {
+                j.unblockUI();
+            },
+            error: function (xhr) {
+                console.error("Error fetching sorted data", xhr);
+            }
+        });
+    }
+
+    function renderSortedPendingTable(data) {
+        let tbody = "";
+        if (data && data.length > 0) {
+            const showLimit = (j("#allLink_PendingFinalApproval").length > 0) ? 10 : 5;
+            data.slice(0, showLimit).forEach(function (row) {
+                const docId = row[12] || "";
+                const agreementId = row[0] || "";
+                const group = row[1] || "";
+                const segmentId = row[2] || "";
+                const agreementType = row[3] || "";
+                const standard = row[4] || "";
+                const category = row[5] || "";
+                const crds = row[6] || "";
+                const lei = row[7] || "";
+                const counterparty = row[8] || "";
+                const date = row[9] || "";
+                const cmoLoc = (row[10] || "").replace(/\[[A-Z]+\]\s*/g, '');
+                const comments = row[11] || "";
+
+                tbody += `
+                <tr id="${docId}">
+                    <td><a href="$request.contextPath/secure/ShowMasterAgreement.action?masterAgreementId=${agreementId}&view=#COLLATERAL">
+                        <font class="a-link-table-bnp">${agreementId}</font></a></td>
+                    <td>${group}</td>
+                    <td>${segmentId}</td>
+                    <td>${agreementType}</td>
+                    <td>${standard}</td>
+                    <td>${category}</td>
+                    <td>${crds}</td>
+                    <td>${lei}</td>
+                    <td>${counterparty}</td>
+                    <td>${date}</td>
+                    <td id="cmoLocation_${segmentId}">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="w-50">${cmoLoc}</td>
+                                <td class="w-25">
+                                    <button class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                                        value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Redirect</button>
+                                    <button class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                                        value="${segmentId}" data-maid="${agreementId}" data-docid="${docId}">Chase</button>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td>${comments}</td>
+                </tr>`;
+            });
+        } else {
+            tbody = `<tr><td colspan="12" class="text-center">No agreements found.</td></tr>`;
+        }
+
+        j(tableSelector + " tr:gt(0)").remove();
+        j(tableSelector).append(tbody);
+
+        bindRedirect();
+        bindChase();
+    }
+
+    function bindRedirect() {
+        j(".redirectClass").off("click").on("click", function () {
+            const btn = j(this);
+            const ma_id = btn.data("maid");
+            const segId = btn.val();
+            const doc_id = btn.data("docid");
+
+            j.confirm({
+                title: 'Redirect CMO Location',
+                content: '<table>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="LON"> London</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="BRU"> Brussels</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="HKG"> Hong Kong</td></tr>' +
+                    '<tr><td><input type="radio" name="cmoLocation" value="NYK"> New York</td></tr>' +
+                    '</table>',
+                buttons: {
+                    "Yes": function () {
+                        const cmo_loc = j('input[name="cmoLocation"]:checked').val();
+                        j.ajax({
+                            url: "$request.contextPath/secure/RedirectCmoLocation.ajax",
+                            type: "POST",
+                            data: {
+                                masterAgreementId: ma_id,
+                                cmoLocation: cmo_loc,
+                                collateralSegmentId: segId,
+                                documentId: doc_id
+                            },
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Request redirected and email sent to CMO',
+                                    buttons: { "OK": function () { } }
+                                });
+                                j('#cmoLocation_' + segId + ' td.w-50').html(resp.cmoLocationText.replace(/\[[A-Z]+\]\s*/g, ''));
+                            }
+                        });
+                    },
+                    "No": function () { }
+                }
+            });
+        });
+    }
+
+    function bindChase() {
+        j(".chaseClass").off("click").on("click", function () {
+            const btn = j(this);
+            const ma_id = btn.data("maid");
+            const segId = btn.val();
+            const doc_id = btn.data("docid");
+
+            j.confirm({
+                title: 'Chase PFA request',
+                content: 'Do you want to proceed?',
+                buttons: {
+                    "Yes": function () {
+                        j.ajax({
+                            url: "$request.contextPath/secure/ChasePFA.ajax",
+                            type: "POST",
+                            data: {
+                                masterAgreementId: ma_id,
+                                collateralSegmentId: segId,
+                                documentId: doc_id
+                            },
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Email sent to CMO',
+                                    buttons: {
+                                        "OK": function () {
+                                            if (resp && resp.cmoLocationText) {
+                                                j('#cmoLocation_' + segId + ' td.w-50')
+                                                    .html(resp.cmoLocationText.replace(/\[[A-Z]+\]\s*/g, ''));
+                                            } else {
+                                                location.reload();
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    },
+                    "No": function () { }
+                }
+            });
+        });
+    }
+
+    bindRedirect();
+    bindChase();
+});
+</script>
