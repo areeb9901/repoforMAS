@@ -4,10 +4,17 @@ import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
 import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
 import com.bnpparibas.beagle.ma.model.NegotiationDocument;
 import com.bnpparibas.beagle.staticdata.model.User;
+
+import org.apache.struts2.ServletActionContext;
+import org.json.JSONObject;
+
+import javax.servlet.http.HttpServletResponse;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
  * Handles Chase PFA Request for Pending Final Approval (AJAX version)
+ * Persists chase info, audit, reindex, and responds with JSON.
  */
 public class ChasePFARequest extends PendingCollateralRequestAction {
 
@@ -24,8 +31,13 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
     @Override
     public String doExecute() {
         super.doExecute();
-        chaseRequest();
-        return SUCCESS;
+        try {
+            chaseRequest();
+        } catch (Exception e) {
+            e.printStackTrace();
+            writeErrorResponse("Error occurred while chasing request: " + e.getMessage());
+        }
+        return null; // handled via JSON response
     }
 
     @Override
@@ -33,49 +45,58 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         return SUCCESS;
     }
 
+    /**
+     * Main chase logic: update chase info, log, mail, reindex, and respond.
+     */
     private void chaseRequest() {
         try {
-            // ✅ Retrieve entities
+            // Fetch details
             CollateralDocStatusDetails collateralDocStatusDetails =
                     getCollateralDocStatusDetails(collateralSegmentId, documentId);
             NegotiationDocument negotiationDocument =
                     getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
             User currentUser = getUser();
 
-            // ✅ Update chased info — this was missing in your AJAX version
+            // Update chased info (to persist in DB)
             String formattedDate = BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
             collateralDocStatusDetails.setChasedUser(currentUser.getFullname());
             collateralDocStatusDetails.setChasedDate(formattedDate);
 
-            // ✅ Persist the chase info so it stays after reload
+            // Persist to DB
             repository.saveOrUpdate(collateralDocStatusDetails);
             repository.getSession().flush();
 
-            // ✅ Proceed with standard audit + mail + reindex (same as original)
-            String negotiator = negotiationDocument.getNegotiator() != null
+            // Create audit entry (same as before)
+            collateralOpsService.createAuditLogForRedirectChase(
+                    negotiationDocument, currentUser, masterAgreement,
+                    collateralDocStatusDetails, "", "chase"
+            );
+
+            // Send notification mail
+            String negotiatorName = (negotiationDocument.getNegotiator() != null)
                     ? negotiationDocument.getNegotiator().getFullName()
                     : "Unknown";
 
-            emailComments = negotiationDocument.getEmailNotificationsComments();
-
-            collateralOpsService.createAuditLogForRedirectChase(
-                    negotiationDocument, currentUser, masterAgreement, collateralDocStatusDetails, "", "chase"
-            );
-
             super.sendRedirectMail(
-                    buildMailBody(negotiator, collateralSegmentId).toString(),
+                    buildMailBody(negotiatorName, collateralSegmentId).toString(),
                     negotiationDocument,
                     collateralDocStatusDetails,
                     ""
             );
 
+            // Reindex for updated view
             collateralOpsService.reindexMA(masterAgreement);
 
-            System.out.println("CHASE SUCCESS: persisted chase info and audit for docId=" + documentId);
+            // Write JSON response for AJAX DataTable
+            writeSuccessResponse(currentUser.getFullname(), formattedDate);
+
+            System.out.println("CHASE SUCCESS for docId=" + documentId +
+                    " by " + currentUser.getFullname() +
+                    " on " + formattedDate);
 
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Error in ChasePFARequest: " + e.getMessage());
+            writeErrorResponse("Chase request failed: " + e.getMessage());
         }
     }
 
@@ -85,5 +106,47 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         mailBody.append("All,\n\n")
                 .append(super.buildMailBody(negotiator, collateralSegmentId));
         return mailBody;
+    }
+
+    /**
+     * Write JSON success response for AJAX
+     */
+    private void writeSuccessResponse(String userName, String date) {
+        try {
+            HttpServletResponse response = ServletActionContext.getResponse();
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            JSONObject json = new JSONObject();
+            json.put("status", "success");
+            json.put("cmoLocationText",
+                    "<br/>Last Chased By : " + userName +
+                            "<br/>On : " + date + "<br/>");
+
+            response.getWriter().write(json.toString());
+            response.getWriter().flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Write JSON error response for AJAX
+     */
+    private void writeErrorResponse(String message) {
+        try {
+            HttpServletResponse response = ServletActionContext.getResponse();
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            JSONObject json = new JSONObject();
+            json.put("status", "error");
+            json.put("message", message);
+
+            response.getWriter().write(json.toString());
+            response.getWriter().flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
