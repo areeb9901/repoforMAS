@@ -31,7 +31,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         String viewParam = ServletActionContext.getRequest().getParameter("view");
         String uri = ServletActionContext.getRequest().getRequestURI();
 
-        // For AJAX / JSON clients
+        // For AJAX / JSON clients (.ajax or ?view=json)
         if ((viewParam != null && viewParam.equalsIgnoreCase("json")) || uri.endsWith(".ajax")) {
             writeJsonResponse();
             return null;
@@ -63,7 +63,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         String negotiator = negotiationDocument.getNegotiator().getFullName();
         emailComments = negotiationDocument.getEmailNotificationsComments();
 
-        // Create audit log entry (Audit_User / Date_Audit + SegmentId)
+        // Create audit log entry (Audit_User / Date_AUDIT + SegmentId)
         collateralOpsService.createAuditLogForRedirectChase(
                 negotiationDocument,
                 getUser(),
@@ -126,6 +126,8 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
             cmoLocationText = cmoLocationText.replaceAll("\\[[A-Z]{3}\\]\\s*", "");
 
             json.put("cmoLocationText", cmoLocationText);
+            json.put("chasedUser", userFullName);
+            json.put("chasedDate", formattedDate);
 
             response.getWriter().write(json.toString());
             response.getWriter().flush();
