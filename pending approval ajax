@@ -1,13 +1,10 @@
 package com.bnpparibas.beagle.dashboard.actions;
 
-import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
-import com.bnpparibas.beagle.ma.model.AgreementHelper;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetailsKey;
-import com.bnpparibas.beagle.ma.model.MasterAgreement;
-import com.bnpparibas.beagle.ma.model.NegotiationDocument;
 import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
-import com.bnpparibas.beagle.kernel.database.BeagleRepository;
+import com.bnpparibas.beagle.ma.model.AgreementHelper;
+import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
+import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
+import com.bnpparibas.beagle.ma.model.MasterAgreement;
 
 import org.hibernate.Query;
 
@@ -25,7 +22,11 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
 
     @Override
     protected void prepareParameters() {
+        // same filters as ShowCollateralPendingApprovalRequests,
+        // but for Ajax we want ALL rows (no paging)
         super.prepareParameters();
+
+        // remove pagination and override page size
         parameters.remove("pageIndex");
         parameters.remove("pageSize");
         setPageSize(Integer.MAX_VALUE);
@@ -34,6 +35,7 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
 
     @Override
     protected String postSearch(org.apache.lucene.search.Query query) {
+
         if (EXCEL.equalsIgnoreCase(getView())) {
             try {
                 convertExcel();
@@ -42,6 +44,7 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
             }
             return EXCEL;
         }
+
         return getView();
     }
 
@@ -61,10 +64,10 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
     }
 
     /**
-     * Load chasedUser / chasedDate from DB using masterAgreementId + segmentId.
-     * We do NOT depend on Lucene for these fields, to ensure they are up to date.
+     * Get chasedUser / chasedDate from CollateralDocStatusDetails using MA + segmentId.
+     * This is the same source of truth the smaller dashboard view relies on.
      */
-    private String[] getChaseInfoFromDb(Long maId, String segmentId) {
+    private String[] getChaseInfoFromStatusDetails(Long maId, String segmentId) {
         String[] result = new String[] { "", "" };
 
         if (maId == null || segmentId == null || segmentId.trim().isEmpty()) {
@@ -72,13 +75,13 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
         }
 
         try {
-            // Load MA + find CollateralDocStatusDetails by (MA, segmentId)
+            // Load the MasterAgreement entity
             MasterAgreement ma = (MasterAgreement) repository.findObject(MasterAgreement.class, maId);
             if (ma == null) {
                 return result;
             }
 
-            // Query by segment id and MA
+            // Find the status details row for this MA + segment
             Query q = repository.getSession().createQuery(
                 "from CollateralDocStatusDetails cd " +
                 "where cd.key.ma = :ma and cd.collateralSegmentId = :segId"
@@ -86,10 +89,12 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
             q.setParameter("ma", ma);
             q.setParameter("segId", segmentId);
 
+            @SuppressWarnings("unchecked")
             List<CollateralDocStatusDetails> list = q.list();
+
             if (list != null && !list.isEmpty()) {
-                // Expect exactly one per MA + segmentId
                 CollateralDocStatusDetails cd = list.get(0);
+
                 if (cd.getChasedUser() != null) {
                     result[0] = cd.getChasedUser();
                 }
@@ -104,9 +109,31 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
         return result;
     }
 
+    /**
+     * Build the full flat list used by the DataTables grid on the "Show all" page.
+     * Each Object[] row has 15 elements:
+     *
+     *  0 - Agreement ID
+     *  1 - Group
+     *  2 - Collateral Segment Id
+     *  3 - Agreement Type (cleaned)
+     *  4 - Standard / Doc class text
+     *  5 - Document Category
+     *  6 - CRDS Code
+     *  7 - CP LEI
+     *  8 - Counterparty Entity (Excel display)
+     *  9 - Creation Date
+     * 10 - CMO Location
+     * 11 - Comments (from segData[4] in original logic)
+     * 12 - Doc Id
+     * 13 - Chased User
+     * 14 - Chased Date
+     */
     private void buildFullListFromRawSegments() {
+
         try {
             parametersList.clear();
+
             String actionName = "";
             if (parameters.get("collateralDocumentStatus") != null) {
                 String[] actions = (String[]) parameters.get("collateralDocumentStatus");
@@ -149,22 +176,31 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
 
                     Long maId = sr.getAgreementId();
 
-                    r[i++] = maId;  // 0 agreementId
-                    r[i++] = sr.getGroup();        // 1 group
+                    r[i++] = maId;                      // 0 agreementId
+                    r[i++] = sr.getGroup();             // 1 group
+
                     String segmentId = segData.length > 0 ? segData[0] : "";
-                    r[i++] = segmentId;            // 2 segmentId
-                    r[i++] = sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", "") == null
-                            ? ""
-                            : sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", ""); // 3
-                    r[i++] = segData.length > 2 ? segData[2] : "";               // 4 standard
-                    r[i++] = getCollateralDocumentCategory(segData.length > 1 ? segData[1] : ""); // 5 doc category
+                    r[i++] = segmentId;                 // 2 segmentId
+
+                    String type = sr.getType();
+                    String cleanedType = "";
+                    if (type != null) {
+                        cleanedType = type.replaceFirst("[/(]+[0-9]+[/)]+", "");
+                    }
+                    r[i++] = cleanedType == null ? "" : cleanedType;   // 3 agreement type
+
+                    r[i++] = segData.length > 2 ? segData[2] : "";     // 4 standard/doc class
+                    r[i++] = getCollateralDocumentCategory(segData.length > 1 ? segData[1] : "");  // 5 doc category
+
                     r[i++] = sr.getCounterpartyEntityMarketPlayerCode() == null
                             ? ""
-                            : sr.getCounterpartyEntityMarketPlayerCode();        // 6 CRDS
-                    r[i++] = sr.getCpLei() == null ? "" : sr.getCpLei();         // 7 CP LEI
+                            : sr.getCounterpartyEntityMarketPlayerCode();    // 6 CRDS code
+
+                    r[i++] = sr.getCpLei() == null ? "" : sr.getCpLei();     // 7 CP LEI
+
                     r[i++] = sr.getCounterpartyEntityExcel() == null
                             ? ""
-                            : sr.getCounterpartyEntityExcel();                   // 8 counterparty name
+                            : sr.getCounterpartyEntityExcel();               // 8 counterparty
 
                     String creationDate = null;
                     if (segData.length > 9 && segData[9] != null && segData[9].trim().length() > 0) {
@@ -177,12 +213,12 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                                 "getDocCreateDateForAgreement",
                                 "getDocCreateDateFormatted");
                     }
-                    r[i++] = creationDate == null ? "" : creationDate;           // 9 creation date
+                    r[i++] = creationDate == null ? "" : creationDate;       // 9 creation date
 
-                    r[i++] = segData.length > 6 ? segData[6] : "";               // 10 CMO location
-                    r[i++] = segData.length > 4 ? segData[4] : "";               // 11 comments (or similar)
+                    r[i++] = segData.length > 6 ? segData[6] : "";           // 10 CMO location
+                    r[i++] = segData.length > 4 ? segData[4] : "";           // 11 comments (from segData[4])
 
-                    // --------- docId ----------
+                    // ------------- DocId (12) -------------
                     String docId = "";
                     if (segData.length > 13 && segData[13] != null && segData[13].matches("\\d+")) {
                         docId = segData[13].trim();
@@ -192,15 +228,15 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                             docId = "";
                         }
                     }
-                    r[i++] = docId;                                              // 12
+                    r[i++] = docId;                                        // 12
 
-                    // --------- chasedUser / chasedDate from DB ----------
-                    String[] chaseInfo = getChaseInfoFromDb(maId, segmentId);
+                    // ------------- ChasedUser / ChasedDate (13,14) -------------
+                    String[] chaseInfo = getChaseInfoFromStatusDetails(maId, segmentId);
                     String chasedUser = chaseInfo[0];
                     String chasedDate = chaseInfo[1];
 
-                    r[i++] = chasedUser == null ? "" : chasedUser;               // 13
-                    r[i++] = chasedDate == null ? "" : chasedDate;               // 14
+                    r[i++] = chasedUser == null ? "" : chasedUser;         // 13
+                    r[i++] = chasedDate == null ? "" : chasedDate;         // 14
 
                     parametersList.add(r);
                 }
