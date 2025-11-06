@@ -1,0 +1,9 @@
+collateralDocStatusDetails.setChasedUser(getUser().getFullname());
+collateralDocStatusDetails.setChasedDate(BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
+
+try {
+    repository.saveOrupdate(collateralDocStatusDetails);
+    System.out.println("Chase persisted for segment: " + collateralDocStatusDetails.getCollateralSegmentId());
+} catch (Exception e) {
+    e.printStackTrace();
+}
