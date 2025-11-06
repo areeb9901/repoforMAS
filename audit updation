@@ -1,0 +1,72 @@
+public void createAuditLogForRedirectChase(NegotiationDocument negotiationDocument,
+                                           User user,
+                                           MasterAgreement ma,
+                                           CollateralDocStatusDetails collateralDocStatusDetails,
+                                           String previousLocation,
+                                           String action) {
+    NegotiationDocument negoDoc = negotiationDocument;
+    StringBuilder fileName = new StringBuilder();
+    int count = 0;
+    if (negoDoc.getFileName() != null) {
+        count++;
+        fileName = fileName.append(negoDoc.getFileName());
+        if (count > 0) {
+            fileName.append("<BR>");
+        }
+    }
+
+    CollateralDocAudit collateralDocAudit = new CollateralDocAudit();
+    collateralDocAudit.setMasterAgreementId(ma.getId());
+    collateralDocAudit.setDocGroupId(negoDoc.getDocumentGroupId());
+    collateralDocAudit.setDocStatus(getCollDocStatus(collateralDocStatusDetails.getStatus()));
+
+    Date uploadDate = new Date();
+    try {
+        uploadDate = BeagleDateFormat.parse(
+                BeagleDateFormat.format(negoDoc.getDocumentDate(), BeagleDateFormat.FORMAT));
+    } catch (ParseException e) {
+        LOGGER.error(e.getCause());
+    }
+    collateralDocAudit.setDocUploadDate(uploadDate);
+    collateralDocAudit.setCmoUser(user.getFullname());
+
+    if (negoDoc.getDocumentCatagory() != null) {
+        collateralDocAudit.setDocCategory(negoDoc.getDocumentCatagory().getText());
+    }
+    if (negoDoc.getIsStandard() != null) {
+        String docClass = negoDoc.getIsStandard() ? "Standard" : "Non Standard";
+        collateralDocAudit.setDocClass(docClass);
+    }
+    if (negoDoc.getNegotiator() != null) {
+        collateralDocAudit.setDocNegotiator(negoDoc.getNegotiator().getFullName());
+    }
+    collateralDocAudit.setCmoLocation(
+            collateralDocStatusDetails.getCmoLocation() != null
+                    ? collateralDocStatusDetails.getCmoLocation().getName()
+                    : "");
+
+    collateralDocAudit.setDocFileName(fileName.toString());
+
+    if ("redirect".equals(action)) {
+        collateralDocAudit.setComments("Redirected from "
+                + ("".equals(previousLocation) ? "No Location" : previousLocation)
+                + " to " + collateralDocStatusDetails.getCmoLocation().getName());
+    } else if ("chase".equals(action)) {
+        collateralDocAudit.setComments("Chased - "
+                + getAuditLogComments(collateralDocStatusDetails,
+                                       collateralDocStatusDetails.getStatus(),
+                                       negoDoc.getDetail()));
+    }
+
+    collateralDocAudit.setAuditDate(new Date());
+    collateralDocAudit.setAuditUser(user.getFullname());
+
+    // ✅ Ensure segmentId is never null in audit
+    String segId = collateralDocStatusDetails.getCollateralSegmentId();
+    if (segId == null || segId.trim().isEmpty()) {
+        segId = negoDoc.getSegmentId();   // fallback
+    }
+    collateralDocAudit.setSegmentId(segId);
+
+    repository.save("CollateralDocAudit", collateralDocAudit);
+}
