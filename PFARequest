@@ -3,19 +3,11 @@ package com.bnpparibas.beagle.documents;
 import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
 import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
 import com.bnpparibas.beagle.ma.model.NegotiationDocument;
-import com.bnpparibas.beagle.ma.model.MasterAgreement;
 import com.bnpparibas.beagle.staticdata.model.User;
-
-import org.apache.struts2.ServletActionContext;
-import org.json.JSONObject;
-
-import javax.servlet.http.HttpServletResponse;
 import java.util.Date;
-import java.text.SimpleDateFormat;
 
 /**
- * Handles "Chase" button action from Pending Final Approval table (AJAX).
- * Updates chase info + audit log + sends email.
+ * Handles Chase PFA Request for Pending Final Approval (AJAX version)
  */
 public class ChasePFARequest extends PendingCollateralRequestAction {
 
@@ -31,103 +23,67 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
 
     @Override
     public String doExecute() {
-        try {
-            chaseRequest();
-            writeJsonResponse();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+        super.doExecute();
+        chaseRequest();
+        return SUCCESS;
     }
 
-    /**
-     * Main logic for chase button — updates chase info, audit table, reindex, and email.
-     */
+    @Override
+    protected String executeMasterAgreementAction() {
+        return SUCCESS;
+    }
+
     private void chaseRequest() {
         try {
-            // Get existing entities
+            // ✅ Retrieve entities
             CollateralDocStatusDetails collateralDocStatusDetails =
                     getCollateralDocStatusDetails(collateralSegmentId, documentId);
             NegotiationDocument negotiationDocument =
                     getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
-            MasterAgreement ma = collateralDocStatusDetails.getKey().getMasterAgreement();
-            User user = getUser();
+            User currentUser = getUser();
 
-            // 1️⃣ Update chase info in CollateralDocStatusDetails
-            String chasedDate = BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
-            collateralDocStatusDetails.setChasedUser(user.getFullname());
-            collateralDocStatusDetails.setChasedDate(chasedDate);
+            // ✅ Update chased info — this was missing in your AJAX version
+            String formattedDate = BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
+            collateralDocStatusDetails.setChasedUser(currentUser.getFullname());
+            collateralDocStatusDetails.setChasedDate(formattedDate);
+
+            // ✅ Persist the chase info so it stays after reload
             repository.saveOrUpdate(collateralDocStatusDetails);
             repository.getSession().flush();
 
-            // 2️⃣ Create audit record (same method as pre-AJAX)
+            // ✅ Proceed with standard audit + mail + reindex (same as original)
+            String negotiator = negotiationDocument.getNegotiator() != null
+                    ? negotiationDocument.getNegotiator().getFullName()
+                    : "Unknown";
+
+            emailComments = negotiationDocument.getEmailNotificationsComments();
+
             collateralOpsService.createAuditLogForRedirectChase(
-                    negotiationDocument, user, ma, collateralDocStatusDetails, "", "chase"
+                    negotiationDocument, currentUser, masterAgreement, collateralDocStatusDetails, "", "chase"
             );
 
-            // ✅ Force commit so audit persists in LDM_TB_COLL_DOC_AUDIT
-            repository.getSession().flush();
-
-            // 3️⃣ Trigger reindex so data appears on next reload
-            collateralOpsService.reindexMA(ma);
-
-            // 4️⃣ Send notification mail
             super.sendRedirectMail(
-                    buildMailBody(
-                            negotiationDocument.getNegotiator() != null
-                                    ? negotiationDocument.getNegotiator().getFullName()
-                                    : "Unknown",
-                            collateralSegmentId
-                    ).toString(),
+                    buildMailBody(negotiator, collateralSegmentId).toString(),
                     negotiationDocument,
                     collateralDocStatusDetails,
                     ""
             );
 
-            System.out.println("CHASE SUCCESS for MA " + ma.getId() +
-                    " | User: " + user.getFullname() +
-                    " | Segment: " + collateralSegmentId);
+            collateralOpsService.reindexMA(masterAgreement);
+
+            System.out.println("CHASE SUCCESS: persisted chase info and audit for docId=" + documentId);
 
         } catch (Exception e) {
-            System.err.println("CHASE ERROR: " + e.getMessage());
             e.printStackTrace();
+            System.err.println("Error in ChasePFARequest: " + e.getMessage());
         }
     }
 
-    /**
-     * Builds email body same as before.
-     */
     @Override
     public StringBuilder buildMailBody(String negotiator, String collateralSegmentId) {
         StringBuilder mailBody = new StringBuilder();
-        mailBody.append("All,\n\n").append(super.buildMailBody(negotiator, collateralSegmentId));
+        mailBody.append("All,\n\n")
+                .append(super.buildMailBody(negotiator, collateralSegmentId));
         return mailBody;
-    }
-
-    /**
-     * JSON response for AJAX update
-     */
-    private void writeJsonResponse() {
-        try {
-            HttpServletResponse response = ServletActionContext.getResponse();
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-
-            JSONObject json = new JSONObject();
-
-            String currentUser = getUser().getFullname();
-            String date = new SimpleDateFormat("dd-MMM-yyyy").format(new Date());
-
-            String cmoLocationText = "<br/>Last Chased By : " + currentUser +
-                    "<br/>On : " + date;
-
-            json.put("cmoLocationText", cmoLocationText);
-
-            response.getWriter().write(json.toString());
-            response.getWriter().flush();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
