@@ -1,0 +1,134 @@
+package com.bnpparibas.beagle.documents;
+
+import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
+import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
+import com.bnpparibas.beagle.ma.model.NegotiationDocument;
+import org.apache.struts2.ServletActionContext;
+import org.json.JSONObject;
+
+import javax.servlet.http.HttpServletResponse;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+public class ChasePFARequest extends PendingCollateralRequestAction {
+
+    Long documentId;
+
+    public Long getDocumentId() {
+        return documentId;
+    }
+
+    public void setDocumentId(Long documentId) {
+        this.documentId = documentId;
+    }
+
+    @Override
+    public String doExecute() {
+        super.doExecute();
+        chaseRequest();
+
+        String viewParam = ServletActionContext.getRequest().getParameter("view");
+        String uri = ServletActionContext.getRequest().getRequestURI();
+
+        if ((viewParam != null && viewParam.equalsIgnoreCase("json")) || uri.endsWith(".ajax")) {
+            writeJsonResponse();
+            return null;
+        }
+
+        return SUCCESS;
+    }
+
+    @Override
+    protected String executeMasterAgreementAction() {
+        return SUCCESS;
+    }
+
+    private void chaseRequest() {
+        // Get status details for this segment + document
+        CollateralDocStatusDetails collateralDocStatusDetails =
+                getCollateralDocStatusDetails(collateralSegmentId, documentId);
+
+        // Safety: make sure collateralSegmentId is set so audit gets COLLATERAL_SEGMENT_ID
+        if (collateralDocStatusDetails != null &&
+            (collateralDocStatusDetails.getCollateralSegmentId() == null
+             || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty())) {
+            collateralDocStatusDetails.setCollateralSegmentId(collateralSegmentId);
+        }
+
+        NegotiationDocument negotiationDocument =
+                getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
+
+        String negotiator = negotiationDocument.getNegotiator().getFullName();
+        emailComments = negotiationDocument.getEmailNotificationsComments();
+
+        // Audit log – will now have non-null segmentId
+        collateralOpsService.createAuditLogForRedirectChase(
+                negotiationDocument,
+                getUser(),
+                masterAgreement,
+                collateralDocStatusDetails,
+                "",
+                "chase");
+
+        // Persist chased user/date on the status details
+        collateralDocStatusDetails.setChasedUser(getUser().getFullname());
+        collateralDocStatusDetails.setChasedDate(
+                BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
+
+        collateralOpsService.updateCollateralDocStatusDetails(collateralDocStatusDetails);
+
+        // Send chase email
+        super.sendRedirectMail(
+                buildMailBody(negotiator, collateralSegmentId).toString(),
+                negotiationDocument,
+                collateralDocStatusDetails,
+                "");
+
+        // Reindex so search / dashboards are consistent
+        collateralOpsService.reindexMA(masterAgreement);
+    }
+
+    @Override
+    public StringBuilder buildMailBody(String negotiator, String collateralSegmentId) {
+        StringBuilder mailBody = new StringBuilder();
+        mailBody.append("All,\n\n")
+                .append(super.buildMailBody(negotiator, collateralSegmentId));
+        return mailBody;
+    }
+
+    private void writeJsonResponse() {
+        try {
+            HttpServletResponse response = ServletActionContext.getResponse();
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            JSONObject json = new JSONObject();
+
+            String formattedDate = new SimpleDateFormat("dd-MMM-yyyy").format(new Date());
+            String userFullName = getUser().getFullname();
+
+            CollateralDocStatusDetails cds =
+                    getCollateralDocStatusDetails(collateralSegmentId, documentId);
+
+            String cmoLocationName = "";
+            if (cds != null && cds.getCmoLocation() != null) {
+                cmoLocationName = cds.getCmoLocation().toString().toUpperCase(Locale.ROOT);
+            }
+
+            String cmoLocationText = cmoLocationName
+                    + "<br/>Last Chased By : " + userFullName
+                    + "<br/>On : " + formattedDate;
+
+            // Clean things like [LON] prefix if any
+            cmoLocationText = cmoLocationText.replaceAll("\\[[A-Z]{3}\\]\\s*", "");
+
+            json.put("cmoLocationText", cmoLocationText);
+
+            response.getWriter().write(json.toString());
+            response.getWriter().flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
