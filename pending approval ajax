@@ -2,7 +2,14 @@ package com.bnpparibas.beagle.dashboard.actions;
 
 import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
 import com.bnpparibas.beagle.ma.model.AgreementHelper;
+import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
+import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetailsKey;
+import com.bnpparibas.beagle.ma.model.MasterAgreement;
+import com.bnpparibas.beagle.ma.model.NegotiationDocument;
 import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
+import com.bnpparibas.beagle.kernel.database.BeagleRepository;
+
+import org.hibernate.Query;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -53,6 +60,50 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
         return null;
     }
 
+    /**
+     * Load chasedUser / chasedDate from DB using masterAgreementId + segmentId.
+     * We do NOT depend on Lucene for these fields, to ensure they are up to date.
+     */
+    private String[] getChaseInfoFromDb(Long maId, String segmentId) {
+        String[] result = new String[] { "", "" };
+
+        if (maId == null || segmentId == null || segmentId.trim().isEmpty()) {
+            return result;
+        }
+
+        try {
+            // Load MA + find CollateralDocStatusDetails by (MA, segmentId)
+            MasterAgreement ma = (MasterAgreement) repository.findObject(MasterAgreement.class, maId);
+            if (ma == null) {
+                return result;
+            }
+
+            // Query by segment id and MA
+            Query q = repository.getSession().createQuery(
+                "from CollateralDocStatusDetails cd " +
+                "where cd.key.ma = :ma and cd.collateralSegmentId = :segId"
+            );
+            q.setParameter("ma", ma);
+            q.setParameter("segId", segmentId);
+
+            List<CollateralDocStatusDetails> list = q.list();
+            if (list != null && !list.isEmpty()) {
+                // Expect exactly one per MA + segmentId
+                CollateralDocStatusDetails cd = list.get(0);
+                if (cd.getChasedUser() != null) {
+                    result[0] = cd.getChasedUser();
+                }
+                if (cd.getChasedDate() != null) {
+                    result[1] = cd.getChasedDate();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
     private void buildFullListFromRawSegments() {
         try {
             parametersList.clear();
@@ -96,9 +147,12 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                     Object[] r = new Object[15];
                     int i = 0;
 
-                    r[i++] = sr.getAgreementId();  // 0
-                    r[i++] = sr.getGroup();        // 1
-                    r[i++] = segData.length > 0 ? segData[0] : ""; // 2 segmentId
+                    Long maId = sr.getAgreementId();
+
+                    r[i++] = maId;  // 0 agreementId
+                    r[i++] = sr.getGroup();        // 1 group
+                    String segmentId = segData.length > 0 ? segData[0] : "";
+                    r[i++] = segmentId;            // 2 segmentId
                     r[i++] = sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", "") == null
                             ? ""
                             : sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", ""); // 3
@@ -140,9 +194,10 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                     }
                     r[i++] = docId;                                              // 12
 
-                    // --------- chasedUser / chasedDate from indexed fields ----------
-                    String chasedUser = tryGetter(sr, "getChasedUser", "getChasedBy", "getLastChasedBy");
-                    String chasedDate = tryGetter(sr, "getChasedDate", "getLastChasedDate");
+                    // --------- chasedUser / chasedDate from DB ----------
+                    String[] chaseInfo = getChaseInfoFromDb(maId, segmentId);
+                    String chasedUser = chaseInfo[0];
+                    String chasedDate = chaseInfo[1];
 
                     r[i++] = chasedUser == null ? "" : chasedUser;               // 13
                     r[i++] = chasedDate == null ? "" : chasedDate;               // 14
