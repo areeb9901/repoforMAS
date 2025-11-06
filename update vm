@@ -1,0 +1,37 @@
+ var table = j('#PendingFinalApprovalTable').DataTable();
+                                    var rowFound = null;
+
+                                    table.rows().every(function () {
+                                        var d = this.data();
+                                        if (String(d[12]).trim() === String(doc_id).trim()) {
+                                            rowFound = this;
+                                        }
+                                    });
+
+                                    if (rowFound) {
+                                        var rowData = rowFound.data();
+
+                                        if (resp && resp.cmoLocationText) {
+                                            var locText = resp.cmoLocationText.replace(/\[[A-Z]{3}\]\s*/g, '');
+                                            rowData[10] = locText; // CMO Location column
+                                        }
+
+                                        // use explicit fields if sent, else parse / fallback
+                                        var chasedUser = resp && resp.chasedUser ? resp.chasedUser : "";
+                                        var chasedDate = resp && resp.chasedDate ? resp.chasedDate : "";
+
+                                        if (!chasedUser && resp && resp.cmoLocationText) {
+                                            var userMatch = resp.cmoLocationText.match(/Last Chased By\s*:\s*([^<]+)/i);
+                                            if (userMatch) chasedUser = j.trim(userMatch[1]);
+                                        }
+                                        if (!chasedDate && resp && resp.cmoLocationText) {
+                                            var dateMatch = resp.cmoLocationText.match(/On\s*:\s*([^<]+)/i);
+                                            if (dateMatch) chasedDate = j.trim(dateMatch[1]);
+                                        }
+
+                                        rowData[13] = chasedUser;
+                                        rowData[14] = chasedDate;
+
+                                        rowFound.data(rowData).invalidate().draw(false);
+                                    }
+                                
