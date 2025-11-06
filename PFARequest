@@ -11,10 +11,13 @@ import org.json.JSONObject;
 import javax.servlet.http.HttpServletResponse;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /**
- * Handles Chase PFA Request for Pending Final Approval (AJAX version)
- * Persists chase info, audit, reindex, and responds with JSON.
+ * Final AJAX-compatible ChasePFARequest
+ * - Updates chase info
+ * - Persists via audit log (DB + reindex)
+ * - Returns JSON for UI update
  */
 public class ChasePFARequest extends PendingCollateralRequestAction {
 
@@ -35,9 +38,9 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
             chaseRequest();
         } catch (Exception e) {
             e.printStackTrace();
-            writeErrorResponse("Error occurred while chasing request: " + e.getMessage());
+            writeErrorResponse("Error: " + e.getMessage());
         }
-        return null; // handled via JSON response
+        return null;
     }
 
     @Override
@@ -45,38 +48,31 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         return SUCCESS;
     }
 
-    /**
-     * Main chase logic: update chase info, log, mail, reindex, and respond.
-     */
     private void chaseRequest() {
         try {
-            // Fetch details
             CollateralDocStatusDetails collateralDocStatusDetails =
                     getCollateralDocStatusDetails(collateralSegmentId, documentId);
             NegotiationDocument negotiationDocument =
                     getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
             User currentUser = getUser();
 
-            // Update chased info (to persist in DB)
+            // ✅ Set chase info
             String formattedDate = BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
             collateralDocStatusDetails.setChasedUser(currentUser.getFullname());
             collateralDocStatusDetails.setChasedDate(formattedDate);
 
-            // Persist to DB
-            repository.saveOrUpdate(collateralDocStatusDetails);
-            repository.getSession().flush();
-
-            // Create audit entry (same as before)
+            // ✅ Persist chase info (old working path: via audit)
             collateralOpsService.createAuditLogForRedirectChase(
                     negotiationDocument, currentUser, masterAgreement,
                     collateralDocStatusDetails, "", "chase"
             );
 
-            // Send notification mail
+            // ✅ Send mail
             String negotiatorName = (negotiationDocument.getNegotiator() != null)
                     ? negotiationDocument.getNegotiator().getFullName()
                     : "Unknown";
 
+            emailComments = negotiationDocument.getEmailNotificationsComments();
             super.sendRedirectMail(
                     buildMailBody(negotiatorName, collateralSegmentId).toString(),
                     negotiationDocument,
@@ -84,19 +80,27 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
                     ""
             );
 
-            // Reindex for updated view
+            // ✅ Reindex
             collateralOpsService.reindexMA(masterAgreement);
 
-            // Write JSON response for AJAX DataTable
-            writeSuccessResponse(currentUser.getFullname(), formattedDate);
+            // ✅ Include location + chased info for UI
+            String locationName = collateralDocStatusDetails.getCmoLocation() != null
+                    ? collateralDocStatusDetails.getCmoLocation().getName()
+                    : "";
+            String cmoText = locationName
+                    + "<br/>Last Chased By : " + currentUser.getFullname()
+                    + "<br/>On : " + formattedDate + "<br/>";
 
-            System.out.println("CHASE SUCCESS for docId=" + documentId +
-                    " by " + currentUser.getFullname() +
-                    " on " + formattedDate);
+            writeSuccessResponse(cmoText);
+
+            System.out.println("CHASE SUCCESS — docId=" + documentId +
+                    ", chased by " + currentUser.getFullname() +
+                    ", location=" + locationName +
+                    ", date=" + formattedDate);
 
         } catch (Exception e) {
             e.printStackTrace();
-            writeErrorResponse("Chase request failed: " + e.getMessage());
+            writeErrorResponse("Chase failed: " + e.getMessage());
         }
     }
 
@@ -108,10 +112,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         return mailBody;
     }
 
-    /**
-     * Write JSON success response for AJAX
-     */
-    private void writeSuccessResponse(String userName, String date) {
+    private void writeSuccessResponse(String cmoLocationText) {
         try {
             HttpServletResponse response = ServletActionContext.getResponse();
             response.setContentType("application/json");
@@ -119,9 +120,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
 
             JSONObject json = new JSONObject();
             json.put("status", "success");
-            json.put("cmoLocationText",
-                    "<br/>Last Chased By : " + userName +
-                            "<br/>On : " + date + "<br/>");
+            json.put("cmoLocationText", cmoLocationText);
 
             response.getWriter().write(json.toString());
             response.getWriter().flush();
@@ -130,10 +129,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         }
     }
 
-    /**
-     * Write JSON error response for AJAX
-     */
-    private void writeErrorResponse(String message) {
+    private void writeErrorResponse(String msg) {
         try {
             HttpServletResponse response = ServletActionContext.getResponse();
             response.setContentType("application/json");
@@ -141,7 +137,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
 
             JSONObject json = new JSONObject();
             json.put("status", "error");
-            json.put("message", message);
+            json.put("message", msg);
 
             response.getWriter().write(json.toString());
             response.getWriter().flush();
