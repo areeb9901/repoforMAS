@@ -1,0 +1,208 @@
+package com.bnpparibas.beagle.dashboard.actions;
+
+import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
+import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
+import com.bnpparibas.beagle.ma.model.AgreementHelper;
+import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPendingApprovalRequests {
+
+    protected static final String JSON = "json";
+    private static final String EXCEL = "excel";
+
+    private String view = JSON;
+    private final List<Object[]> parametersList = new ArrayList<>();
+
+    @Override
+    protected void prepareParameters() {
+        super.prepareParameters();
+        parameters.remove("pageIndex");
+        parameters.remove("pageSize");
+        setPageSize(Integer.MAX_VALUE);
+        setPageIndex(1);
+    }
+
+    @Override
+    protected String postSearch(org.apache.lucene.search.Query query) {
+        if (EXCEL.equalsIgnoreCase(getView())) {
+            try {
+                convertExcel();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return EXCEL;
+        }
+        return getView();
+    }
+
+    private String tryGetter(SearchResultMasterAgreementDisplay sr, String... methodNames) {
+        for (String mName : methodNames) {
+            try {
+                Method m = sr.getClass().getMethod(mName);
+                Object val = m.invoke(sr);
+                if (val != null) return val.toString();
+            } catch (NoSuchMethodException nsme) {
+                // ignore and try next
+            } catch (Throwable t) {
+                // ignore and try next
+            }
+        }
+        return null;
+    }
+
+    private void buildFullListFromRawSegments() {
+        try {
+            parametersList.clear();
+            String actionName = "";
+            if (parameters.get("collateralDocumentStatus") != null) {
+                String[] actions = (String[]) parameters.get("collateralDocumentStatus");
+                if (actions.length > 0) {
+                    actionName = actions[0];
+                }
+            }
+
+            List<SearchResultMasterAgreementDisplay> results = getMasterAgreementsDisplay();
+
+            for (SearchResultMasterAgreementDisplay sr : results) {
+
+                String segIdCombined = sr.getSegId();
+                if (segIdCombined == null || segIdCombined.trim().isEmpty()) continue;
+
+                String[] collateralDataArray = segIdCombined.split("#_#");
+
+                for (String segRaw : collateralDataArray) {
+
+                    String[] segData = segRaw != null ? segRaw.split("\\$_\\$") : new String[]{};
+                    if (segData.length == 0 || "".equals(segData[0])) continue;
+
+                    String segStatus = segData.length > 5 ? segData[5] : "";
+                    if (!"PendingFinalApproval".equalsIgnoreCase(segStatus)) continue;
+
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_LOCATION, parameters))
+                        continue;
+
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_USER, parameters))
+                        continue;
+
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.COLLATERAL_DOCUMENT_CATEGORY, parameters))
+                        continue;
+
+                    if (!AgreementHelper.isShowMyItemOnCollDashboard(segData, userRoleForShowMyItem, getUser(), collAdminLocation))
+                        continue;
+
+                    Object[] r = new Object[15];
+                    int i = 0;
+
+                    r[i++] = sr.getAgreementId();  // 0
+                    r[i++] = sr.getGroup();        // 1
+                    r[i++] = segData.length > 0 ? segData[0] : ""; // 2 segmentId
+                    r[i++] = sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", "") == null
+                            ? ""
+                            : sr.getType().replaceFirst("[/(]+[0-9]+[/)]+", ""); // 3
+                    r[i++] = segData.length > 2 ? segData[2] : "";               // 4 standard
+                    r[i++] = getCollateralDocumentCategory(segData.length > 1 ? segData[1] : ""); // 5 doc category
+                    r[i++] = sr.getCounterpartyEntityMarketPlayerCode() == null
+                            ? ""
+                            : sr.getCounterpartyEntityMarketPlayerCode();        // 6 CRDS
+                    r[i++] = sr.getCpLei() == null ? "" : sr.getCpLei();         // 7 CP LEI
+                    r[i++] = sr.getCounterpartyEntityExcel() == null
+                            ? ""
+                            : sr.getCounterpartyEntityExcel();                   // 8 counterparty name
+
+                    String creationDate = null;
+                    if (segData.length > 9 && segData[9] != null && segData[9].trim().length() > 0) {
+                        creationDate = segData[9];
+                    } else {
+                        creationDate = tryGetter(sr,
+                                "getDocStartDate",
+                                "getDocCreateDate",
+                                "getCreationDate",
+                                "getDocCreateDateForAgreement",
+                                "getDocCreateDateFormatted");
+                    }
+                    r[i++] = creationDate == null ? "" : creationDate;           // 9 creation date
+
+                    r[i++] = segData.length > 6 ? segData[6] : "";               // 10 CMO location
+                    r[i++] = segData.length > 4 ? segData[4] : "";               // 11 comments (or similar)
+
+                    // --------- docId ----------
+                    String docId = "";
+                    if (segData.length > 13 && segData[13] != null && segData[13].matches("\\d+")) {
+                        docId = segData[13].trim();
+                    } else {
+                        docId = tryGetter(sr, "getDocId", "getDocumentId", "getDocument", "getDocIdentifier");
+                        if (docId == null || !docId.matches("\\d+")) {
+                            docId = "";
+                        }
+                    }
+                    r[i++] = docId;                                              // 12
+
+                    // --------- chasedUser / chasedDate from CollateralDocStatusDetails ----------
+                    String chasedUser = "";
+                    String chasedDate = "";
+
+                    try {
+                        if (docId != null && docId.matches("\\d+")) {
+                            Long docIdLong = Long.valueOf(docId);
+                            String segId = segData.length > 0 ? segData[0] : null;
+
+                            if (segId != null && !segId.trim().isEmpty()) {
+                                CollateralDocStatusDetails cds =
+                                        getCollateralDocStatusDetails(segId, docIdLong);
+                                if (cds != null) {
+                                    if (cds.getChasedUser() != null) {
+                                        chasedUser = cds.getChasedUser();
+                                    }
+                                    if (cds.getChasedDate() != null) {
+                                        chasedDate = cds.getChasedDate();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+
+                    // Fallback to Lucene fields if DB doesn’t have them (old data)
+                    if ((chasedUser == null || chasedUser.trim().isEmpty())
+                            && (chasedDate == null || chasedDate.trim().isEmpty())) {
+                        String luceneUser = tryGetter(sr, "getChasedUser", "getChasedBy", "getLastChasedBy");
+                        String luceneDate = tryGetter(sr, "getChasedDate", "getLastChasedDate");
+                        if (luceneUser != null) {
+                            chasedUser = luceneUser;
+                        }
+                        if (luceneDate != null) {
+                            chasedDate = luceneDate;
+                        }
+                    }
+
+                    r[i++] = chasedUser == null ? "" : chasedUser;               // 13
+                    r[i++] = chasedDate == null ? "" : chasedDate;               // 14
+
+                    parametersList.add(r);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Object[]> getParametersList() {
+        if (parametersList.isEmpty() && !EXCEL.equalsIgnoreCase(view)) {
+            buildFullListFromRawSegments();
+        }
+        return parametersList;
+    }
+
+    public String getView() {
+        return view;
+    }
+
+    public void setView(String view) {
+        this.view = view;
+    }
+}
