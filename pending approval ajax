@@ -4,7 +4,6 @@ import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
 import com.bnpparibas.beagle.ma.model.AgreementHelper;
 import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
 import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
-import com.bnpparibas.beagle.ma.model.MasterAgreement;
 
 import org.hibernate.Query;
 
@@ -22,11 +21,10 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
 
     @Override
     protected void prepareParameters() {
-        // same filters as ShowCollateralPendingApprovalRequests,
-        // but for Ajax we want ALL rows (no paging)
+        // keep existing filters from parent
         super.prepareParameters();
 
-        // remove pagination and override page size
+        // for Ajax "show all" we want ALL rows (no paging)
         parameters.remove("pageIndex");
         parameters.remove("pageSize");
         setPageSize(Integer.MAX_VALUE);
@@ -64,35 +62,28 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
     }
 
     /**
-     * Get chasedUser / chasedDate from CollateralDocStatusDetails using MA + segmentId.
-     * This is the same source of truth the smaller dashboard view relies on.
+     * Get chasedUser / chasedDate from CollateralDocStatusDetails using collateralSegmentId only.
+     * This is the same data used by the smaller dashboard widget, and avoids any issues with the key mapping.
      */
-    private String[] getChaseInfoFromStatusDetails(Long maId, String segmentId) {
+    private String[] getChaseInfoFromStatusDetails(String segmentId) {
         String[] result = new String[] { "", "" };
 
-        if (maId == null || segmentId == null || segmentId.trim().isEmpty()) {
+        if (segmentId == null || segmentId.trim().isEmpty()) {
             return result;
         }
 
         try {
-            // Load the MasterAgreement entity
-            MasterAgreement ma = (MasterAgreement) repository.findObject(MasterAgreement.class, maId);
-            if (ma == null) {
-                return result;
-            }
-
-            // Find the status details row for this MA + segment
             Query q = repository.getSession().createQuery(
                 "from CollateralDocStatusDetails cd " +
-                "where cd.key.ma = :ma and cd.collateralSegmentId = :segId"
+                "where cd.collateralSegmentId = :segId"
             );
-            q.setParameter("ma", ma);
             q.setParameter("segId", segmentId);
 
             @SuppressWarnings("unchecked")
             List<CollateralDocStatusDetails> list = q.list();
 
             if (list != null && !list.isEmpty()) {
+                // In your data model there should effectively be one row per segmentId
                 CollateralDocStatusDetails cd = list.get(0);
 
                 if (cd.getChasedUser() != null) {
@@ -110,21 +101,21 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
     }
 
     /**
-     * Build the full flat list used by the DataTables grid on the "Show all" page.
-     * Each Object[] row has 15 elements:
+     * Build the flat list backing the DataTables grid on the "Show all" page.
      *
+     * Object[] row indexes:
      *  0 - Agreement ID
      *  1 - Group
      *  2 - Collateral Segment Id
      *  3 - Agreement Type (cleaned)
-     *  4 - Standard / Doc class text
+     *  4 - Standard / doc class text
      *  5 - Document Category
      *  6 - CRDS Code
      *  7 - CP LEI
      *  8 - Counterparty Entity (Excel display)
      *  9 - Creation Date
      * 10 - CMO Location
-     * 11 - Comments (from segData[4] in original logic)
+     * 11 - Comments (from segData[4])
      * 12 - Doc Id
      * 13 - Chased User
      * 14 - Chased Date
@@ -216,7 +207,7 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                     r[i++] = creationDate == null ? "" : creationDate;       // 9 creation date
 
                     r[i++] = segData.length > 6 ? segData[6] : "";           // 10 CMO location
-                    r[i++] = segData.length > 4 ? segData[4] : "";           // 11 comments (from segData[4])
+                    r[i++] = segData.length > 4 ? segData[4] : "";           // 11 comments
 
                     // ------------- DocId (12) -------------
                     String docId = "";
@@ -231,7 +222,7 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                     r[i++] = docId;                                        // 12
 
                     // ------------- ChasedUser / ChasedDate (13,14) -------------
-                    String[] chaseInfo = getChaseInfoFromStatusDetails(maId, segmentId);
+                    String[] chaseInfo = getChaseInfoFromStatusDetails(segmentId);
                     String chasedUser = chaseInfo[0];
                     String chasedDate = chaseInfo[1];
 
