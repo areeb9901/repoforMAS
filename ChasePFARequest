@@ -50,7 +50,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         CollateralDocStatusDetails collateralDocStatusDetails =
                 getCollateralDocStatusDetails(collateralSegmentId, documentId);
 
-        // Safety: ensure collateralSegmentId is set so audit gets COLLATERAL_SEGMENT_ID
+        // Ensure collateralSegmentId is set so audit log gets COLLATERAL_SEGMENT_ID
         if (collateralDocStatusDetails != null &&
             (collateralDocStatusDetails.getCollateralSegmentId() == null
              || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty())) {
@@ -63,7 +63,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         String negotiator = negotiationDocument.getNegotiator().getFullName();
         emailComments = negotiationDocument.getEmailNotificationsComments();
 
-        // Create audit log entry (this will now have segmentId populated)
+        // Create audit log entry (Audit_User / Date_Audit + SegmentId)
         collateralOpsService.createAuditLogForRedirectChase(
                 negotiationDocument,
                 getUser(),
@@ -77,8 +77,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         collateralDocStatusDetails.setChasedDate(
                 BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
 
-        // 🔑 Direct persistence via repository (no service method)
-        // repository field comes from PendingCollateralRequestAction (like in RedirectCmoLocation)
+        // Direct persistence via repository (same pattern as RedirectCmoLocation)
         repository.save(collateralDocStatusDetails);
 
         // Send chase email
