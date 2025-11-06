@@ -1,7 +1,6 @@
 package com.bnpparibas.beagle.dashboard.actions;
 
 import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
 import com.bnpparibas.beagle.ma.model.AgreementHelper;
 import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
 
@@ -141,44 +140,9 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                     }
                     r[i++] = docId;                                              // 12
 
-                    // --------- chasedUser / chasedDate from CollateralDocStatusDetails ----------
-                    String chasedUser = "";
-                    String chasedDate = "";
-
-                    try {
-                        if (docId != null && docId.matches("\\d+")) {
-                            Long docIdLong = Long.valueOf(docId);
-                            String segId = segData.length > 0 ? segData[0] : null;
-
-                            if (segId != null && !segId.trim().isEmpty()) {
-                                CollateralDocStatusDetails cds =
-                                        getCollateralDocStatusDetails(segId, docIdLong);
-                                if (cds != null) {
-                                    if (cds.getChasedUser() != null) {
-                                        chasedUser = cds.getChasedUser();
-                                    }
-                                    if (cds.getChasedDate() != null) {
-                                        chasedDate = cds.getChasedDate();
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-
-                    // Fallback to Lucene fields if DB doesn’t have them (old data)
-                    if ((chasedUser == null || chasedUser.trim().isEmpty())
-                            && (chasedDate == null || chasedDate.trim().isEmpty())) {
-                        String luceneUser = tryGetter(sr, "getChasedUser", "getChasedBy", "getLastChasedBy");
-                        String luceneDate = tryGetter(sr, "getChasedDate", "getLastChasedDate");
-                        if (luceneUser != null) {
-                            chasedUser = luceneUser;
-                        }
-                        if (luceneDate != null) {
-                            chasedDate = luceneDate;
-                        }
-                    }
+                    // --------- chasedUser / chasedDate from indexed fields ----------
+                    String chasedUser = tryGetter(sr, "getChasedUser", "getChasedBy", "getLastChasedBy");
+                    String chasedDate = tryGetter(sr, "getChasedDate", "getLastChasedDate");
 
                     r[i++] = chasedUser == null ? "" : chasedUser;               // 13
                     r[i++] = chasedDate == null ? "" : chasedDate;               // 14
