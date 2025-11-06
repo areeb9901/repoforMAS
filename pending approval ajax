@@ -3,7 +3,8 @@ package com.bnpparibas.beagle.dashboard.actions;
 import com.bnpparibas.beagle.ma.ui.SearchResultMasterAgreementDisplay;
 import com.bnpparibas.beagle.ma.model.AgreementHelper;
 import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
+import com.bnpparibas.beagle.ma.model.CollateralDocAudit;
+import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
 
 import org.hibernate.Query;
 
@@ -17,14 +18,14 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
     private static final String EXCEL = "excel";
 
     private String view = JSON;
-    private final List<Object[]> parametersList = new ArrayList<>();
+    private final List<Object[]> parametersList = new ArrayList<Object[]>();
 
     @Override
     protected void prepareParameters() {
-        // keep existing filters from parent
+        // same filters as parent
         super.prepareParameters();
 
-        // for Ajax "show all" we want ALL rows (no paging)
+        // remove pagination for Ajax "show all"
         parameters.remove("pageIndex");
         parameters.remove("pageSize");
         setPageSize(Integer.MAX_VALUE);
@@ -51,7 +52,9 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
             try {
                 Method m = sr.getClass().getMethod(mName);
                 Object val = m.invoke(sr);
-                if (val != null) return val.toString();
+                if (val != null) {
+                    return val.toString();
+                }
             } catch (NoSuchMethodException nsme) {
                 // ignore and try next
             } catch (Throwable t) {
@@ -62,10 +65,13 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
     }
 
     /**
-     * Get chasedUser / chasedDate from CollateralDocStatusDetails using collateralSegmentId only.
-     * This is the same data used by the smaller dashboard widget, and avoids any issues with the key mapping.
+     * Get last chased user/date from CollateralDocAudit using segmentId.
+     * Reads from LDM_TB_COLL_DOC_AUDIT where:
+     *   COLLATERAL_SEGMENT_ID = segmentId
+     *   COMMENTS like 'Chased -%'
+     * ordered by DATE_AUDIT desc (latest first).
      */
-    private String[] getChaseInfoFromStatusDetails(String segmentId) {
+    private String[] getChaseInfoFromAudit(String segmentId) {
         String[] result = new String[] { "", "" };
 
         if (segmentId == null || segmentId.trim().isEmpty()) {
@@ -74,24 +80,36 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
 
         try {
             Query q = repository.getSession().createQuery(
-                "from CollateralDocStatusDetails cd " +
-                "where cd.collateralSegmentId = :segId"
+                    "from CollateralDocAudit a " +
+                    "where a.segmentId = :segId " +
+                    "  and a.comments like 'Chased -%' " +
+                    "order by a.auditDate desc"
             );
             q.setParameter("segId", segmentId);
+            q.setMaxResults(1);
 
             @SuppressWarnings("unchecked")
-            List<CollateralDocStatusDetails> list = q.list();
-
+            List<CollateralDocAudit> list = q.list();
             if (list != null && !list.isEmpty()) {
-                // In your data model there should effectively be one row per segmentId
-                CollateralDocStatusDetails cd = list.get(0);
+                CollateralDocAudit a = list.get(0);
 
-                if (cd.getChasedUser() != null) {
-                    result[0] = cd.getChasedUser();
+                String user = a.getAuditUser();
+                String dateStr = "";
+                if (a.getAuditDate() != null) {
+                    dateStr = BeagleDateFormat.format(a.getAuditDate(), BeagleDateFormat.FORMAT);
                 }
-                if (cd.getChasedDate() != null) {
-                    result[1] = cd.getChasedDate();
+
+                if (user != null) {
+                    result[0] = user;
                 }
+                if (dateStr != null) {
+                    result[1] = dateStr;
+                }
+
+                // debug: you can remove later if you want
+                System.out.println("SEG=" + segmentId + " -> user=" + result[0] + ", date=" + result[1]);
+            } else {
+                System.out.println("SEG=" + segmentId + " -> no chase audit found");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -117,8 +135,8 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
      * 10 - CMO Location
      * 11 - Comments (from segData[4])
      * 12 - Doc Id
-     * 13 - Chased User
-     * 14 - Chased Date
+     * 13 - Chased User  (from audit)
+     * 14 - Chased Date  (from audit)
      */
     private void buildFullListFromRawSegments() {
 
@@ -138,61 +156,81 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
             for (SearchResultMasterAgreementDisplay sr : results) {
 
                 String segIdCombined = sr.getSegId();
-                if (segIdCombined == null || segIdCombined.trim().isEmpty()) continue;
+                if (segIdCombined == null || segIdCombined.trim().isEmpty()) {
+                    continue;
+                }
 
                 String[] collateralDataArray = segIdCombined.split("#_#");
 
                 for (String segRaw : collateralDataArray) {
 
                     String[] segData = segRaw != null ? segRaw.split("\\$_\\$") : new String[]{};
-                    if (segData.length == 0 || "".equals(segData[0])) continue;
+                    if (segData.length == 0 || "".equals(segData[0])) {
+                        continue;
+                    }
 
                     String segStatus = segData.length > 5 ? segData[5] : "";
-                    if (!"PendingFinalApproval".equalsIgnoreCase(segStatus)) continue;
-
-                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_LOCATION, parameters))
+                    if (!"PendingFinalApproval".equalsIgnoreCase(segStatus)) {
                         continue;
+                    }
 
-                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_USER, parameters))
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_LOCATION, parameters)) {
                         continue;
+                    }
 
-                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.COLLATERAL_DOCUMENT_CATEGORY, parameters))
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.CMO_USER, parameters)) {
                         continue;
+                    }
 
-                    if (!AgreementHelper.isShowMyItemOnCollDashboard(segData, userRoleForShowMyItem, getUser(), collAdminLocation))
+                    if (!AgreementHelper.checkFilterContains(segData, MasterAgreementFields.COLLATERAL_DOCUMENT_CATEGORY, parameters)) {
                         continue;
+                    }
+
+                    if (!AgreementHelper.isShowMyItemOnCollDashboard(segData, userRoleForShowMyItem, getUser(), collAdminLocation)) {
+                        continue;
+                    }
 
                     Object[] r = new Object[15];
                     int i = 0;
 
-                    Long maId = sr.getAgreementId();
+                    // 0 - Agreement ID
+                    r[i++] = sr.getAgreementId();
 
-                    r[i++] = maId;                      // 0 agreementId
-                    r[i++] = sr.getGroup();             // 1 group
+                    // 1 - Group
+                    r[i++] = sr.getGroup();
 
+                    // 2 - Collateral Segment Id
                     String segmentId = segData.length > 0 ? segData[0] : "";
-                    r[i++] = segmentId;                 // 2 segmentId
+                    r[i++] = segmentId;
 
+                    // 3 - Agreement Type (cleaned)
                     String type = sr.getType();
                     String cleanedType = "";
                     if (type != null) {
                         cleanedType = type.replaceFirst("[/(]+[0-9]+[/)]+", "");
                     }
-                    r[i++] = cleanedType == null ? "" : cleanedType;   // 3 agreement type
+                    r[i++] = cleanedType == null ? "" : cleanedType;
 
-                    r[i++] = segData.length > 2 ? segData[2] : "";     // 4 standard/doc class
-                    r[i++] = getCollateralDocumentCategory(segData.length > 1 ? segData[1] : "");  // 5 doc category
+                    // 4 - Standard / doc class text
+                    r[i++] = segData.length > 2 ? segData[2] : "";
 
+                    // 5 - Document Category
+                    r[i++] = getCollateralDocumentCategory(segData.length > 1 ? segData[1] : "");
+
+                    // 6 - CRDS Code
                     r[i++] = sr.getCounterpartyEntityMarketPlayerCode() == null
                             ? ""
-                            : sr.getCounterpartyEntityMarketPlayerCode();    // 6 CRDS code
+                            : sr.getCounterpartyEntityMarketPlayerCode();
 
-                    r[i++] = sr.getCpLei() == null ? "" : sr.getCpLei();     // 7 CP LEI
+                    // 7 - CP LEI
+                    r[i++] = sr.getCpLei() == null ? "" : sr.getCpLei();
 
+                    // 8 - Counterparty Entity (Excel)
                     r[i++] = sr.getCounterpartyEntityExcel() == null
                             ? ""
-                            : sr.getCounterpartyEntityExcel();               // 8 counterparty
+                            : sr.getCounterpartyEntityExcel();
 
+                    // 9 - Creation Date
                     String creationDate = null;
                     if (segData.length > 9 && segData[9] != null && segData[9].trim().length() > 0) {
                         creationDate = segData[9];
@@ -204,12 +242,15 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                                 "getDocCreateDateForAgreement",
                                 "getDocCreateDateFormatted");
                     }
-                    r[i++] = creationDate == null ? "" : creationDate;       // 9 creation date
+                    r[i++] = creationDate == null ? "" : creationDate;
 
-                    r[i++] = segData.length > 6 ? segData[6] : "";           // 10 CMO location
-                    r[i++] = segData.length > 4 ? segData[4] : "";           // 11 comments
+                    // 10 - CMO Location
+                    r[i++] = segData.length > 6 ? segData[6] : "";
 
-                    // ------------- DocId (12) -------------
+                    // 11 - Comments
+                    r[i++] = segData.length > 4 ? segData[4] : "";
+
+                    // 12 - Doc Id
                     String docId = "";
                     if (segData.length > 13 && segData[13] != null && segData[13].matches("\\d+")) {
                         docId = segData[13].trim();
@@ -219,15 +260,15 @@ public class ShowCollateralPendingApprovalRequestsAjax extends ShowCollateralPen
                             docId = "";
                         }
                     }
-                    r[i++] = docId;                                        // 12
+                    r[i++] = docId;
 
-                    // ------------- ChasedUser / ChasedDate (13,14) -------------
-                    String[] chaseInfo = getChaseInfoFromStatusDetails(segmentId);
+                    // 13 / 14 - Chased User / Chased Date from audit
+                    String[] chaseInfo = getChaseInfoFromAudit(segmentId);
                     String chasedUser = chaseInfo[0];
                     String chasedDate = chaseInfo[1];
 
-                    r[i++] = chasedUser == null ? "" : chasedUser;         // 13
-                    r[i++] = chasedDate == null ? "" : chasedDate;         // 14
+                    r[i++] = chasedUser == null ? "" : chasedUser;  // 13
+                    r[i++] = chasedDate == null ? "" : chasedDate;  // 14
 
                     parametersList.add(r);
                 }
