@@ -1,0 +1,39 @@
+// --- BEGIN: Chase Info Mapping from Audit ---
+private void setChasedInfoFromAudit(MasterAgreement ma, org.apache.lucene.document.Document document) {
+    try {
+        if (ma == null || ma.getCollateralDocAudit() == null) return;
+
+        List<CollateralDocAudit> audits = ma.getCollateralDocAudit();
+        CollateralDocAudit latestChase = null;
+
+        for (CollateralDocAudit audit : audits) {
+            if (audit.getComments() != null && audit.getComments().trim().toLowerCase().startsWith("chased")) {
+                if (latestChase == null || audit.getAuditDate().after(latestChase.getAuditDate())) {
+                    latestChase = audit;
+                }
+            }
+        }
+
+        if (latestChase != null) {
+            String auditUser = latestChase.getAuditUser();
+            String auditDate = new java.text.SimpleDateFormat("dd-MMM-yyyy").format(latestChase.getAuditDate());
+
+            document.add(new org.apache.lucene.document.Field(
+                MasterAgreementFields.CHASED_USER,
+                auditUser != null ? auditUser : "",
+                org.apache.lucene.document.Field.Store.YES,
+                org.apache.lucene.document.Field.Index.ANALYZED
+            ));
+
+            document.add(new org.apache.lucene.document.Field(
+                MasterAgreementFields.CHASED_DATE,
+                auditDate != null ? auditDate : "",
+                org.apache.lucene.document.Field.Store.YES,
+                org.apache.lucene.document.Field.Index.ANALYZED
+            ));
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
