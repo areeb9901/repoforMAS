@@ -1,148 +1,47 @@
-package com.bnpparibas.beagle.documents;
+CollateralDocStatusDetails collateralDocStatusDetails =
+            getCollateralDocStatusDetails(collateralSegmentId, documentId);
 
-import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
-import com.bnpparibas.beagle.ma.model.NegotiationDocument;
-import com.bnpparibas.beagle.staticdata.model.User;
+    NegotiationDocument negotiationDocument =
+            getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
 
-import org.apache.struts2.ServletActionContext;
-import org.json.JSONObject;
-
-import javax.servlet.http.HttpServletResponse;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
-/**
- * Final AJAX-compatible ChasePFARequest
- * - Updates chase info
- * - Persists via audit log (DB + reindex)
- * - Returns JSON for UI update
- */
-public class ChasePFARequest extends PendingCollateralRequestAction {
-
-    private Long documentId;
-
-    public Long getDocumentId() {
-        return documentId;
-    }
-
-    public void setDocumentId(Long documentId) {
-        this.documentId = documentId;
-    }
-
-    @Override
-    public String doExecute() {
-        super.doExecute();
-        try {
-            chaseRequest();
-        } catch (Exception e) {
-            e.printStackTrace();
-            writeErrorResponse("Error: " + e.getMessage());
-        }
-        return null;
-    }
-
-    @Override
-    protected String executeMasterAgreementAction() {
-        return SUCCESS;
-    }
-
-    private void chaseRequest() {
-        try {
-            CollateralDocStatusDetails collateralDocStatusDetails =
-                    getCollateralDocStatusDetails(collateralSegmentId, documentId);
-            NegotiationDocument negotiationDocument =
-                    getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
-            User currentUser = getUser();
-
-            // ✅ Set chase info
-            String formattedDate = BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
-            collateralDocStatusDetails.setChasedUser(currentUser.getFullname());
-            collateralDocStatusDetails.setChasedDate(formattedDate);
-
-            // ✅ Persist chase info (old working path: via audit)
-            collateralOpsService.createAuditLogForRedirectChase(
-                    negotiationDocument, currentUser, masterAgreement,
-                    collateralDocStatusDetails, "", "chase"
-            );
-
-            // ✅ Send mail
-            String negotiatorName = (negotiationDocument.getNegotiator() != null)
-                    ? negotiationDocument.getNegotiator().getFullName()
-                    : "Unknown";
-
-            emailComments = negotiationDocument.getEmailNotificationsComments();
-            super.sendRedirectMail(
-                    buildMailBody(negotiatorName, collateralSegmentId).toString(),
-                    negotiationDocument,
-                    collateralDocStatusDetails,
-                    ""
-            );
-
-            // ✅ Reindex
-            collateralOpsService.reindexMA(masterAgreement);
-
-            // ✅ Include location + chased info for UI
-            String locationName = collateralDocStatusDetails.getCmoLocation() != null
-                    ? collateralDocStatusDetails.getCmoLocation().getName()
-                    : "";
-            String cmoText = locationName
-                    + "<br/>Last Chased By : " + currentUser.getFullname()
-                    + "<br/>On : " + formattedDate + "<br/>";
-
-            writeSuccessResponse(cmoText);
-
-            System.out.println("CHASE SUCCESS — docId=" + documentId +
-                    ", chased by " + currentUser.getFullname() +
-                    ", location=" + locationName +
-                    ", date=" + formattedDate);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            writeErrorResponse("Chase failed: " + e.getMessage());
+    // ✅ Strong guarantee: status details always have a segment id
+    String segmentIdFromDoc = negotiationDocument != null ? negotiationDocument.getSegmentId() : null;
+    if (collateralDocStatusDetails != null) {
+        if (collateralDocStatusDetails.getCollateralSegmentId() == null
+                || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty()) {
+            // Prefer the request param, otherwise fall back to doc
+            String seg = (collateralSegmentId != null && !collateralSegmentId.trim().isEmpty())
+                    ? collateralSegmentId
+                    : segmentIdFromDoc;
+            collateralDocStatusDetails.setCollateralSegmentId(seg);
         }
     }
 
-    @Override
-    public StringBuilder buildMailBody(String negotiator, String collateralSegmentId) {
-        StringBuilder mailBody = new StringBuilder();
-        mailBody.append("All,\n\n")
-                .append(super.buildMailBody(negotiator, collateralSegmentId));
-        return mailBody;
-    }
+    String negotiator = negotiationDocument.getNegotiator().getFullName();
+    emailComments = negotiationDocument.getEmailNotificationsComments();
 
-    private void writeSuccessResponse(String cmoLocationText) {
-        try {
-            HttpServletResponse response = ServletActionContext.getResponse();
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+    // Audit log (will use segmentId from status details)
+    collateralOpsService.createAuditLogForRedirectChase(
+            negotiationDocument,
+            getUser(),
+            masterAgreement,
+            collateralDocStatusDetails,
+            "",
+            "chase");
 
-            JSONObject json = new JSONObject();
-            json.put("status", "success");
-            json.put("cmoLocationText", cmoLocationText);
+    // Persist chase info in status details
+    collateralDocStatusDetails.setChasedUser(getUser().getFullname());
+    collateralDocStatusDetails.setChasedDate(
+            BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
 
-            response.getWriter().write(json.toString());
-            response.getWriter().flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    repository.save(collateralDocStatusDetails);
 
-    private void writeErrorResponse(String msg) {
-        try {
-            HttpServletResponse response = ServletActionContext.getResponse();
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+    // Email
+    super.sendRedirectMail(
+            buildMailBody(negotiator, collateralSegmentId).toString(),
+            negotiationDocument,
+            collateralDocStatusDetails,
+            "");
 
-            JSONObject json = new JSONObject();
-            json.put("status", "error");
-            json.put("message", msg);
-
-            response.getWriter().write(json.toString());
-            response.getWriter().flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
+    // Reindex
+    collateralOpsService.reindexMA(masterAgreement);
