@@ -31,6 +31,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         String viewParam = ServletActionContext.getRequest().getParameter("view");
         String uri = ServletActionContext.getRequest().getRequestURI();
 
+        // For AJAX / JSON clients
         if ((viewParam != null && viewParam.equalsIgnoreCase("json")) || uri.endsWith(".ajax")) {
             writeJsonResponse();
             return null;
@@ -49,7 +50,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         CollateralDocStatusDetails collateralDocStatusDetails =
                 getCollateralDocStatusDetails(collateralSegmentId, documentId);
 
-        // Safety: make sure collateralSegmentId is set so audit gets COLLATERAL_SEGMENT_ID
+        // Safety: ensure collateralSegmentId is set so audit gets COLLATERAL_SEGMENT_ID
         if (collateralDocStatusDetails != null &&
             (collateralDocStatusDetails.getCollateralSegmentId() == null
              || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty())) {
@@ -62,7 +63,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
         String negotiator = negotiationDocument.getNegotiator().getFullName();
         emailComments = negotiationDocument.getEmailNotificationsComments();
 
-        // Audit log – will now have non-null segmentId
+        // Create audit log entry (this will now have segmentId populated)
         collateralOpsService.createAuditLogForRedirectChase(
                 negotiationDocument,
                 getUser(),
@@ -71,12 +72,14 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
                 "",
                 "chase");
 
-        // Persist chased user/date on the status details
+        // Persist chase info on the status object
         collateralDocStatusDetails.setChasedUser(getUser().getFullname());
         collateralDocStatusDetails.setChasedDate(
                 BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
 
-        collateralOpsService.updateCollateralDocStatusDetails(collateralDocStatusDetails);
+        // 🔑 Direct persistence via repository (no service method)
+        // repository field comes from PendingCollateralRequestAction (like in RedirectCmoLocation)
+        repository.save(collateralDocStatusDetails);
 
         // Send chase email
         super.sendRedirectMail(
@@ -85,7 +88,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
                 collateralDocStatusDetails,
                 "");
 
-        // Reindex so search / dashboards are consistent
+        // Reindex master agreement so search / dashboard reflect latest state
         collateralOpsService.reindexMA(masterAgreement);
     }
 
@@ -120,7 +123,7 @@ public class ChasePFARequest extends PendingCollateralRequestAction {
                     + "<br/>Last Chased By : " + userFullName
                     + "<br/>On : " + formattedDate;
 
-            // Clean things like [LON] prefix if any
+            // Clean things like [LON] / [NYK] prefixes if present
             cmoLocationText = cmoLocationText.replaceAll("\\[[A-Z]{3}\\]\\s*", "");
 
             json.put("cmoLocationText", cmoLocationText);
