@@ -7,3 +7,18 @@ try {
 } catch (Exception e) {
     e.printStackTrace();
 }
+
+
+
+
+
+
+
+
+
+
+
+String chaseNote = "Chased by " + user.getFullname() + " on " +
+        BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
+    collateralDocAudit.setComments(chaseNote);
+}
