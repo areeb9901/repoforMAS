@@ -1,0 +1,2941 @@
+This is the MasterAgreementDocumentBuilder.java :
+
+
+package com.bnpparibas.beagle.ma.indexing.build;
+
+import com.bnpparibas.beagle.collaterals.model.AlgoCollateral;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralControlAgreement;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralData;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralRegimeDetail;
+
+import com.bnpparibas.beagle.coveredoffices.CoveredOfficeService;
+
+import com.bnpparibas.beagle.coveredoffices.model.CoveredOffice;
+
+import com.bnpparibas.beagle.coveredoffices.ui.CoveredOfficeDisplay;
+
+import com.bnpparibas.beagle.documents.DocumentClass;
+
+import com.bnpparibas.beagle.documents.DocumentListComparator;
+
+import com.bnpparibas.beagle.documents.model.DocumentTypeFilter;
+
+import com.bnpparibas.beagle.groups.model.Group;
+
+import com.bnpparibas.beagle.groups.model.SubGroup;
+
+import com.bnpparibas.beagle.indexing.build.DocumentBuilder;
+
+import com.bnpparibas.beagle.kernel.database.BeagleRepository;
+
+import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
+
+import com.bnpparibas.beagle.kernel.util.BeagleStringUtils;
+
+import com.bnpparibas.beagle.kernel.util.CollectionUtils;
+
+import com.bnpparibas.beagle.ma.indexing.MasterAgreementFields;
+
+import com.bnpparibas.beagle.ma.model.*;
+
+import com.bnpparibas.beagle.staticdata.indexing.build.EntityDocumentBuilder;
+
+import com.bnpparibas.beagle.staticdata.indexing.build.EntityFields;
+
+import com.bnpparibas.beagle.staticdata.model.*;
+
+import com.bnpparibas.beagle.staticdata.model.entity.Entity;
+
+import org.apache.commons.lang.StringUtils;
+
+import org.apache.logging.log4j.LogManager;
+
+import org.apache.logging.log4j.Logger;
+
+import org.apache.lucene.document.Document;
+
+import org.hibernate.ObjectNotFoundException;
+
+import java.text.SimpleDateFormat;
+
+import java.util.*;
+
+import java.util.regex.Matcher;
+
+import java.util.regex.Pattern;
+
+import java.util.stream.Collectors;
+
+import static com.bnpparibas.beagle.indexing.search.LuceneUtil.stripDots;
+
+import static com.bnpparibas.beagle.kernel.util.BeagleStringUtils.*;
+
+import static com.bnpparibas.beagle.staticdata.indexing.search.FilterField.stripBrackets;
+
+import static com.bnpparibas.beagle.staticdata.indexing.search.FilterField.stripDashes;
+
+public class MasterAgreementDocumentBuilder extends DocumentBuilder {
+
+private static final Logger LOGGER = LogManager.getLogger(MasterAgreementDocumentBuilder.class);
+
+private static  List<String> KEY_WORDS = new ArrayList<String>();
+
+protected static List<Entity> CHINESE_WALL_ENTITIES = new ArrayList<Entity>();
+
+private ThreadLocal<Set<NegotiationDocumentForExecDoc>> executedDocuments = new ThreadLocal<>();
+
+private ThreadLocal<Set<NegotiationDocument>> negotiationDocuments = new ThreadLocal<>();
+
+private static final String AUTO_EXECUTED = "Auto Executed";
+
+private static final String READY_TO_SIGN = "Ready to Sign";
+
+private static final String AMENDMENT_IN_NEGOTIATION = "Amendment In Negotiation";
+
+public static final String CLOSE_OUT_NETTING_GROUP = "Close Out Netting Group";
+
+public static List<String> getKeyWords() {
+
+return KEY_WORDS;
+
+}
+
+public static void setKeyWords(List<String> keyWords) {
+
+KEY_WORDS = keyWords;
+
+}
+
+@Override
+
+public Document toDocument(Object o, BeagleRepository repository) {
+
+MasterAgreement masterAgreement = (MasterAgreement) o;
+
+Document doc = new Document();
+
+try {
+
+if (KEY_WORDS.isEmpty()) {
+
+KEY_WORDS.addAll(repository.getExcludedKeyWords());
+
+}
+
+if (CHINESE_WALL_ENTITIES.isEmpty()) {
+
+CHINESE_WALL_ENTITIES.addAll(repository.getBPChineseWallEntities());
+
+}
+
+doc = indexMasterAgreement(masterAgreement, repository);
+
+} catch (Exception e) {
+
+LOGGER.error("Exception occurred while indexing MA : "+masterAgreement.getId(),e);
+
+}
+
+return doc;
+
+}
+
+@SuppressWarnings("squid:S1067")
+
+private Document indexMasterAgreement(MasterAgreement masterAgreement, BeagleRepository beagleRepository) {
+
+Document doc = new Document();
+
+LOGGER.traceEntry("START: indexMasterAgreement - " + masterAgreement.getId());
+
+LOGGER.traceEntry("MA Index - Get Executed documents");
+
+executedDocuments.set(masterAgreement.getAllExecutedDocuments());
+
+LOGGER.traceExit("MA Index - Get Executed documents");
+
+LOGGER.traceEntry("MA Index - Get Negotiation documents");
+
+negotiationDocuments.set(masterAgreement.getAllNegotiationDocuments());
+
+LOGGER.traceExit("MA Index - Get Negotiation documents");
+
+// Construct the aggregated full text search field
+
+LOGGER.traceEntry("MA Index - Collateral data");
+
+boolean hasCollateralAgreement = masterAgreement.hasCollateralAgreement();
+
+indexUnstored(doc, MasterAgreementFields.DATA, collateFields(masterAgreement, beagleRepository, hasCollateralAgreement).replace('.', ' '));
+
+indexUnstored(doc, MasterAgreementFields.STATIC, MasterAgreementFields.ALL);
+
+LOGGER.traceExit("MA Index - Collateral data");
+
+LOGGER.traceEntry("MA Index - Group Id");
+
+indexNumericAndStore(doc, MasterAgreementFields.KEY, masterAgreement.getId().toString());
+
+indexNumericAndStore(doc, MasterAgreementFields.GROUP_ID, getGroupNumber(masterAgreement));
+
+indexSortedField(doc, MasterAgreementFields.GROUP_ID_SORTABLE, getGroupNumber(masterAgreement));
+
+LOGGER.traceExit("MA Index - Group Id");
+
+LOGGER.traceEntry("MA Index - CP Business Group");
+
+if( masterAgreement.getSigningEntity(Party.COUNTERPARTY).getRmpmGroupCode() != null )
+
+indexAndStoreUntokenised(doc, EntityFields.CP_BUSINESS_GROUP_CODE, masterAgreement.getSigningEntity(Party.COUNTERPARTY).getRmpmGroupCode().toLowerCase());
+
+LOGGER.traceExit("MA Index - CP Business Group");
+
+LOGGER.traceEntry("MA Index - Subgroup details");
+
+if (masterAgreement.belongsToGroup() && !masterAgreement.getGroup().getSubGroups().isEmpty()) {
+
+Set<SubGroup> subGroups = masterAgreement.getGroup().getSubGroups();
+
+for (SubGroup subGroup : subGroups) {
+
+if (masterAgreement.getId().equals(subGroup.getMasterAgreementLite().getId())) {
+
+String subGroupName = subGroup.getSubGroupName();
+
+if (subGroupName == null) {
+
+subGroupName = "";
+
+}
+
+indexAndStoreUntokenisedSortable(doc, MasterAgreementFields.SUB_GROUP_NAME, subGroupName.toLowerCase());
+
+indexAndStoreUntokenised(doc, MasterAgreementFields.SUB_GROUP_NAME_AS_ENTERED, subGroupName);
+
+indexUnstored(doc,MasterAgreementFields.DATA,indexSubGroupForGoogleSearch(subGroupName));
+
+break;
+
+}
+
+}
+
+}
+
+indexAndStoreUntokenised(doc, MasterAgreementFields.BELONGS_TO_GROUP, toYorN(masterAgreement.belongsToGroup()));
+
+LOGGER.traceExit("MA Index - Subgroup details");
+
+LOGGER.traceEntry("MA Index - Agreement Type details");
+
+AgreementType agreementType = masterAgreement.getAgreementType();
+
+indexAndStore(doc, MasterAgreementFields.AGREEMENT_TYPE, agreementType.toString());
+
+indexAndStore(doc, MasterAgreementFields.AGREEMENT_TYPE_CATEGORY, agreementType.getCategory());
+
+indexAndStore(doc, MasterAgreementFields.AGREEMENT_FAMILY, agreementType.getFamilyId());
+
+indexAndStore(doc, MasterAgreementFields.MA_CATEGORY_AND_FAMILY_AGGREGATE, agreementType.getCategory() + " " + agreementType.getFamilyId());
+
+indexAndStore(doc, MasterAgreementFields.AGREEMENT_TYPE_AGGREGATE, agreementType.getCategory() + " " + agreementType.getFamilyId() + " " + agreementType.toString());
+
+indexAndStore(doc, MasterAgreementFields.AGREEMENT_TYPE_TEXT, agreementType.getCategory() + " " + agreementType.getFamilyId()+ " " + replaceSpecialChars(agreementType.toString().toLowerCase()));
+
+storeUnindexed(doc,MasterAgreementFields.IS_COGAGREEMENT_TYPE,BeagleStringUtils.toYorN(agreementType.getName().equalsIgnoreCase(CLOSE_OUT_NETTING_GROUP)));
+
+LOGGER.traceExit("MA Index - Agreement Type details");
+
+LOGGER.traceEntry("MA Index - CCA Custodian");
+
+indexCcaCustodian(masterAgreement, doc);
+
+LOGGER.traceExit("MA Index - CCA Custodian");
+
+LOGGER.traceEntry("MA Index - RTS and Auto-Executed Status");
+
+indexRTSAndAutoExecutedSatus(masterAgreement, doc);
+
+LOGGER.traceExit("MA Index - RTS and Auto-Executed Status");
+
+LOGGER.traceEntry("MA Index - Subgroup details");
+
+indexNumericAndStore(doc, MasterAgreementFields.NUMBER_OF_SIGNED_AMENDMENTS, String.valueOf(masterAgreement.getSignedAmendmentCount()));
+
+storeField(doc, MasterAgreementFields.HAS_NEW_AMENDMENT_IN_NEGOTIATION, masterAgreement.hasNewAmendmentInNegotiation());
+
+storeField(doc, MasterAgreementFields.IS_AGREEMENT_IN_NEGOTIATION, masterAgreement.isAgreementInNegotiation());
+
+storeField(doc, MasterAgreementFields.IS_AGREEMENT_VALIDATED, masterAgreement.isValidated());
+
+if(masterAgreement.hasNewAmendmentInNegotiation()) {
+
+indexAndStore(doc, MasterAgreementFields.SUB_STATUS_TEXT_AMEND_IN_NEGO, AMENDMENT_IN_NEGOTIATION);
+
+}
+
+LOGGER.traceExit("MA Index - Subgroup details");
+
+LOGGER.traceEntry("MA Index - Collateral basic details");
+
+storeField(doc, MasterAgreementFields.HAS_COLLATERAL_AGREEMENT_ICON, masterAgreement.hasCollateralAgreementIcon());
+
+storeField(doc, MasterAgreementFields.HAS_VM_COLLATERAL_AGREEMENT_ICON, masterAgreement.hasVariationMarginIcon());
+
+storeField(doc, MasterAgreementFields.HAS_IM_COLLATERAL_AGREEMENT_ICON, masterAgreement.hasInitialMarginIcon());
+
+storeField(doc, MasterAgreementFields.HAS_LEGACY_OR_UNREGULATED_COLLATERAL_AGREEMENT_ICON, masterAgreement.hasLegacyOrUnregulatedCollateralAgreementIcon());
+
+storeField(doc, MasterAgreementFields.HAS_COLLATERAL_AGREEMENT, hasCollateralAgreement);
+
+LOGGER.traceExit("MA Index - Collateral basic details");
+
+LOGGER.traceEntry("MA Index - Status");
+
+indexAndStoreSortable(doc, MasterAgreementFields.STATUS, masterAgreement.getSearchStatus().getCode());
+
+indexAndStore(doc, MasterAgreementFields.STATUS_TEXT, masterAgreement.getSearchStatus().toString());
+
+indexAndStore(doc, MasterAgreementFields.VALIDATION_STATUS, masterAgreement.getValidationStatus().getId());
+
+LOGGER.traceExit("MA Index - Status");
+
+LOGGER.traceEntry("MA Index - dates");
+
+storeField(doc, MasterAgreementFields.AGREEMENT_DATE, masterAgreement.getAgreementDate());
+
+storeField(doc, MasterAgreementFields.AGREEMENT_DATE_STRING,replaceSpecialChars(BeagleDateFormat.format(masterAgreement.getAgreementDate())).toLowerCase());
+
+storeField(doc, MasterAgreementFields.FILE_OPENED_DATE, masterAgreement.getFileOpenedDate());
+
+storeField(doc, MasterAgreementFields.EXECUTION_DATE, masterAgreement.getExecutionDate());
+
+storeField(doc, MasterAgreementFields.MA_DORMANT_DATE, masterAgreement.getAmendment(0).getTerminatedDate());
+
+LOGGER.traceExit("MA Index - dates");
+
+LOGGER.traceEntry("MA Index - Negotiation data");
+
+storeField(doc, MasterAgreementFields.EXECUTED_DOCUMENTS, !executedDocuments.get().isEmpty());
+
+storeField(doc, MasterAgreementFields.NEGOTIATION_STATUS_DATE, masterAgreement.getNegotiationDate());
+
+storeField(doc, MasterAgreementFields.NEGOTIATION_STATUS, getNegotiationStatusSet(masterAgreement.getPendingActions()));
+
+LOGGER.traceExit("MA Index - Negotiation data");
+
+//Sorting
+
+LOGGER.traceEntry("MA Index - Agreement type sort");
+
+indexUnstoredSortable(doc, MasterAgreementFields.AGREEMENT_TYPE_SORTABLE, agreementType.toString());
+
+if (masterAgreement.getLastSignedAmendment() != null) {
+
+Date value = masterAgreement.getLastAmendment().getSignedDate();
+
+indexNumericAndStore(doc, MasterAgreementFields.LAST_AMENDMENT_DATE_SORTABLE, value != null ? BeagleDateFormat.format(value, BeagleDateFormat.YYYYMMDD) : "-1");
+
+storeField(doc, MasterAgreementFields.MA_AMD_DATE, masterAgreement.getLastSignedAmendment().getSignedDate());
+
+} else {
+
+storeField(doc, MasterAgreementFields.MA_AMD_DATE, "");
+
+}
+
+LOGGER.traceExit("MA Index - Agreement type sort");
+
+LOGGER.traceEntry("MA Index - Amendment");
+
+indexAmendmentType(masterAgreement, doc);
+
+LOGGER.traceExit("MA Index - Amendment");
+
+LOGGER.traceEntry("MA Index - Negotiation");
+
+if (masterAgreement.getNegotiation() != null) {
+
+storeField(doc, MasterAgreementFields.NEXT_CHASER_DATE, masterAgreement.getNegotiation().getNextChaserDate());
+
+storeField(doc, MasterAgreementFields.CHASER_DEADLINE_DATE, masterAgreement.getNegotiation().getChaserDeadline());
+
+if (masterAgreement.getNegotiation().getPriority() != null) {
+
+indexAndStoreSortable(doc, MasterAgreementFields.PRIORITY, masterAgreement.getNegotiation().getPriority().toString());
+
+}
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.NEXT_CHASER_DATE, "");
+
+indexAndStore(doc, MasterAgreementFields.CHASER_DEADLINE_DATE, "");
+
+indexAndStoreSortable(doc, MasterAgreementFields.PRIORITY, "");
+
+}
+
+LOGGER.traceExit("MA Index - Negotiation");
+
+LOGGER.traceEntry("MA Index - Maos details");
+
+indexAndStore(doc, MasterAgreementFields.LINKED_MAOS_IDS,  stripBrackets(masterAgreement.getLinkedMaosIds().toString()));
+
+if(masterAgreement.getMaosHighestCIPriority(beagleRepository) != null){
+
+indexAndStoreSortable(doc,MasterAgreementFields.CI_PRIORITY,masterAgreement.getMaosHighestCIPriority(beagleRepository));
+
+}else{
+
+indexAndStoreSortable(doc,MasterAgreementFields.CI_PRIORITY, "");
+
+}
+
+LOGGER.traceExit("MA Index - Maos details");
+
+LOGGER.traceEntry("MA Index - Collateral Doc data");
+
+if (shouldIndexCollateralDocData(masterAgreement)) {
+
+indexCollateralDocumentData(doc, masterAgreement,beagleRepository);
+
+}
+
+LOGGER.traceExit("MA Index - Collateral Doc data");
+
+//a74406
+
+LOGGER.traceEntry("MA Index - Pre-executed");
+
+if (AgreementStatus.PRE_EXECUTED.getCode().equals(masterAgreement.getStatus().getCode())) {
+
+indexAndStore(doc, MasterAgreementFields.IS_AGREEMENT_PRE_EXECUTED, "y");
+
+}
+
+LOGGER.traceExit("MA Index - Pre-executed");
+
+LOGGER.traceEntry("MA Index - Last Amendment");
+
+indexLastSignedAmendment(masterAgreement, doc);
+
+indexLastAmendment(doc, masterAgreement,beagleRepository);
+
+LOGGER.traceExit("MA Index - Last Amendment");
+
+LOGGER.traceEntry("MA Index - CSA Reconcillation");
+
+indexCSAReconcillationData(doc, masterAgreement);
+
+LOGGER.traceExit("MA Index - CSA Reconcillation");
+
+LOGGER.traceEntry("MA Index - BNP Entity details");
+
+indexUnstoredSortable(doc, MasterAgreementFields.BNP_ENTITY_NAME_SORTABLE, masterAgreement.getSigningEntity(Party.BNP_PARIBAS).getName());
+
+indexEntityFields(doc, masterAgreement.getSigningEntity(Party.BNP_PARIBAS), MasterAgreementFields.BNP_ENTITY,beagleRepository);
+
+indexEntityFields(doc, masterAgreement.getActingEntity(Party.BNP_PARIBAS), MasterAgreementFields.BNP_ENTITY_ACTING,beagleRepository);
+
+indexEntityFields(doc, masterAgreement.getFundManagingCompany(Party.BNP_PARIBAS), MasterAgreementFields.BNP_FUND_MANAGING_COMPANY,beagleRepository);
+
+indexEntityFields(doc, masterAgreement.getFundWithCompartments(Party.BNP_PARIBAS), MasterAgreementFields.BNP_FUND_WITH_COMPARTMENTS,beagleRepository);
+
+LOGGER.traceExit("MA Index - BNP Entity details");
+
+LOGGER.traceEntry("MA Index - CP Entity details");
+
+Entity cpActingEntity =masterAgreement.getActingEntity(Party.COUNTERPARTY);
+
+indexUnstoredSortable(doc, MasterAgreementFields.CP_ENTITY_NAME_AR_SORTABLE, masterAgreement.getSigningEntity(Party.COUNTERPARTY).getEntityLabel(MasterAgreementFields.CP_ENTITY));
+
+Entity cpEntity = masterAgreement.getSigningEntity(Party.COUNTERPARTY);
+
+String cpEntityName = "UND".equals(cpEntity.getClassificationCode()) ? cpEntity.getName() : cpEntity.getEntityLabel(MasterAgreementFields.CP_ENTITY);
+
+indexUnstoredSortable(doc, MasterAgreementFields.CP_ENTITY_NAME_SORTABLE, cpEntityName);
+
+indexEntityFields(doc, masterAgreement.getSigningEntity(Party.COUNTERPARTY), MasterAgreementFields.CP_ENTITY,beagleRepository);
+
+indexEntityFields(doc, cpActingEntity, MasterAgreementFields.CP_ENTITY_ACTING,beagleRepository);
+
+indexEntityFields(doc, masterAgreement.getFundManagingCompany(Party.COUNTERPARTY), MasterAgreementFields.CP_FUND_MANAGING_COMPANY,beagleRepository);
+
+indexEntityFields(doc, masterAgreement.getFundWithCompartments(Party.COUNTERPARTY), MasterAgreementFields.CP_FUND_WITH_COMPARTMENTS,beagleRepository);
+
+if(cpActingEntity!=null){
+
+indexUnstoredSortable(doc, MasterAgreementFields.CP_ENTITY_ACTING_AGR_RETRIVER_SORTABLE, cpActingEntity.getEntityLabel(MasterAgreementFields.CP_ENTITY));
+
+indexUnstoredSortable(doc, MasterAgreementFields.CP_ENTITY_ACTING_SORTABLE, cpActingEntity.getName());
+
+}
+
+indexIncorporatedIn(doc, masterAgreement);
+
+LOGGER.traceExit("MA Index - CP Entity details");
+
+LOGGER.traceEntry("MA Index - EMIR Status");
+
+if(  masterAgreement.getAgreementType().isDerivatives() && masterAgreement.getCounterpartyEntity().getEmirCpStatus() != null  ) {
+
+indexUnstored(doc, EntityFields.EMIR_CP_STATUS, masterAgreement.getCounterpartyEntity().getEmirCpStatus().getId().toString());
+
+}
+
+LOGGER.traceExit("MA Index - EMIR Status");
+
+LOGGER.traceEntry("MA Index - CFTC CP status");
+
+if(masterAgreement.getCounterpartyEntity().getCftcCpyStatus() != null )
+
+indexUnstored(doc, EntityFields.CFTC_CP_STATUS, masterAgreement.getCounterpartyEntity().getCftcCpyStatus().getId().toString());
+
+LOGGER.traceExit("MA Index - CFTC CP status");
+
+LOGGER.traceEntry("MA Index - Validation watcher");
+
+indexValidationWatchers(doc, masterAgreement);
+
+LOGGER.traceExit("MA Index - Validation watcher");
+
+LOGGER.traceEntry("MA Index - Dead Entity");
+
+if (isUsingDeadEntity(masterAgreement.getSigningEntity(Party.BNP_PARIBAS)) || isUsingDeadEntity(masterAgreement.getActingEntity(Party.BNP_PARIBAS))
+
+|| isUsingDeadEntity(masterAgreement.getFundManagingCompany(Party.BNP_PARIBAS)) || isUsingDeadEntity(masterAgreement.getFundWithCompartments(Party.BNP_PARIBAS))
+
+|| isUsingDeadEntity(masterAgreement.getSigningEntity(Party.COUNTERPARTY)) || isUsingDeadEntity(masterAgreement.getActingEntity(Party.COUNTERPARTY))
+
+|| isUsingDeadEntity(masterAgreement.getFundManagingCompany(Party.COUNTERPARTY))) {
+
+indexAndStoreUntokenised(doc, MasterAgreementFields.IS_USING_DEAD_ENTITY, "y");
+
+} else {
+
+indexAndStoreUntokenised(doc, MasterAgreementFields.IS_USING_DEAD_ENTITY, "n");
+
+}
+
+LOGGER.traceExit("MA Index - Dead Entity");
+
+LOGGER.traceEntry("MA Index - Pending Entity");
+
+if (isUsingPendingEntity(masterAgreement.getSigningEntity(Party.BNP_PARIBAS)) || isUsingPendingEntity(masterAgreement.getActingEntity(Party.BNP_PARIBAS))
+
+|| isUsingPendingEntity(masterAgreement.getFundManagingCompany(Party.BNP_PARIBAS)) || isUsingPendingEntity(masterAgreement.getFundWithCompartments(Party.BNP_PARIBAS))
+
+|| isUsingPendingEntity(masterAgreement.getSigningEntity(Party.COUNTERPARTY)) || isUsingPendingEntity(masterAgreement.getActingEntity(Party.COUNTERPARTY))
+
+|| isUsingPendingEntity(masterAgreement.getFundManagingCompany(Party.COUNTERPARTY))) {
+
+indexAndStore(doc, MasterAgreementFields.IS_USING_PENDING_ENTITY, "y");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_USING_PENDING_ENTITY, "n");
+
+}
+
+if(masterAgreement.getAgreementType().isUmbrellaAgreement()){
+
+indexAndStore(doc, MasterAgreementFields.IS_UMBRELLA_AGREEMENT, "Y");
+
+}else{
+
+indexAndStore(doc, MasterAgreementFields.IS_UMBRELLA_AGREEMENT, "N");
+
+}
+
+if(masterAgreement.isAgreementAllowedForLInkageWithSyntheticRepo()){
+
+indexAndStore(doc,MasterAgreementFields.IS_SYNTHETIC_REPO_ALLOWED_FOR_LINK,"Y");
+
+}else
+
+indexAndStore(doc,MasterAgreementFields.IS_SYNTHETIC_REPO_ALLOWED_FOR_LINK,"N");
+
+LOGGER.traceExit("MA Index - Pending Entity");
+
+LOGGER.traceEntry("MA Index - No rel CRDS");
+
+if (isHavingNoRelOrDntrCRDSCode(masterAgreement.getSigningEntity(Party.BNP_PARIBAS),MasterAgreementFields.NO_RELATION) || isHavingNoRelOrDntrCRDSCode(masterAgreement.getActingEntity(Party.BNP_PARIBAS),MasterAgreementFields.NO_RELATION)
+
+|| isHavingNoRelOrDntrCRDSCode(masterAgreement.getFundManagingCompany(Party.BNP_PARIBAS),MasterAgreementFields.NO_RELATION) || || isHavingNoRelOrDntrCRDSCode(masterAgreement.getSigningEntity(Party.COUNTERPARTY),MasterAgreementFields.NO_RELATION) || isHavingNoRelOrDntrCRDSCode(masterAgreement.getActingEntity(Party.COUNTERPARTY),MasterAgreementFields.NO_RELATION)
+
+|| isHavingNoRelOrDntrCRDSCode(masterAgreement.getFundManagingCompany(Party.COUNTERPARTY),MasterAgreementFields.NO_RELATION)) {
+
+storeField(doc, MasterAgreementFields.IS_NO_REL_CRDS_CODE, "y");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_NO_REL_CRDS_CODE, "n");
+
+}
+
+LOGGER.traceExit("MA Index - No rel CRDS");
+
+LOGGER.traceEntry("MA Index - Do Not trade CRDS");
+
+if (isHavingNoRelOrDntrCRDSCode(masterAgreement.getSigningEntity(Party.BNP_PARIBAS),MasterAgreementFields.DO_NOT_TRADE) || isHavingNoRelOrDntrCRDSCode(masterAgreement.getActingEntity(Party.BNP_PARIBAS),MasterAgreementFields.DO_NOT_TRADE)
+
+|| isHavingNoRelOrDntrCRDSCode(masterAgreement.getFundManagingCompany(Party.BNP_PARIBAS),MasterAgreementFields.DO_NOT_TRADE) || 
+
+isHavingNoRelOrDntrCRDSCode(masterAgreement.getFundWithCompartments(Party.BNP_PARIBAS),MasterAgreementFields.DO_NOT_TRADE)
+
+|| isHavingNoRelOrDntrCRDSCode(masterAgreement.getSigningEntity(Party.COUNTERPARTY),MasterAgreementFields.DO_NOT_TRADE) || isHavingNoRelOrDntrCRDSCode(masterAgreement.getActingEntity(Party.COUNTERPARTY),MasterAgreementFields.DO_NOT_TRADE)
+
+|| isHavingNoRelOrDntrCRDSCode(masterAgreement.getFundManagingCompany(Party.COUNTERPARTY),MasterAgreementFields.DO_NOT_TRADE)) {
+
+storeField(doc, MasterAgreementFields.IS_DNTR_CRDS_CODE, "y");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_DNTR_CRDS_CODE, "n");
+
+}
+
+LOGGER.traceExit("MA Index - Do Not trade CRDS");
+
+LOGGER.traceEntry("MA Index - Executed Document");
+
+Set<NegotiationDocumentForExecDoc> documentSet = executedDocuments.get();
+
+String searchExpr = StringUtils.join(KEY_WORDS, "|");
+
+Pattern pattern = Pattern.compile(searchExpr, Pattern.CASE_INSENSITIVE);
+
+boolean flag = false;
+
+if (documentSet != null) {
+
+Set<NegotiationDocumentForExecDoc> temp = new HashSet();
+
+for (NegotiationDocumentForExecDoc negotiationDocument : documentSet) {
+
+if (isExecutedDocumentationOfCollateralType(negotiationDocument)) {
+
+temp.add(negotiationDocument);
+
+}
+
+}
+
+if (temp != null && !temp.isEmpty()) {
+
+int count = 0;
+
+for (NegotiationDocumentForExecDoc negotiationDocument : temp) {
+
+String completeSummary = getCompleteSummary(negotiationDocument);
+
+if (completeSummary == null) {
+
+flag = false;
+
+break;
+
+}
+
+if (completeSummary != null) {
+
+indexUnstored(doc, MasterAgreementFields.CUSTOM_EXCLUDED_KEY_WORDS_IN_SUMMARY, completeSummary);
+
+Matcher m = pattern.matcher(completeSummary);
+
+if (m.find()) {
+
+count++;
+
+} else {
+
+flag = false;
+
+break;
+
+}
+
+}
+
+if (temp.size() == count) {
+
+flag = true;
+
+}
+
+}
+
+}
+
+}
+
+indexUnstored(doc, MasterAgreementFields.EXCLUDED_KEY_WORDS_IN_SUMMARY, BeagleStringUtils.toYorN(flag));
+
+LOGGER.traceExit("MA Index - Executed Document");
+
+LOGGER.traceEntry("MA Index - Terminated Collateral");
+
+indexAndStore(doc, MasterAgreementFields.HAS_TERMINATED_COLLATERAL, BeagleStringUtils.toYorN(masterAgreement.hasTerminatedCollateral()));
+
+LOGGER.traceExit("MA Index - Terminated Collateral");
+
+LOGGER.traceEntry("MA Index - Greyout Executed Document");
+
+boolean isGreyedOutRow = false;
+
+if (Boolean.FALSE.equals(masterAgreement.getCollateralFlag()) && masterAgreement.belongsToGroup() && agreementType.isDerivatives() && (!AgreementType.getClearingTypes().contains(agreementType.getId().getId()))) {
+
+for (NegotiationDocumentForExecDoc negotiationDocument : documentSet) {
+
+if (isExecutedDocumentationOfCollateralType(negotiationDocument)) {
+
+isGreyedOutRow = true;
+
+break;
+
+}
+
+}
+
+}
+
+indexUnstored(doc, MasterAgreementFields.HAS_GREYED_OUT_ROWS_IN_EXEC_DOC, BeagleStringUtils.toYorN(isGreyedOutRow));
+
+LOGGER.traceExit("MA Index - Greyout Executed Document");
+
+LOGGER.traceEntry("MA Index - Collateral In-Nego");
+
+DocumentTypeFilter filter = filter("CORRESPONDENCE", null);
+
+List docGroups = new ArrayList(masterAgreement.getNegotiationDocumentGroups());
+
+if(!docGroups.isEmpty()){
+
+Collections.sort(docGroups, new DocumentListComparator());
+
+indexAndStore(doc, MasterAgreementFields.LAST_CORRESPONDENCE_COMMENT, ((NegotiationDocument) ((LinkedList) (docGroups.get(0))).get(0)).getDetail());
+
+}
+
+indexAndStore(doc,MasterAgreementFields.COLLATERAL_IN_NEGOTIATION,BeagleStringUtils.toYorN(masterAgreement.isCollateralInNegotiation()));
+
+LOGGER.traceExit("MA Index - Collateral In-Nego");
+
+LOGGER.traceEntry("MA Index - Live CCA");
+
+storeField(doc, MasterAgreementFields.HAS_LIVE_CCA, masterAgreement.hasLiveCca() ? "y" : "n");
+
+LOGGER.traceExit("MA Index - Live CCA");
+
+LOGGER.traceEntry("MA Index - Document Category");
+
+Set<NegotiationDocumentForExecDoc> negotiationDocumentForExecDocs = executedDocuments.get();
+
+for (NegotiationDocumentForExecDoc negotiationDocumentForExecDoc : negotiationDocumentForExecDocs) {
+
+Set<NegotiationDocumentForExecDoc> negotiationDocumentForExecDocs = executedDocuments.get();
+
+for (NegotiationDocumentForExecDoc negotiationDocumentForExecDoc : negotiationDocumentForExecDocs) {
+
+if(negotiationDocumentForExecDoc.getDocumentCategories() != null)
+
+indexAndStore(doc, MasterAgreementFields.DOCUMENT_CATEGORY + negotiationDocumentForExecDoc.getDocumentCategories().getId(), "y");
+
+}
+
+LOGGER.traceExit("MA Index - Document Category");
+
+LOGGER.traceEntry("MA Index - Termination event");
+
+List<String> termEventIds = beagleRepository.applicableTerminationEvents(masterAgreement.getId());
+
+termEventIds.forEach(termEventId -> indexAndStore(doc, MasterAgreementFields.TERMINATION_EVENT, termEventId));
+
+LOGGER.traceExit("MA Index - Termination event");
+
+LOGGER.traceEntry("MA Index - Products Covered ");
+
+Collection<Product> prodCovered = masterAgreement.getCoveredProducts();
+
+if(prodCovered.size()>0){
+
+for(Product products : prodCovered){
+
+indexAndStore(doc,MasterAgreementFields.PRODUCTS_COVERED,products.getId());
+
+indexAndStore(doc,MasterAgreementFields.PRODUCTS_COVERED_TEXT,products.getName());
+
+}
+
+}else{
+
+indexAndStore(doc, MasterAgreementFields.PRODUCTS_COVERED, MasterAgreementFields.NO_PRODUCTS_COVERED);
+
+indexAndStore(doc,MasterAgreementFields.PRODUCTS_COVERED_TEXT,MasterAgreementFields.NO_PRODUCTS_COVERED);
+
+}
+
+LOGGER.traceExit("MA Index -  Products Covered ");
+
+LOGGER.traceEntry("MA Index - Special clause");
+
+Collection<AgreementJoin> specialClauseJoins = masterAgreement.getApplicableSpecialClauses();
+
+for(AgreementJoin specialClause : specialClauseJoins){
+
+indexAndStore(doc, MasterAgreementFields.SPECIAL_CLAUSE, specialClause.getId().getJoinedId().toString());
+
+indexAndStore(doc, MasterAgreementFields.SPECIAL_CLAUSE_VALUE, ((LookupItem)specialClause.getTarget()).getText());
+
+}
+
+LOGGER.traceExit("MA Index - Special clause");
+
+LOGGER.traceEntry("MA Index - Chinese Wall Data");
+
+indexChineseWallData(doc, masterAgreement);
+
+LOGGER.traceExit("MA Index - Chinese Wall Data");
+
+LOGGER.traceEntry("MA Index - CP Entity Data");
+
+Entity counterpartyEntityType = masterAgreement.getCounterpartyEntity();
+
+if (counterpartyEntityType != null) {
+
+String classificationCode = counterpartyEntityType.getClassificationCode();
+
+String entityLocation = counterpartyEntityType.getLocation().getName();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_CODE, classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_TEXT, counterpartyEntityType.getClassification());
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_ENTITY + classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE,MasterAgreementFields.CP_ENTITY);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode + entityLocation);
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_CLASSIFICATION_LOCATION_AGG, MasterAgreementFields.CP_ENTITY + classificationCode + entityLocation);
+
+indexAndStore(doc,MasterAgreementFields.CNTY_OF_BUSINESS,counterpartyEntityType.getCntyOfBusinessName());
+
+indexAndStore(doc,MasterAgreementFields.DISCLOSED_NAME,counterpartyEntityType.getDisclosedName());
+
+}
+
+indexAndStore(doc,MasterAgreementFields.CP_LEI,counterpartyEntityType.getLegalEntityIdentifier()!=null ?
+
+counterpartyEntityType.getLegalEntityIdentifier().getLeiId():"");
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_LOCATION_AGG, MasterAgreementFields.CP_ENTITY + entityLocation);
+
+}
+
+LOGGER.traceExit("MA Index - CP Entity Data");
+
+Entity bnpparibasEntityType= masterAgreement.getBnpParibasEntity();
+
+if(bnpparibasEntityType !=null){
+
+indexAndStore(doc,MasterAgreementFields.BNP_LEI,bnpparibasEntityType.getLegalEntityIdentifier()!=null
+
+?bnpparibasEntityType.getLegalEntityIdentifier().getLeiId():"");
+
+}
+
+LOGGER.traceEntry("MA Index - CP Acting Entity Data");
+
+Entity actingEntityType = masterAgreement.getActingEntity(Party.COUNTERPARTY);
+
+if (actingEntityType != null) {
+
+String classificationCode = actingEntityType.getClassificationCode();
+
+String entityLocation = actingEntityType.getLocation().getName();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_CODE, classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_ACTING_CLASSIFICATION_TEXT, actingEntityType.getClassification());
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_ENTITY_ACTING + classificationCode);
+
+indexAndStore(doc,MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE,MasterAgreementFields.CP_ENTITY_ACTING);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode + entityLocation);
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_CLASSIFICATION_LOCATION_AGG, MasterAgreementFields.CP_ENTITY_ACTING + classificationCode + entityLocation);
+
+}
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_LOCATION_AGG, MasterAgreementFields.CP_ENTITY_ACTING + entityLocation);
+
+}
+
+LOGGER.traceExit("MA Index - CP Acting Entity Data");
+
+LOGGER.traceEntry("MA Index - CP Fund Managing Entity Data");
+
+Entity fundManagingEntityType = masterAgreement.getFundManagingCompany(Party.COUNTERPARTY);
+
+if (fundManagingEntityType != null) {
+
+String classificationCode = fundManagingEntityType.getClassificationCode();
+
+String entityLocation = fundManagingEntityType.getLocation().getName();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields. COUNTERPARTY_CLASSIFICATION CODE, classificationCode);
+
+packa
+
+D
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_FUND_MANAGING COMPANY classificationCode);
+
+indexAndStore (doc, MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE, MasterAgreementFields.CP_FUND_MANAGING_COMPANY); indexAndStore (doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode entityLocation);
+
+indexAndStore (doc, MasterAgreementFields. ENTITY CLASSIFICATION LOCATION AGG, MasterAgreementFields.CP FUND MANAGING_COMPANY classificationCode.
+
+entityLocation);
+
+indexAndStore(doc, MasterAgreementFields. ENTITY_LOCATION_AGG, MasterAgreementFields.CP_FUND_MANAGING_COMPANY+ entityLocation);
+
+}
+
+LOGGER.traceExit("MA Index CP Fund Managing Entity Data");
+
+LOGGER traceEntry("MA Index CP Fund with compartment");
+
+Entity fundwithCompartments EntityType masterAgreement.getFundWithCompartments (Party. COUNTERPARTY);
+
+if (fundWithCompartmentsEntityType != null) {
+
+String classificationCode = fundWithCompartmentsEntityType.getClassificationCode();
+
+String entityLocation = fundWithCompartmentsEntityType.getLocation().getName();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_CODE, classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_FUND_WITH_COMPARTMENTS + classificationCode);
+
+indexAndStore(doc,MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE,MasterAgreementFields.CP_FUND_WITH_COMPARTMENTS);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode + entityLocation);
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_CLASSIFICATION_LOCATION_AGG, MasterAgreementFields.CP_FUND_WITH_COMPARTMENTS + classificationCode + entityLocation);
+
+}
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_LOCATION_AGG, MasterAgreementFields.CP_FUND_WITH_COMPARTMENTS + entityLocation);
+
+}
+
+LOGGER.traceExit("MA Index - CP Fund with compartment");
+
+LOGGER.traceEntry("MA Index - Agreement without collateral");
+
+Set<CollateralData> collateralDataSet = masterAgreement.getAllCollateralData();
+
+if(collateralDataSet.isEmpty()){
+
+indexAndStore(doc,MasterAgreementFields.AGREEMENT_WITHOUT_COLLATERAL, "noCollateral");
+
+}
+
+LOGGER.traceExit("MA Index - Agreement without collateral");
+
+LOGGER.traceEntry("MA Index - Collateral Related Info");
+
+if (CollectionUtils.isNotEmpty(collateralDataSet) && CollectionUtils.isNotEmpty(masterAgreement.getCollateralAgreements())) {
+
+Set<Long> algoNumber = masterAgreement.getCollateralAgreements().stream().map(algo -> algo.getColId()).collect(Collectors.toSet());
+
+indexAndStore(doc, MasterAgreementFields.ALGO_NUMBER, stripBrackets(algoNumber.toString()));
+
+}
+
+Set<String> collateralSegmentIds = (Set<String>) getCollateralSegmentIds (masterAgreement.getCollateralAgreements()),
+
+for (CollateralData collateralData collateralDataSet) {
+
+String collateralStatus;
+
+String margin;
+
+String negotiator = "";
+
+String adminLocation;
+
+String classification;
+
+String algo= "missing";
+if(collateralSegmentIds.contains (collateralData.getCollateralSegmentId())){
+
+algo= "populated";
+
+}
+
+indexAndStore (doc, MasterAgreementFields.ALGO_COLLATERAL_AGREEMENT, algo);
+
+LookupItem regulatoryClassifications collateralData.getRegulatoryClassification();
+
+LookupItem collateralMarginType collateralData.getCollateralMarginType();
+
+Set<CollateralRegimeDetail> collateralRegimeSet = collateralData.getCollateralRegimeDetail();
+
+classification = regulatoryClassifications.getText().replaceAll("[^a-zA-Z0-9]", "");
+
+if(collateralData.getNegotiator() != null)
+
+negotiator = collateralData.getNegotiator().getId();
+
+if(collateralData.getAdminLocation() != null)
+
+adminLocation = (collateralData.getAdminLocation().getCode()).toLowerCase();
+
+else{
+
+adminLocation = MasterAgreementFields.NO_ADMIN_LOCATION;
+
+}
+
+indexAndStore(doc, MasterAgreementFields.COLL_NEGO_ADMIN_AGR, negotiator + adminLocation);
+
+indexAndStore (doc, MasterAgreementFields.COLLATERAL_REGUITATORY_CLASSIFICATION, classification);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_REGULATORY_CLASSIFICATION_NEGO, classification + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_REGULATORY_CLASSIFICATION_NEGO_ADMIN, classification + negotiator +
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_REGULATORY_CLASSIFICATION_ADMIN, classification + adminLocation);
+
+indexAndStore (doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR, negotiator);
+
+indexAndStore (doc, MasterAgreementFields.COLLATERAL_ADMIN_LOCATION, adminLocation);
+
+if (collateralData.getTerminationDate() != null) {
+
+collateralStatus = "Terminated";
+
+} else if (collateralData.getSignatureDate() != null || collateralData.getAmendmentSignatureDate() != null) {
+
+collateralStatus = "Executed";
+
+} else if (collateralData.getDormantDate() != null){
+
+collateralStatus = "Dormant";
+
+}
+
+else {
+
+collateralStatus = "Negotiation";
+
+}
+
+indexAndStore (doc, MasterAgreementFields.COLLATERAL_STATUS_NEGO_AGR, collateralStatus + negotiator);
+
+indexAndStore (doc, MasterAgreementFields.COLLATERAL_STATUS_NEGO_ADMIN_AGR, collateralStatus + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_STATUS_ADMIN_AGR, collateralStatus + adminLocation);
+
+if (collateralMarginType != null) {
+
+if ("Initial Margin".equals(collateralMargin Type.getText())) {
+
+margin = "initialMargin";
+
+} else {
+
+margin = "notIncluded";
+
+} indexAndStore (doc, MasterAgreementFields.COLLATERAL_MARGIN_TYPE, margin);
+
+indexAndStore (doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_AGR, collateralStatus + classification margin);
+
+indexAndStore (doc, MasterAgreementFields.STATUS CLASSIFICATION_MARGIN_NEGO_AGR, collateralStatus classification margin + negotiator); indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_NEGO_ADMIN_AGR, collateralStatus + classification margin + negotiator +
+
+adminLocation); indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_ADMIN_AGR, collateralStatus classification + margin adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_ALGO_AGR, collateralStatus + classification margin + algo);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_ALGO_NEGO_AGR, collateralstatus classification margin + algo negotiator);
+
+indexAndStore (doc, MasterAgreementFields.STATUS CLASSIFICATION_MARGIN_ALGO_NEGO_ADMIN_AGR, collateralStatus + classification margin + algo negotiator +
+
+adminLocation); indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_ALGO_ADMIN_AGR, collateralStatus + classification + margin + algo adminLocation);
+
+indexAndStore (doc, MasterAgreementFields.CLASSIFICATION_MARGIN_ALGO_AGR, classification margin + algo);
+
+indexAndStore (doc, MasterAgreementFields. CLASSIFICATION_MARGIN_ALGO_NEGO_AGR, classification + margin + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_ALGO_NEGO_ADMIN_AGR, classification + margin + algo negotiator + adminLocation); indexAndStore (doc, MasterAgreementFields.CLASSIFICATION_MARGIN_ALGO_ADMIN_AGR, classification + margin + algo adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_AGR, classification + margin);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_NEGO_AGR, classification + margin + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_NEGO_ADMIN_AGR, classification + margin + negotiator + adminLocation); indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_ADMIN_AGR, classification margin + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.ALGO_COLLATERAL_AGREEMENT_NEGO_AGR, algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.ALGO_COLLATERAL_AGREEMENT_NEGO_ADMIN_AGR, algo negotiator + adminLocation); indexAndStore(doc, MasterAgreementFields.ALGO_COLLATERAL_AGREEMENT_ADMIN_AGR, algo adminLocation);
+
+for (CollateralRegimeDetail collateralRegimeDetail: collateralRegimeSet) {
+
+LookupItem collateralRegime collateralRegimeDetail.getCollateralRegime();
+
+if (collateralRegime != null) {
+String regime = collateralRegime.getText().replaceAll("[^a-zA-Z0-9]", "");
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_REGIME, regime);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_AGR, collateralStatus + classification + margin + regime + algo);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGO_AGR, collateralStatus + classification + margin + regime + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGO_ADMIN_AGR, collateralStatus + classification + margin + regime + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_ADMIN_AGR, collateralStatus + classification + margin + regime + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_REGIME_AGR, collateralStatus + classification + margin + regime);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_REGIME_NEGO_AGR, collateralStatus + classification + margin + regime + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_REGIME_NEGO_ADMIN_AGR, collateralStatus + classification + margin + regime + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_MARGIN_REGIME_ADMIN_AGR, collateralStatus + classification + margin + regime + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_AGR, collateralStatus + classification + regime);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_NEGO_AGR, collateralStatus + classification + regime + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_NEGO_ADMIN_AGR, collateralStatus + classification + regime + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_AMDIN_AGR, collateralStatus + classification + regime + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_ALGO_AGR, collateralStatus + classification + regime + algo);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_ALGO_NEGO_AGR, collateralStatus + classification + regime + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_ALGO_NEGO_ADMIN_AGR, collateralStatus + classification + regime + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_REGIME_ALGO_ADMIN_AGR, collateralStatus + classification + regime + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_ALGO_AGR, classification + margin + regime + algo);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_ALGO_NEGO_AGR, classification + margin + regime + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_ALGO_NEGO_ADMIN_AGR, classification + margin + regime + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_ALGO_ADMIN_AGR, classification + margin + regime + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_ALGO_AGR, classification + regime + algo);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_ALGO_NEGO_AGR, classification + regime + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_ALGO_NEGO_ADMIN_AGR, classification + regime + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_ALGO_ADMIN_AGR, classification + regime + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_AGR, classification + margin + regime);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_NEGO_AGR, classification + margin + regime + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_NEGO_ADMIN_AGR, classification + margin + regime + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_MARGIN_REGIME_ADMIN_AGR, classification + margin + regime + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_AGR, classification + regime);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_NEGO_AGR, classification + regime + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_NEGO_ADMIN_AGR, classification + regime + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_REGIME_ADMIN_AGR, classification + regime + adminLocation);
+
+}
+
+}
+
+}
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_STATUS, collateralStatus);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_AGR, collateralStatus + classification);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_NEGO_AGR, collateralStatus + classification + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_NEGO_ADMIN_AGR, collateralStatus + classification + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_ADMIN_AGR, collateralStatus + classification + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_ALGO_AGR, collateralStatus + algo);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_ALGO_NEGO_AGR, collateralStatus + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_ALGO_NEGO_ADMIN_AGR, collateralStatus + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_ALGO_ADMIN_AGR, collateralStatus + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_ALGO_AGR, collateralStatus + classification + algo);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_NEGO_ALGO_AGR, collateralStatus + classification + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_ALGO_NEGO_ADMIN_AGR, collateralStatus + classification + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.STATUS_CLASSIFICATION_ALGO_ADMIN_AGR, collateralStatus + classification + algo + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_ALGO_AGR, classification + algo);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_ALGO_NEGO_AGR, classification + algo + negotiator);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_ALGO_NEGO_ADMIN_AGR, classification + algo + negotiator + adminLocation);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_ALGO_ADMIN_AGR, classification + algo + adminLocation);
+
+}
+
+LOGGER.traceExit("MA Index Collateral Related Info");
+
+LOGGER.traceEntry("MA Index Guarantees Legal Tab");
+
+indexGuarantees FromLegalTab (masterAgreement, doc);
+
+LOGGER.traceExit("MA Index Guarantees Legal Tab");
+
+LOGGER.traceEntry("MA Index Keyword Search");
+
+indexForKeyword Search (masterAgreement, doc);
+
+LOGGER.traceExit("MA Index Keyword Search");
+
+LOGGER.traceEntry("MA Index - executed documentation summary");
+
+indexForExecutedDocumentSummaryFilterField(masterAgreement, doc, beagleRepository);
+
+LOGGER.traceExit("MA Index - executed documentation summary");
+
+LOGGER.traceEntry("MA Index - using invalid entity");
+
+storeField(doc, MasterAgreementFields.IS_USING_INVALID_ENTITY, BeagleStringUtils.toYorN(isEntityInvalid(masterAgreement.getCounterpartyEntity())));
+
+LOGGER.traceExit("MA Index - using invalid entity");
+
+LOGGER.traceEntry("MA Index - legal counterparty type");
+
+LegalCounterpartyType legalCounterpartyType = masterAgreement.getLegalCounterpartyType();
+
+if(legalCounterpartyType!=null){
+
+indexAndStore(doc,MasterAgreementFields.LEGAL_COUNTERPARTY_TYPE,masterAgreement.getLegalCounterpartyType().getDescription());
+
+}
+
+LOGGER.traceExit("MA Index - legal counterparty type");
+
+LOGGER.traceEntry("MA Index - date added to group");
+
+if (masterAgreement.belongsToGroup()) {
+
+storeField(doc, MasterAgreementFields.DATE_ADDED_TO_GROUP, masterAgreement.getAddToGroupDate());
+
+}
+
+LOGGER.traceExit("MA Index - date added to group");
+
+LOGGER.traceEntry("MA Index - PB Specific data");
+
+if(masterAgreement.getAgreementType().isPrimeBrokerage()){
+
+PbLegalData pbLegalData = masterAgreement.getPbLegalData();
+
+if(pbLegalData!=null){
+
+indexAndStore(doc,MasterAgreementFields.PB_EURO_OPERATION_MODEL,BeagleStringUtils.toYorN(pbLegalData.getEuroOperationModel()));
+
+indexAndStore(doc,MasterAgreementFields.PB_ClIENT_BUCKET,pbLegalData.getPbClientBucket() != null?
+
+pbLegalData.getPbClientBucket().getText():"");
+
+}
+
+}
+
+LOGGER.traceExit("MA Index - PB Specific data");
+
+LOGGER.traceEntry("MA Index - Country Annex Data");
+
+indexAndStore(doc,MasterAgreementFields.IS_CDEA_LINKED_AGREEMENT, String.valueOf((masterAgreement.isCdeaLinkedAgreement() || masterAgreement.isGroupDrivenCdeaLinkedAgreement())?'Y':'N'));
+
+if(masterAgreement.getAgreementType().isESA()){
+
+Set<AgreementRegionCountryMapping> AgreementRegionCountry = masterAgreement.getMaRegionCountry();
+
+RegionAnnex r=new RegionAnnex();
+
+CountryAnnex c=new CountryAnnex();
+
+for(AgreementRegionCountryMapping M: AgreementRegionCountry) {
+
+if (M.getIsSelected()){
+
+indexAndStore(doc, MasterAgreementFields.REGION_ANNEX, String.valueOf(M.getAgreementRegion().getRegionAnnex().getId()));
+
+indexAndStore(doc, MasterAgreementFields.COUNTRY_ANNEX, String.valueOf(M.getAgreementRegion().getCountryAnnex().getId()));
+
+}
+
+}
+
+}
+
+executedDocuments.remove();
+
+negotiationDocuments.remove();
+
+LOGGER.traceEntry("COMPLETED: indexMasterAgreement - "+masterAgreement.getId());
+
+return doc;
+
+}
+
+private void indexGuaranteesFromLegalTab(MasterAgreement masterAgreement, Document doc) {
+
+masterAgreement.getCounterpartyGuarantees().forEach(cpGuarantees-> indexAndStore(doc, MasterAgreementFields.CP_GUARANTEES, Long.toString(cpGuarantees.getEntity().getId())));
+
+masterAgreement.getBnpParibasGuarantees().forEach(bnpGuarantees -> indexAndStore(doc, MasterAgreementFields.BNPP_GUARANTEES, Long.toString(bnpGuarantees.getEntity().getId())));
+
+indexAndStore(doc,MasterAgreementFields.CP_GUARANTEED,masterAgreement.getCounterpartyGuarantees().size()
+
++ masterAgreement.getCounterpartyGuaranteesMissingEntity().size()>0 ? "Yes" : "No");
+
+indexAndStore(doc,MasterAgreementFields.BNP_GUARANTEED,masterAgreement.getBnpParibasGuarantees().size()
+
++  masterAgreement.getBnpParibasGuaranteesMissingEntity().size()>0 ? "Yes" : "No");
+
+indexAndStore(doc,MasterAgreementFields.CP_GUARANTEE_FLAG,masterAgreement.getGuaranteeFlagCp()? "Yes" : "No");
+
+indexAndStore(doc,MasterAgreementFields.BNP_GUARANTEE_FLAG,masterAgreement.getGuaranteeFlagBnp() ? "Yes" : "No");
+
+indexAndStore(doc,MasterAgreementFields.IS_CP_GUARANTEED_BUT_GUARANTOR_MISSING ,masterAgreement.getGuaranteeFlagCp() &&
+
+masterAgreement.getCounterpartyGuarantees().size()==0 && masterAgreement.getCounterpartyGuaranteesMissingEntity().size()==0? "Yes" : "No");
+
+indexAndStore(doc,MasterAgreementFields.IS_BNPP_GUARANTEED_BUT_GUARANTOR_MISSING ,masterAgreement.getGuaranteeFlagBnp() &&
+
+masterAgreement.getBnpParibasGuarantees().size()==0 && masterAgreement.getBnpParibasGuaranteesMissingEntity().size()==0? "Yes" : "No");
+
+masterAgreement.getCounterpartyGuaranteesMissingEntity().forEach(cpGuarantees-> indexAndStore(doc, MasterAgreementFields.CP_GUARANTEES_WITH_MISSING_ENTITY, stripForKeywordSearch(nullSafeToString(cpGuarantees.getEntityName()))));
+
+masterAgreement.getBnpParibasGuaranteesMissingEntity().forEach(bnpGuarantees -> indexAndStore(doc, MasterAgreementFields.BNPP_GUARANTEES_WITH_MISSING_ENTITY, stripForKeywordSearch(nullSafeToString(bnpGuarantees.getEntityName()))));
+
+}
+
+private String stripDashesBracketsDotsLowerCase(String text){
+
+return text!=null? trim(stripDashes(stripBrackets(stripDots(text.toLowerCase())))):"";
+
+}
+
+private String stripForKeywordSearch(String text){
+
+return text!=null? replaceSpecialChars(replaceTabCRLFToSpace(text)).toLowerCase() : "";
+
+}
+
+private void indexForKeywordSearch(MasterAgreement masterAgreement, Document doc) {
+
+executedDocuments.get().stream().forEach(exeDoc -> indexExecDocSummaryAndDetail(doc, exeDoc));
+
+negotiationDocuments.get().stream().forEach(corresDoc -> {
+
+if (corresDoc.getType() != null && corresDoc.getType().isCorrespondence()) {
+
+indexCorresSummaryAndDetail(doc, corresDoc);
+
+}
+
+});
+
+String maComment = getMaComment(masterAgreement);
+
+if (StringUtils.isNotEmpty(maComment)) {
+
+indexAndStore(doc, MasterAgreementFields.MA_COMMENT, maComment);
+
+}
+
+String crossDefaultComment = getCrossDefaultComment(masterAgreement);
+
+if (StringUtils.isNotEmpty(crossDefaultComment)) {
+
+indexAndStore(doc, MasterAgreementFields.CROSS_DEFAULT_COMMENT, crossDefaultComment);
+
+}
+
+}
+
+private void indexForExecutedDocumentSummaryFilterField(MasterAgreement masterAgreement, Document doc, BeagleRepository beagleRepository) {
+
+executedDocuments.get().stream().forEach(exeDoc -> indexExecDocSummaryForEachDoc(doc, exeDoc));
+
+}
+
+private void indexExecDocSummaryForEachDoc(Document doc, NegotiationDocumentForExecDoc exeDoc) {
+
+if(exeDoc.getDocumentCategories()!= null && exeDoc.getDocumentCategories().getText()!=null) {
+
+indexAndStore(doc, MasterAgreementFields.DOCUMENT_CATEGORY_BY_TEXT, replaceSpecialChars(exeDoc.getDocumentCategories().getText()).toLowerCase());
+
+}
+
+if(exeDoc.getDocumentSummary()!= null &&exeDoc.getDocumentSummary().getText()!= null) {
+
+indexAndStore(doc, MasterAgreementFields.EXECUTED_DOC_SUMMARY_FILTER_BY_TEXT, replaceSpecialChars(exeDoc.getDocumentSummary().getText()).toLowerCase());
+
+}
+
+if(exeDoc.getType()!= null && exeDoc.getType().getText()!= null) {
+
+indexAndStore(doc, MasterAgreementFields.EXEC_DOC_TYPE_FILTER_BY_TEXT, replaceSpecialChars(exeDoc.getType().getText()).toLowerCase());
+
+}
+
+}
+
+private String getCrossDefaultComment(MasterAgreement masterAgreement) {
+
+StringBuilder cdComment= new StringBuilder();
+
+if(masterAgreement.getBnpParibasCrossDefault()!=null){
+
+cdComment.append(nullSafeToString(masterAgreement.getBnpParibasCrossDefault().getComment()));
+
+}
+
+if(masterAgreement.getCounterpartyCrossDefault()!=null){
+
+cdComment.append(nullSafeToString(masterAgreement.getCounterpartyCrossDefault().getComment()));
+
+}
+
+return stripForKeywordSearch(cdComment.toString());
+
+}
+
+private String getMaComment(MasterAgreement masterAgreement) {
+
+return stripForKeywordSearch(nullSafeToString(masterAgreement.getLastAmendment().getComment())+ nullSafeToString(masterAgreement.getOverlappedProdComm()));
+
+}
+
+private void indexCorresSummaryAndDetail(Document doc, NegotiationDocument negotiationDocument) {
+
+StringBuilder summaryAndDetail = new StringBuilder();
+
+summaryAndDetail.append(nullSafeToString(negotiationDocument.getSummary())).append(nullSafeToString(negotiationDocument.getDocumentComment()))
+
+.append(nullSafeToString(negotiationDocument.getDetail())).append(nullSafeToString(negotiationDocument.getFileName()));
+
+indexAndStore(doc, MasterAgreementFields.CORRESPONDENCE_SUMMARY_DETAIL, stripForKeywordSearch(summaryAndDetail.toString()));
+
+}
+
+private void indexExecDocSummaryAndDetail(Document doc, NegotiationDocumentForExecDoc executedDoc) {
+
+StringBuilder summaryAndDetail = new StringBuilder();
+
+summaryAndDetail.append(nullSafeToString(getCompleteSummary(executedDoc))).append(nullSafeToString(executedDoc.getDetail()))
+
+.append(nullSafeToString(executedDoc.getFileName()));
+
+indexAndStore(doc, MasterAgreementFields.EXECUTED_DOC_SUMMARY_DETAIL, stripForKeywordSearch(summaryAndDetail.toString()));
+
+}
+
+private Set<String> getCollateralSegmentIds(List<AlgoCollateral> collateralAgreements) {
+
+Set<String> collateralSegmentIds =  new HashSet<String>();
+
+for(AlgoCollateral algosCollateral : collateralAgreements){
+
+if(algosCollateral.getCollateralSegmentId() != null)
+
+collateralSegmentIds.add(algosCollateral.getCollateralSegmentId());
+
+}
+
+return collateralSegmentIds;
+
+}
+
+private String getCompleteSummary(NegotiationDocumentForExecDoc negotiationDocument) {
+
+String str = null;
+
+if(negotiationDocument.getSummary() != null){
+
+str = negotiationDocument.getSummary();
+
+}
+
+if(negotiationDocument.getDocumentComment() != null){
+
+if(str != null)
+
+str = str + " " + negotiationDocument.getDocumentComment();
+
+else
+
+str = negotiationDocument.getDocumentComment();
+
+}
+
+if(negotiationDocument.getDocumentSummary() != null){
+
+if(str != null)
+
+str = str + " " + negotiationDocument.getDocumentSummary().getText();
+
+else
+
+str = negotiationDocument.getDocumentSummary().getText();
+
+}
+
+return str;
+
+}
+
+private boolean shouldIndexCollateralDocData(MasterAgreement masterAgreement) {
+
+return !masterAgreement.getCollateralDocStatusDetails().isEmpty() && !(masterAgreement.getLastAmendment().isDormant() || masterAgreement.getLastAmendment().isTerminated()) && (null != masterAgreement.getAllCollateralData());
+
+}
+
+private boolean isExecutedDocumentationOfCollateralType(NegotiationDocumentForExecDoc negotiationDocument) {
+
+if(negotiationDocument.getType() != null)
+
+return NegotiationDocument.getExecutedDocumentationTypes().contains(negotiationDocument.getType().getId());
+
+return false;
+
+}
+
+private boolean isEntityInvalid(Entity entity){
+
+return    isUsingDeadEntity(entity) || isEntityDeactivated(entity);
+
+}
+
+private boolean isEntityDeactivated(Entity entity){
+
+return entity!=null && entity.isDeactivated();
+
+}
+
+private boolean isUsingDeadEntity(Entity entity) {
+
+return entity != null && entity.getEvent().hasNewEntity();
+
+}
+
+private boolean isUsingPendingEntity(Entity entity) {
+
+return entity != null && entity.isPending();
+
+}
+
+private boolean isHavingNoRelOrDntrCRDSCode(Entity entity, String eventType) {
+
+return entity != null && StringUtils.isNotBlank(entity.getEvent().getEventTypeCode()) && eventType.equalsIgnoreCase(entity.getEvent().getEventTypeCode());
+
+}
+
+private void indexValidationWatchers(Document doc, MasterAgreement masterAgreement) {
+
+if (masterAgreement.isAgreementInNegotiation()) {
+
+indexAndStore(doc, MasterAgreementFields.VALIDATION_WATCHERS, "");
+
+} else {
+
+String watchers = "";
+
+watchers += watcher(masterAgreement.getFirstSignedAmendment());
+
+Amendment last = masterAgreement.getLastAmendment();
+
+if (last.getAmendmentId() > 0) {
+
+watchers += " " + watcher(last);
+
+}
+
+indexAndStore(doc, MasterAgreementFields.VALIDATION_WATCHERS, watchers.trim());
+
+}
+
+}
+
+private String watcher(Amendment a) {
+
+if (a != null && requiresValidation(a)) {
+
+return getNegotiatorUserId(a);
+
+} 
+
+else {
+
+return "";
+
+}
+
+}
+
+private boolean requiresValidation(Amendment a) {
+
+Amendment b = a.getId().getMasterAgreement().getMaster();
+
+return a.getValidationStatus() == ValidationStatus.VALIDATION_REQUIRED ||
+
+b.getValidationStatus() == ValidationStatus.VALIDATION_REQUIRED;
+
+}
+
+private String getNegotiatorUserId(Amendment a) {
+
+return a.getNegotiator().getUser().getId();
+
+}
+
+private String getGroupNumber(MasterAgreement masterAgreement) {
+
+Group group = masterAgreement.getGroup();
+
+if (group != null) {
+
+return group.getId().toString();
+
+}
+
+return "-1";
+
+}
+
+private void indexLastAmendment(Document doc, MasterAgreement masterAgreement,BeagleRepository repository) {
+
+Amendment lastAmendment = masterAgreement.getLastAmendment();
+
+if (lastAmendment == null) {
+
+LOGGER.error("Master agreement \"" + masterAgreement.getId() + "\" has null last amendment");
+
+return;
+
+}
+
+indexNegotiator(doc, lastAmendment);
+
+if (lastAmendment.getAdminLocation() != null) {
+
+indexAndStore(doc, MasterAgreementFields.ADMIN_LOCATION, lastAmendment.getAdminLocation().getCode());
+
+indexAndStore(doc, MasterAgreementFields.ADMIN_LOCATION_NAME, lastAmendment.getAdminLocation().getName());
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.ADMIN_LOCATION, MasterAgreementFields.NO_ADMIN_LOCATION);
+
+}
+
+LookupItem governingLaw = masterAgreement.getGoverningLaw();
+
+if (governingLaw != null) {
+
+indexAndStore(doc, MasterAgreementFields.GOVERNING_LAW, governingLaw.getId().toString() + " " + governingLaw.getText());
+
+indexAndStore(doc,MasterAgreementFields.GOVERNING_LAW_TEXT,governingLaw.getText());
+
+}
+
+//todo should guarantee be on last-signed??
+
+storeField(doc, MasterAgreementFields.GUARANTEE, masterAgreement.isGuarantee());
+
+storeField(doc, MasterAgreementFields.PDG, masterAgreement.isPdg());
+
+storeField(doc, MasterAgreementFields.CLOSE_OUT_NETTING, masterAgreement.getCloseOutNetting());
+
+storeField(doc, MasterAgreementFields.TRANSACTION_SPECIFIC_MASTERS, masterAgreement.getTransactionSpecificMasters());
+
+storeField(doc, MasterAgreementFields.LAST_AMENDMENT_CREATION_DATE, lastAmendment.getCreationDate());
+
+DomesticBranch branch = lastAmendment.getDomesticBranch();
+
+if (branch != null) {
+
+indexAndStore(doc, MasterAgreementFields.BNP_DOMESTIC_BRANCH_RESPONSIBLE, branch.getId() + " " + branch.getText());
+
+}
+
+if(lastAmendment.getStandardisedContract()!=null){
+
+indexAndStore(doc,MasterAgreementFields.BNP_STANDARDISED_CONTRACT,BeagleStringUtils.toYorN(lastAmendment.getStandardisedContract())) ;
+
+}
+
+if (lastAmendment.isDormant()) {
+
+storeField(doc, MasterAgreementFields.DORMANTING_DATE, lastAmendment.getTerminatedDate());
+
+if (lastAmendment.getFailureReason() != null) {
+
+indexAndStore(doc, MasterAgreementFields.DORMANTING_REASON, lastAmendment.getFailureReason().getText());
+
+}
+
+}
+
+if (lastAmendment.getSignedDate() != null && lastAmendment.getTerminatedDate() == null) {
+
+storeField(doc, MasterAgreementFields.IS_LAST_AMENDMENT_EXECUTED, "y");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_LAST_AMENDMENT_EXECUTED, "n");
+
+}
+
+if (lastAmendment.isInNegotiation()) {
+
+storeField(doc, MasterAgreementFields.IS_LAST_AMENDMENT_IN_NEGOTIATION, "y");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_LAST_AMENDMENT_IN_NEGOTIATION, "n");
+
+}
+
+indexAllCoveredOffices(masterAgreement, lastAmendment, doc,repository);
+
+}
+
+private void indexLastSignedAmendment(MasterAgreement masterAgreement, Document doc) {
+
+Amendment lastSignedAmendment = masterAgreement.getLastSignedAmendment();
+
+if (lastSignedAmendment != null) {
+
+if (masterAgreement.getSignedAmendmentCount() > 0) {
+
+storeField(doc, MasterAgreementFields.LAST_SIGNED_AMENDMENT_DATE, lastSignedAmendment.getSignedDate());
+
+}
+
+if (lastSignedAmendment.isTerminated()) {
+
+storeField(doc, MasterAgreementFields.TERMINATION_DATE, lastSignedAmendment.getTerminatedDate());
+
+if (lastSignedAmendment.getTerminationReason() != null) {
+
+indexAndStore(doc, MasterAgreementFields.TERMINATION_REASON, lastSignedAmendment.getTerminationReason().getText());
+
+}
+
+}
+
+}
+
+}
+
+private void indexRTSAndAutoExecutedSatus(MasterAgreement masterAgreement, Document doc){
+
+if(masterAgreement.getReadyToSignAutoExecute() != null) {
+
+if (masterAgreement.getReadyToSignAutoExecute().getAutoExecuted().equalsIgnoreCase("Y")) {
+
+indexAndStore(doc, MasterAgreementFields.IS_AUTO_EXECUTED_MA, "Y");
+
+indexAndStore(doc, MasterAgreementFields.IS_READY_TO_SIGN_MA, "N");
+
+indexAndStore(doc, MasterAgreementFields.SUB_STATUS_TEXT, AUTO_EXECUTED);
+
+} else if ((masterAgreement.getReadyToSignAutoExecute().getAutoExecuted().equalsIgnoreCase("N")) &&
+
+(masterAgreement.getReadyToSignAutoExecute().getReadyToSign().equalsIgnoreCase("Y"))) {
+
+indexAndStore(doc, MasterAgreementFields.IS_AUTO_EXECUTED_MA, "N");
+
+indexAndStore(doc, MasterAgreementFields.IS_READY_TO_SIGN_MA, "Y");
+
+indexAndStore(doc, MasterAgreementFields.SUB_STATUS_TEXT, READY_TO_SIGN);
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.IS_AUTO_EXECUTED_MA, "N");
+
+indexAndStore(doc, MasterAgreementFields.IS_READY_TO_SIGN_MA, "N");
+
+}
+
+}
+
+}
+
+private void indexCcaCustodian(MasterAgreement masterAgreement, Document doc){
+
+Set<Entity> cpCustodian = new HashSet<Entity>();
+
+Set<Entity> bpCustodian = new HashSet<Entity>();
+
+if(!masterAgreement.getCounterpartyCollateralControlAgreement().isEmpty ()){
+
+for (CollateralControlAgreement cca : masterAgreement.getCounterpartyCollateralControlAgreement()) {
+
+Entity custodian = cca.getCustodian();
+
+if (custodian != null) {
+
+cpCustodian.add(custodian);
+
+}
+
+}
+
+}
+
+if(!masterAgreement.getBnpCollateralControlAgreement().isEmpty()){
+
+for (CollateralControlAgreement cca : masterAgreement.getBnpCollateralControlAgreement()) {
+
+Entity custodian = cca.getCustodian();
+
+if (custodian != null) {
+
+bpCustodian.add(custodian);
+
+}
+
+}
+
+}
+
+StringBuffer ccaCustodian = new StringBuffer();
+
+indexCustodians(ccaCustodian, cpCustodian);
+
+indexCustodians(ccaCustodian, bpCustodian);
+
+indexAndStore(doc, MasterAgreementFields.CCA_CUSTODIAN, ccaCustodian.toString());
+
+}
+
+private void indexAllCoveredOffices(MasterAgreement masterAgreement, Amendment lastSignedAmendment, Document doc,BeagleRepository repository) {
+
+CoveredOfficeService coveredOfficeService = new CoveredOfficeService(masterAgreement, lastSignedAmendment);
+
+List<CoveredOfficeDisplay> counterpartyCoveredOffices = coveredOfficeService.getCoveredOffices(Party.COUNTERPARTY,repository);
+
+indexCoveredOffices(doc, MasterAgreementFields.CP_COVERED_OFFICE, counterpartyCoveredOffices);
+
+List<CoveredOfficeDisplay> counterpartyDepartmentOtherDisplay = coveredOfficeService.getCoveredDepartments(Party.COUNTERPARTY);
+
+indexCoveredOffices(doc, MasterAgreementFields.CP_ADMINISTRATIVE_ENTITY, counterpartyDepartmentOtherDisplay);
+
+List<CoveredOfficeDisplay> bnpCoveredOfficesDisplay = coveredOfficeService.getCoveredOffices(Party.BNP_PARIBAS,repository);
+
+indexCoveredOffices(doc, MasterAgreementFields.BNP_COVERED_OFFICE, bnpCoveredOfficesDisplay);
+
+List<CoveredOfficeDisplay> bnpDepartmentOtherDisplay = coveredOfficeService.getCoveredDepartments(Party.BNP_PARIBAS);
+
+indexCoveredOffices(doc, MasterAgreementFields.BNP_ADMINISTRATIVE_ENTITY, bnpDepartmentOtherDisplay);
+
+for (Iterator iterator = counterpartyCoveredOffices.iterator(); iterator.hasNext(); ) {
+
+CoveredOfficeDisplay counterpartyCoveredOfficeDisplay = (CoveredOfficeDisplay) iterator.next();
+
+if (counterpartyCoveredOfficeDisplay.getCoveredOffice() != null) {
+
+String classificationCode = counterpartyCoveredOfficeDisplay.getCoveredOffice().getEntity().getClassificationCode();
+
+String entityLocation = counterpartyCoveredOfficeDisplay.getOffice();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_CODE, classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_COVERED_OFFICE + classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE, MasterAgreementFields.CP_COVERED_OFFICE);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode + entityLocation);
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_CLASSIFICATION_LOCATION_AGG, MasterAgreementFields.CP_COVERED_OFFICE + classificationCode + entityLocation);
+
+}
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_LOCATION_AGG, MasterAgreementFields.CP_COVERED_OFFICE + entityLocation);
+
+}
+
+}
+
+for (Iterator iterator = counterpartyDepartmentOtherDisplay.iterator(); iterator.hasNext(); ) {
+
+CoveredOfficeDisplay counterpartyDepartmentDisplay = (CoveredOfficeDisplay) iterator.next();
+
+if (counterpartyDepartmentDisplay.getCoveredOffice() != null) {
+
+String classificationCode = counterpartyDepartmentDisplay.getCoveredOffice().getEntity().getClassificationCode();
+
+String entityLocation = counterpartyDepartmentDisplay.getOffice();
+
+if (StringUtils.isNotEmpty(classificationCode)) {
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_CODE, classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_CLASSIFICATION_AGGREGATE, MasterAgreementFields.CP_ADMINISTRATIVE_ENTITY + classificationCode);
+
+indexAndStore(doc, MasterAgreementFields.COUNTERPARTY_ENTITY_TYPE, MasterAgreementFields.CP_ADMINISTRATIVE_ENTITY);
+
+indexAndStore(doc, MasterAgreementFields.CLASSIFICATION_LOCATION_AGG, classificationCode + entityLocation);
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_CLASSIFICATION_LOCATION_AGG, MasterAgreementFields.CP_ADMINISTRATIVE_ENTITY + classificationCode + entityLocation);
+
+}
+
+indexAndStore(doc, MasterAgreementFields.ENTITY_LOCATION_AGG, MasterAgreementFields.CP_ADMINISTRATIVE_ENTITY + entityLocation);
+
+}
+
+}
+
+}private void indexCoveredOffices(Document doc, String coveredOfficeType, List<CoveredOfficeDisplay> coveredOffices) {
+
+for (CoveredOfficeDisplay office : coveredOffices) {
+
+CoveredOffice coveredOffice = office.getCoveredOffice();
+
+if (coveredOffice != null) {
+
+Entity entity = coveredOffice.getEntity();
+
+String coveredOfficeAggregate = EntityDocumentBuilder.collateFields(entity).toString();
+
+indexUnstored(doc, coveredOfficeType + "." + MasterAgreementFields.ENTITY_AGGREGATE_SUFFIX, coveredOfficeAggregate);
+
+indexUnstored(doc, MasterAgreementFields.DATA, coveredOfficeAggregate);
+
+indexAndStore(doc,MasterAgreementFields.HAS_CEASED_TRADING,BeagleStringUtils.toYorN(coveredOffice.getCeasedTrading()));
+
+}
+
+}
+
+}
+
+private void indexAmendmentType(MasterAgreement masterAgreement, Document doc) {
+
+String amendmentType;
+
+if (masterAgreement.hasNewAmendmentInNegotiation()) {
+
+Amendment lastAmendment = masterAgreement.getLastAmendment();
+
+AmendmentType type = lastAmendment.getType();
+
+if (type != null) {
+
+amendmentType = type.getId().toString();
+
+} else {
+
+warnIfDerivatives(masterAgreement, lastAmendment);
+
+amendmentType = AmendmentType.AMENDMENT_TO_MA_ONLY_ID.toString();
+
+}
+
+} else {
+
+amendmentType = MasterAgreementFields.NO_NEGOTIATION_IN_PROGRESS;
+
+}
+
+//doc.add(new Field(MasterAgreementFields.NEGOTIATION_STATUS, amendmentType, Field.Store.YES, Field.Index.NOT_ANALYZED));
+
+indexAndStoreUntokenised(doc,MasterAgreementFields.NEGOTIATION_STATUS, amendmentType);
+
+}
+
+private void warnIfDerivatives(MasterAgreement masterAgreement, Amendment lastAmendmant) {
+
+if (masterAgreement.getAgreementType().isDerivatives()) {
+
+Long maId = masterAgreement.getId();
+
+Long amendmentId = lastAmendmant.getId().getAmendmentId();
+
+//LOGGER.error("Agreement " + maId + " has Amendment " + amendmentId + " with no Amendment Type set. Indexing value as \"none\"");
+
+}
+
+}
+
+private void indexCustodians(StringBuffer text, Set custodianEntities) {
+
+for (Iterator i = custodianEntities.iterator(); i.hasNext(); ) {
+
+Entity e = (Entity) i.next();
+
+try {
+
+text.append(e.getMkpCode()).append(' ');
+
+text.append(e.getLocation().getCode()).append(' ');
+
+String entityCode = e.getEntityCode();
+
+if (StringUtils.isNotBlank(entityCode)) {
+
+text.append(entityCode).append(' ');
+
+}
+
+text.append(e.getName()).append(' ');
+
+text.append(e.getTownName()).append(' ');
+
+text.append(e.getLocation().getName()).append(' ');
+
+} catch (ObjectNotFoundException exp) {
+
+LOGGER.error("Indexing Master Agreement: can't index ccaCustodian", exp);
+
+}
+
+}
+
+}
+
+private void indexIncorporatedIn(Document doc, MasterAgreement masterAgreement) {
+
+Entity cpLegalEntity = masterAgreement.getSigningEntity(Party.COUNTERPARTY);
+
+Country incorporated = cpLegalEntity.getIncorporated();
+
+indexAndStore(doc, MasterAgreementFields.CP_LEGAL_ENTITY_COUNTRY_OF_INCORPORATION,
+
+incorporated != null ? incorporated.getCode() + " " + incorporated.getName() : "");
+
+indexAndStore(doc, MasterAgreementFields.COUNTRY_OF_INCORPORATION_CODE,
+
+incorporated != null ? incorporated.getCode() : "");
+
+indexAndStore(doc, MasterAgreementFields.CP_ENTITY_STATE_NAME,cpLegalEntity.getStateName() == null ? "" : cpLegalEntity.getStateName());
+
+indexAndStore(doc, MasterAgreementFields.CP_ENTITY_STATE_NO_SPACE,cpLegalEntity.getStateName() == null ? "" : replaceSpecialChars(cpLegalEntity.getStateName().toLowerCase()));
+
+}
+
+private void indexNegotiator(Document doc, Amendment lastAmendment) {
+
+Negotiator negotiator = null;
+
+if (lastAmendment != null) {
+
+negotiator = lastAmendment.getNegotiator();
+
+}
+
+if (negotiator == null) {
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR, "");
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR_NAME, "");
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR_AGGREGATE, "");
+
+indexAndStore(doc, MasterAgreementFields.TRANSACTION_TEAM_NEGOTIATOR, BeagleStringUtils.toYorN(null)) ;
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR, negotiator.getId());
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR_NAME, negotiator.getFullName());
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR_USER_ID, (negotiator.getUser() != null) ? negotiator.getUser().getId() : "");
+
+indexAndStore(doc, MasterAgreementFields.NEGOTIATOR_AGGREGATE, negotiator.getId() + " " + negotiator.getFullName());
+
+indexAndStore(doc, MasterAgreementFields.TRANSACTION_TEAM_NEGOTIATOR, BeagleStringUtils.toYorN(negotiator.getTransactionSpecific())) ;
+
+}
+
+}
+
+private void indexChineseWallData(Document doc, MasterAgreement masterAgreement) {
+
+String isCorrespondenceAccessible = ChineseWallEntitiesAccessRights.YES; //String constants give better performance than enum
+
+String usersWhoHaveAccessToThisMA = "";
+
+Entity bpEntity = masterAgreement.getBnpParibasEntity();
+
+Entity cpEntity = masterAgreement.getCounterpartyEntity();
+
+Entity bpParentEntity = null;
+
+if (!bpEntity.isParent()) {
+
+bpParentEntity = bpEntity.getParent();
+
+}
+
+if (bpEntity.isParent()) {
+
+bpParentEntity = bpEntity;
+
+}
+
+if (cpEntity.isPrivate()) {
+
+if (bpParentEntity != null && CHINESE_WALL_ENTITIES.contains(bpParentEntity)) {
+
+if (bpParentEntity.getChineseWallAccessRights().getCorrespondence()) {
+
+isCorrespondenceAccessible = ChineseWallEntitiesAccessRights.RESTRICTED; //Restritcted access to selected users
+
+ArrayList list = new ArrayList();
+
+for (ChineseWallUser chineseWallUser : bpParentEntity.getUsersWhoHaveAccessToThisEntity()) {
+
+if (chineseWallUser != null) {
+
+list.add(chineseWallUser.getKey().getUser().getId());
+
+}
+
+}
+
+usersWhoHaveAccessToThisMA = BeagleStringUtils.convertCollectionToCommaSeparatedString(list);
+
+} else {
+
+isCorrespondenceAccessible = ChineseWallEntitiesAccessRights.NO;
+
+}
+
+}
+
+}
+
+indexAndStore(doc, MasterAgreementFields.IS_CHINESE_WALL_CORRESPONDENCE_ACCESSIBLE, isCorrespondenceAccessible);
+
+indexAndStore(doc, MasterAgreementFields.USERS_WHO_CAN_ACCESS_THIS_MA, usersWhoHaveAccessToThisMA);
+
+}
+
+private void storeField(Document doc, String fieldName, Date value) {
+
+if (value != null) {
+
+indexAndStore(doc, fieldName, BeagleDateFormat.format(value));
+
+indexNumericAndStore(doc, fieldName + MasterAgreementFields.LEXICOGRAPHICALLY_SORTABLE, BeagleDateFormat.format(value,BeagleDateFormat.YYYYMMDD));
+
+} else {
+
+indexAndStore(doc, fieldName, "");
+
+indexNumericAndStore(doc, fieldName + MasterAgreementFields.LEXICOGRAPHICALLY_SORTABLE, "-1");
+
+}
+
+}
+
+private void storeFieldDateTime(Document doc, String fieldName, Date value) {
+
+if (value != null) {
+
+indexAndStore(doc, fieldName, BeagleDateFormat.format(value));
+
+indexAndStoreNumericSet(doc, fieldName + MasterAgreementFields.LEXICOGRAPHICALLY_SORTABLE,BeagleDateFormat.format(value,BeagleDateFormat.YYYYMMDD_HH_MM));
+
+} else {
+
+indexAndStore(doc, fieldName, "");
+
+indexAndStoreNumericSet(doc, fieldName + MasterAgreementFields.LEXICOGRAPHICALLY_SORTABLE, "-1");
+
+}
+
+}
+
+private void storeField(Document doc, String fieldName, boolean value) {
+
+indexAndStore(doc, fieldName, BeagleStringUtils.toYorN(value));
+
+}
+
+private void storeField(Document doc, String fieldName, String value) {
+
+indexAndStore(doc, fieldName, value);
+
+}
+
+private void indexEntityFields(Document doc, Entity entity, String prefix, BeagleRepository repository) {
+
+if (entity != null) {
+
+try {
+
+indexAndStore(doc, prefix, entity.getId().toString());
+
+EntityDocumentBuilder.populateDocumentWithEntityFields(doc, entity, prefix + ".", MasterAgreementFields.ENTITY_AGGREGATE_SUFFIX);
+
+} catch (Exception e) {
+
+LOGGER.error("Indexing Master Agreement: can't index entity " + entity.getId(), e);
+
+}
+
+}
+
+}
+
+private String collateFields(MasterAgreement agreement, BeagleRepository repository,boolean hasCollateralAgreement) {
+
+StringBuffer aggregateIndexData = new StringBuffer();
+
+Long maId = agreement.getId();
+
+appendWithBoost(aggregateIndexData, maId.toString(), 20);
+
+AgreementType agreementType = agreement.getAgreementType();
+
+aggregateIndexData.append(" ").append(agreementType.getName());
+
+aggregateIndexData.append(" ").append(agreementType.getYear());
+
+aggregateIndexData.append(" ").append(agreementType.getCategory());
+
+aggregateIndexData.append(" ").append(agreement.getStatusText());
+
+if (agreement.isValidated()) {
+
+aggregateIndexData.append(" validated");
+
+}
+
+if (hasCollateralAgreement) {
+
+aggregateIndexData.append(" collateral");
+
+}
+
+Date agreementDate = agreement.getAgreementDate();
+
+if (agreementDate != null) {
+
+aggregateIndexData.append(" ").append(BeagleDateFormat.format(agreementDate,BeagleDateFormat.SPACE_SEPARATED));
+
+aggregateIndexData.append(" ").append(BeagleDateFormat.format(agreementDate,BeagleDateFormat.MMMYYYY));
+
+}
+
+Group group = agreement.getGroup();
+
+if (group != null) {
+
+aggregateIndexData.append(" ");
+
+appendWithBoost(aggregateIndexData, group.getId().toString(), 10);
+
+}
+
+collateEntityFields(aggregateIndexData, agreement.getSigningEntity(Party.COUNTERPARTY), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getActingEntity(Party.COUNTERPARTY), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getFundManagingCompany(Party.COUNTERPARTY), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getFundWithCompartments(Party.COUNTERPARTY), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getSigningEntity(Party.BNP_PARIBAS), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getActingEntity(Party.BNP_PARIBAS), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getFundManagingCompany(Party.BNP_PARIBAS), maId);
+
+collateEntityFields(aggregateIndexData, agreement.getFundWithCompartments(Party.BNP_PARIBAS), maId);
+
+if (!agreement.getClearingHouses().isEmpty()) {
+
+LOGGER.info("MA INDEX FOR CLEARING HOUSES STARTED for MA ID::" + agreement.getId());
+
+collateEntityFields(aggregateIndexData, Entity.find(repository, ((Long) agreement.getClearingHouses().iterator().next().getId().getJoinedId()).longValue()), maId);
+
+LOGGER.info("MA INDEX FOR CLEARING HOUSES COMPLETED for MA ID::" + agreement.getId());
+
+}
+
+// CCA custodian changes
+
+if(!agreement.getCounterpartyCollateralControlAgreement().isEmpty()){
+
+for (CollateralControlAgreement cca : agreement.getCounterpartyCollateralControlAgreement()) {
+
+Entity custodian = cca.getCustodian();
+
+if (custodian != null && cca.isLive()) {
+
+collateEntityFields(aggregateIndexData, custodian, maId);
+
+}
+
+}
+
+}
+
+if(!agreement.getBnpCollateralControlAgreement().isEmpty()){
+
+for (CollateralControlAgreement cca : agreement.getBnpCollateralControlAgreement()) {
+
+Entity custodian = cca.getCustodian();
+
+if (custodian != null && cca.isLive()) {
+
+collateEntityFields(aggregateIndexData, custodian, maId);
+
+}
+
+}
+
+}
+
+Amendment lastSignedAmendment = agreement.getLastSignedAmendment();
+
+if (lastSignedAmendment != null) {
+
+if (agreement.isPdg()) {
+
+aggregateIndexData.append(" pdg");
+
+}
+
+if (agreement.isGuarantee()) {
+
+aggregateIndexData.append(" guarantee");
+
+}
+
+if (agreement.getCloseOutNetting()) {
+
+// artificially boost this to get rid or false hits on "close" or "out"
+
+appendWithBoost(aggregateIndexData.append(" "), "close out netting closeout closeOutNetting", 3);
+
+}
+
+}
+
+return aggregateIndexData.toString();
+
+}
+
+private void appendWithBoost(StringBuffer aggregateIndexData, String term, int boost) {
+
+for (int i = 0; i < boost; i++) {
+
+aggregateIndexData.append(term).append(" ");
+
+}
+
+}
+
+private void collateEntityFields(StringBuffer aggregateIndexData, Entity entity, Long maId) {
+
+if (entity != null) {
+
+try {
+
+aggregateIndexData.append(EntityDocumentBuilder.collateFields(entity));
+
+} catch (Exception e) {
+
+StringBuilder buffer = new StringBuilder("Indexing Master Agreement ")
+
+.append(maId)
+
+.append(": unable to index entity ")
+
+.append(entity.getId());
+
+LOGGER.error(buffer.toString());
+
+}
+
+}
+
+}
+
+private void indexCSAReconcillationData(Document doc, MasterAgreement masterAgreement) {
+
+List collateralDocuments = masterAgreement.getAttachedCollateralDocuments();
+
+Collection collateralDocumentAttachedTypes = getCollateralDocumentAttachedTypes(collateralDocuments);
+
+storeField(doc, MasterAgreementFields.ATTACHED_COLLATERAL_DOCUMENTS, BeagleStringUtils.convertCollectionToCommaSeparatedString(collateralDocumentAttachedTypes));
+
+indexUnstored(doc, MasterAgreementFields.ARE_COLLATERAL_DOCUMENTS_ATTACHED, BeagleStringUtils.toYorN(!collateralDocumentAttachedTypes.isEmpty()));
+
+indexUnstored(doc, MasterAgreementFields.HAS_EXECUTED_CSA, BeagleStringUtils.toYorN(masterAgreement.hasExecutedCSA()));
+
+indexUnstored(doc, MasterAgreementFields.HAS_CSA_IN_SUMMARY, isExecutedDocumentationSummaryContainsCollateralOrCSA(executedDocuments.get(), masterAgreement));
+
+}
+
+private Collection getCollateralDocumentAttachedTypes(List collateralDocuments) {
+
+Set documentTypes = new HashSet();
+
+for (Iterator iterator = collateralDocuments.iterator(); iterator.hasNext(); ) {
+
+NegotiationDocumentForExecDoc negotiatorDocument = (NegotiationDocumentForExecDoc) iterator.next();
+
+if (NegotiationDocumentType.EXECUTED_DOCUMENTATION_TYPE_ID.equals(negotiatorDocument.getType().getTabId())) {
+
+if (NegotiationDocument.getExecutedDocumentationTypes().contains(negotiatorDocument.getType().getId())) {
+
+documentTypes.add(negotiatorDocument.getType().getText());
+
+}
+
+}
+
+}
+
+return documentTypes;
+
+}
+
+private String isExecutedDocumentationSummaryContainsCollateralOrCSA(Set collateralDocuments, MasterAgreement masterAgreement) {
+
+for (Iterator iterator = collateralDocuments.iterator(); iterator.hasNext(); ) {
+
+NegotiationDocumentForExecDoc negotiationDocument = (NegotiationDocumentForExecDoc) iterator.next();
+
+if (negotiationDocument.getType() != null && negotiationDocument.getType().isExecutedDocument()) {
+
+String summary = negotiationDocument.getSummary() == null ? "" : negotiationDocument.getSummary();
+
+if (StringUtils.isNotBlank(negotiationDocument.getDocumentComment())) {
+
+summary = summary + " " + negotiationDocument.getDocumentComment();
+
+}
+
+if(negotiationDocument.getDocumentSummary() != null){
+
+if(StringUtils.isNotEmpty(summary))
+
+summary = summary + " " + negotiationDocument.getDocumentSummary().getText();
+
+else
+
+summary = negotiationDocument.getDocumentSummary().getText();
+
+}
+
+if (StringUtils.isNotBlank(summary) && BeagleStringUtils.containsAny(summary, "csa", "collateral","(csa)") && masterAgreement.getCollateralFlag().equals(Boolean.TRUE)) {
+
+return "y";
+
+}
+
+}
+
+}
+
+return "n";
+
+}
+
+private void indexCollateralDocDetails(Document doc, MasterAgreement masterAgreement, Set<CollateralDocStatusDetails> collDocStatusDetails, BeagleRepository beagleRepository, Date submissionDate) {
+
+String segmentIdfields = "";
+
+if(collDocStatusDetails!=null && !collDocStatusDetails.isEmpty()){
+
+for(CollateralDocStatusDetails lastDoc : collDocStatusDetails){
+
+if(lastDoc!=null && !StringUtils.equals(lastDoc.getStatus(), DocumentClass.STS_SENTFORCOMMENT_CONSENT)) {
+
+Negotiator negotiator = getCollateralDocNegotiator(masterAgreement, lastDoc);
+
+CollateralDocAudit audit = beagleRepository.getDocAudit(masterAgreement.getId(), lastDoc.getKey().getDocGroupId());
+
+segmentIdfields = getCollDocCategoryForLastDoc(masterAgreement, lastDoc, doc, beagleRepository,segmentIdfields, submissionDate);
+
+if (null != lastDoc) {
+
+if (audit != null) {
+
+storeField(doc, MasterAgreementFields.COLLATERAL_DOCUMENT_COMMENTS, audit.getComments());
+
+}
+
+if (StringUtils.equals(lastDoc.getStatus(), DocumentClass.STS_SENTFORCOMMENT_CONSENT)) {
+
+storeField(doc, MasterAgreementFields.COLLATERAL_DOCUMENT_STATUS, DocumentClass.STS_PENDING_FINAL_APPROVAL);
+
+} else {
+
+storeField(doc, MasterAgreementFields.COLLATERAL_DOCUMENT_STATUS, lastDoc.getStatus());
+
+}
+
+if (null != lastDoc.getCmoLocation()) {
+
+storeField(doc, MasterAgreementFields.CMO_LOCATION_CODE, lastDoc.getCmoLocation().getCode());
+
+storeField(doc, MasterAgreementFields.CMO_LOCATION, lastDoc.getCmoLocation().getName());
+
+} else {
+
+storeField(doc, MasterAgreementFields.CMO_LOCATION_CODE, MasterAgreementFields.NO_ADMIN_LOCATION);
+
+}
+
+storeField(doc, MasterAgreementFields.CMO_USER, lastDoc.getCmoUser() != null ? lastDoc.getCmoUser().getFullname() : masterAgreement.getLastAmendment().getNegotiator().getFullName() /*lastDoc.getCMOuserUid()*/);
+
+storeFieldDateTime(doc, MasterAgreementFields.COLLATERAL_VALIDATE_DATE, lastDoc.getDocCreatDate()/*BeagleDateFormat.format(lastDoc.getDocCreatDate(), BeagleDateFormat.FORMAT_WITH_TIME)*/);
+
+storeFieldDateTime(doc, MasterAgreementFields.COLLATERAL_DOC_CREATE_DATE, lastDoc.getDocCreatDate()/*BeagleDateFormat.format(lastDoc.getDocCreatDate(), BeagleDateFormat.FORMAT_WITH_TIME)*/);
+
+storeField(doc, MasterAgreementFields.COLLATERAL_REJECTION_REASON, getCollateralDocRejectReasons(lastDoc));
+
+if (negotiator == null) {
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR, "");
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR_NAME, "");
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR_AGGREGATE, "");
+
+} else {
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR, negotiator.getId());
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR_NAME, negotiator.getFullName());
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR_USER_ID, (negotiator.getUser() != null) ? negotiator.getUser().getId() : "");
+
+indexAndStore(doc, MasterAgreementFields.COLLATERAL_NEGOTIATOR_AGGREGATE, negotiator.getId() + " " + negotiator.getFullName());
+
+}
+
+}
+
+}
+
+}
+
+storeField(doc, MasterAgreementFields.SEGMENT_ID, segmentIdfields);
+
+}
+
+}
+
+private void indexCollateralDocumentData(Document doc, MasterAgreement masterAgreement, BeagleRepository beagleRepository) {
+
+Set<CollateralDocStatusDetails>  collDocStatusDetails = masterAgreement.getAllCollateralDocDetailsByDocStatusRule();
+
+final Date submissionDate = beagleRepository.getFirstPFADocDate(masterAgreement.getId());
+
+if (submissionDate != null) {
+
+storeField(doc, MasterAgreementFields.COLLATERAL_SUBMISSION_DATE, submissionDate);
+
+}
+
+indexCollateralDocDetails(doc, masterAgreement, collDocStatusDetails, beagleRepository, submissionDate);
+
+}
+
+private Negotiator getCollateralDocNegotiator(MasterAgreement masterAgreement, CollateralDocStatusDetails lastDoc) {
+
+Set<NegotiationDocument> negoDocs = negotiationDocuments.get();
+
+for (NegotiationDocument negotiationDocument : negoDocs) {
+
+if (negotiationDocument.getDocumentGroupId() != null && negotiationDocument.getDocumentGroupId().equals(lastDoc.getKey().getDocGroupId())) {
+
+return negotiationDocument.getNegotiator();
+
+}
+
+}
+
+return null;
+
+}
+
+private String getCollDocCategoryForLastDoc(MasterAgreement masterAgreement, CollateralDocStatusDetails lastDoc, Document document, BeagleRepository beagleRepository, String segmentIdfields, Date submissionDate) {
+
+String docCategory = "";
+
+String docClass = "";
+
+Long docCategoryId = 0L;
+
+Set<NegotiationDocument> docTypes = negotiationDocuments.get();
+
+SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy");
+
+List<Long> docGroupIdList = new ArrayList<Long>();
+
+for (NegotiationDocument negotiationDocument : docTypes) {
+
+if(lastDoc.getCollateralSegmentId()!=null && negotiationDocument.getSegmentId()!=null &&
+
+lastDoc.getCollateralSegmentId().equals(negotiationDocument.getSegmentId())
+
+&& matchDocGroupIdWithNegotiationDocumentGroupId(lastDoc,negotiationDocument)){
+
+if (negotiationDocument.getDocumentGroupId() != null ) {
+
+CollateralDocAudit audit = beagleRepository.getDocAudit(masterAgreement.getId(), negotiationDocument.getDocumentGroupId());
+
+if (negotiationDocument.getIsStandard() != null) {
+
+docClass = toYesorNo(negotiationDocument.getIsStandard());
+
+}
+
+storeField(document, MasterAgreementFields.COLLATERAL_DOCUMENT_CLASS, docClass);
+
+if (negotiationDocument.getSegmentId() != null) {
+
+storeField(document, MasterAgreementFields.COLLATERAL_SEGMENT_ID, negotiationDocument.getSegmentId());
+
+}
+
+docCategoryId = negotiationDocument.getDocumentCatagory() != null ? negotiationDocument.getDocumentCatagory().getId() : 0;
+
+if (docCategoryId == NegotiationDocumentType.COLLATERAL_AGREEMENT) {
+
+docCategory = "collateralAgreement";
+
+} else if (docCategoryId == NegotiationDocumentType.COLLATERAL_AGREEMENT_AMENDMENT) {
+
+docCategory = "collateralAgreementAmd";
+
+} else if (docCategoryId == NegotiationDocumentType.CREDIT_SUPPORT_DOCUMENT) {
+
+docCategory = "creditSupportDocument";
+
+} else if (docCategoryId == NegotiationDocumentType.MASTER_AND_COLLATERAL_AGREEMENT_AMENDMENT) {
+
+docCategory = "masterCollateralAgreementAmd";
+
+}
+
+try {
+
+String status;
+
+String cmoLocation = "none"  ;
+
+String cmoLocationCode = "";
+
+String cmoUser;
+
+String approvalDate = "";
+
+String strSubmissionDate = "";
+
+String rejectionReasons = "";
+
+String auditDate = "";
+
+String auditUser = "";
+
+String collateralNegotiator = (negotiationDocument.getNegotiator()!= null && negotiationDocument.getNegotiator().getUser()!=null) ? negotiationDocument.getNegotiator().getUser().getFullname() : null;
+
+status = lastDoc.getStatus();
+
+if(lastDoc.getCmoLocation()==null && lastDoc.getCollateralSegmentId()!=null){
+
+Location loc =  getCmoLocation (masterAgreement,Long.parseLong(lastDoc.getCollateralSegmentId().split("_")[0]!=null?lastDoc.getCollateralSegmentId().split("_")[0]:"0"),beagleRepository);
+
+cmoLocation  =  loc!=null ? loc.getName() :"";
+
+cmoLocationCode = loc!=null ? loc.getCode() : "none";
+
+}else if(lastDoc.getCmoLocation()!=null) {
+
+cmoLocation  = lastDoc.getCmoLocation().getName();
+
+cmoLocationCode = lastDoc.getCmoLocation()!=null ? lastDoc.getCmoLocation().getCode() : "none";
+
+}
+
+cmoUser =  lastDoc.getCmoUser() != null ? lastDoc.getCmoUser().getFullname() : masterAgreement.getLastAmendment().getNegotiator().getFullName();
+
+if (submissionDate != null) {
+
+strSubmissionDate = formatter.format(submissionDate);
+
+}
+
+if(lastDoc.getDocCreatDate()!=null){
+
+approvalDate = formatter.format(lastDoc.getDocCreatDate());
+
+}
+
+if(getCollateralDocRejectReasons(lastDoc)!=null){
+
+rejectionReasons = getCollateralDocRejectReasons(lastDoc);
+
+}
+
+if(audit!=null && (audit.getComments()!=null && audit.getComments().startsWith("Chased"))) {
+
+auditDate = formatter.format(audit.getAuditDate());
+
+auditUser = audit.getAuditUser() != null ? audit.getAuditUser() : "";
+
+}
+
+Set<CollateralData> collateralDataSet = masterAgreement.getAllCollateralData();
+
+if(!docGroupIdList.contains(negotiationDocument.getDocumentGroupId())) {
+
+docGroupIdList.add(negotiationDocument.getDocumentGroupId());
+
+if (collateralDataSet != null && !collateralDataSet.isEmpty()) {
+
+for (CollateralData collateralData : collateralDataSet) {
+
+if (collateralData.getCollateralSegmentId().equals(negotiationDocument.getSegmentId()) && collateralData.getTerminationDate() == null) {
+
+if (negotiationDocumentSegmentIdAndDocumentDateIsNotNull(negotiationDocument)
+
+&& docCategory != null && docClass != null && status != null) {
+
+segmentIdfields = segmentIdfields.concat(negotiationDocument.getSegmentId()
+
+.concat("$_$").concat(docCategory)
+
+.concat("$_$").concat(docClass)
+
+.concat("$_$").concat(formatter.format(negotiationDocument.getDocumentDate()))
+
+.concat("$_$").concat(audit != null ? (audit.getComments() != null ? audit.getComments() : "") : "")
+
+.concat("$_$").concat(status)
+
+.concat("$_$").concat(cmoLocation)
+
+.concat("$_$").concat(cmoUser)
+
+.concat("$_$").concat(approvalDate)
+
+.concat("$_$").concat(strSubmissionDate)
+
+.concat("$_$").concat(rejectionReasons)
+
+.concat("$_$").concat(auditUser)
+
+.concat("$_$").concat(auditDate)
+
+.concat("$_$").concat(negotiationDocument.getDocumentGroupId().toString())
+
+.concat("$_$").concat(cmoLocationCode)
+
+.concat("$_$").concat(collateralNegotiator)
+
+.concat("#_#"));
+
+}
+
+}
+
+}
+
+}
+
+}
+
+} catch (NullPointerException e) {
+
+LOGGER.info(" Exception while Indexing collateral Data " + negotiationDocument.getSegmentId());
+
+}
+
+storeField(document, MasterAgreementFields.COLLATERAL_DOCUMENT_CATEGORY, docCategory);
+
+}
+
+}
+
+}
+
+return segmentIdfields;
+
+}
+
+private boolean negotiationDocumentSegmentIdAndDocumentDateIsNotNull(NegotiationDocument negotiationDocument){
+
+return negotiationDocument != null && negotiationDocument.getSegmentId() != null && negotiationDocument.getDocumentDate() != null;
+
+}
+
+private boolean matchDocGroupIdWithNegotiationDocumentGroupId(CollateralDocStatusDetails lastDoc,NegotiationDocument negotiationDocument){
+
+return lastDoc.getKey().getDocGroupId()!=null && negotiationDocument.getDocumentGroupId()!=null && lastDoc.getKey().getDocGroupId().equals(negotiationDocument.getDocumentGroupId());
+
+}
+
+/**
+
+* This has been created for correcting blank values of cmo location for all pending requests in Collateral Dashboard. This is Temporary and can be removed later
+
+* @param ma
+
+* @param collateralSegmentId
+
+* @return
+
+*/
+
+public Location getCmoLocation(MasterAgreement ma, Long collateralSegmentId,BeagleRepository beagleRepository){
+
+CollateralData collateralData = ma.getCollateralDataForCollaterlId(collateralSegmentId) ;
+
+Location cmoLocation = null;
+
+if(collateralData!=null && collateralData.getAdminLocation()!=null){
+
+CollateralOpsCmoLocation collateralOpsCmoLocation =
+
+beagleRepository.findObject(CollateralOpsCmoLocation.class, collateralData.getAdminLocation().getCode());
+
+if(collateralOpsCmoLocation!=null){
+
+cmoLocation = collateralOpsCmoLocation.getCmolocation();
+
+}
+
+}
+
+return cmoLocation;
+
+}
+
+private String getCollateralDocRejectReasons(CollateralDocStatusDetails lastDoc) {
+
+StringBuilder reasonBuf = new StringBuilder();
+
+if (lastDoc.getCollateralDocRejectReasons() != null) {
+
+for (Iterator iterator = lastDoc.getCollateralDocRejectReasons().iterator(); iterator.hasNext(); ) {
+
+if (lastDoc.getCollateralDocRejectReasons().size() > 1) {
+
+reasonBuf.append("<BR>");
+
+}
+
+CollateralDocRejectReasons collDocRejectReasons = (CollateralDocRejectReasons) iterator.next();
+
+reasonBuf.append(collDocRejectReasons.getId().getRejectReason().getText());
+
+}
+
+}
+
+return reasonBuf.toString();
+
+}
+
+private String getNegotiationStatusSet(Set<PendingActionValue> values) {
+
+String negoSatus;
+
+ArrayList list = new ArrayList();
+
+for (PendingActionValue pendingAction : values) {
+
+if (pendingAction != null) {
+
+list.add(pendingAction.getPendingActionKey().getLookupItem().getText());
+
+}
+
+}
+
+negoSatus = BeagleStringUtils.convertCollectionToCommaSeparatedString(list);
+
+return negoSatus;
+
+}
+
+protected static DocumentTypeFilter filter(final String category, final String filter) {
+
+return new DocumentTypeFilter() {
+
+@Override
+
+public boolean accept(NegotiationDocumentType docType) {
+
+return docType != null && category.equals(docType.getCategory()) && matches(filter, docType);
+
+}
+
+};
+
+}
+
+private static boolean matches(String documentTypeFilter, NegotiationDocumentType docType) {
+
+return StringUtils.isBlank(documentTypeFilter) ||
+
+(documentTypeFilter.equalsIgnoreCase(docType.getText()) || (StringUtils.isBlank(docType.getText()) && documentTypeFilter.toUpperCase().startsWith("OTHER")));
+
+}
+
+private String indexSubGroupForGoogleSearch(String subGroupName) {
+
+StringBuffer subGrpName = new StringBuffer();
+
+subGrpName.append(subGroupName.toLowerCase() + " ");
+
+subGrpName.append(subGroupName);
+
+return subGrpName.toString();
+
+}
+
+}
+
