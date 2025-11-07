@@ -1,0 +1,465 @@
+#macro (renderButton $n $ma_id)
+    #if($action.isCanRedirect())
+        <button id="redirectLoc_$ma_id"
+                value="$ma_id"
+                name="$n"
+                class="redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">
+            Redirect
+        </button>
+    #elseif($action.isCanChase())
+        <button id="chaseRequest"
+                value="$ma_id"
+                name="$n"
+                class="chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs">
+            Chase
+        </button>
+    #end
+#end
+
+#set($agreements = $action.getCollateralStatusDisplay(10))
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" >
+    <script language="javascript" type="text/javascript">
+        var j = jQuery;
+        jQuery.noConflict();
+    </script>
+</head>
+
+## Figure out user type for buttons
+#if($action.isCanRedirect())
+    <input type="hidden" id="userType" value="collateralOpsUser"/>
+#elseif($action.isCanChase())
+    <input type="hidden" id="userType" value="legalUser"/>
+#else
+    <input type="hidden" id="userType" value="unknown"/>
+#end
+
+<input type="hidden" id="PendingSize" name="totalPendingSize" value="$agreements.size()">
+
+#set($n = 1)
+
+#if($agreements.size() > 0)
+
+    <table class="table table-bnp table-responsive"
+           id="PendingFinalApprovalPortletTable"
+           style="width: 100%; table-layout: fixed;">
+
+        <thead>
+        <tr>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Agreement</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Group</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Collateral Segment Id</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Agreement Type</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Standard</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Document Category</th>
+            <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor">CRDS Code</th>
+            <th class="w-10 table-th-portlets-collateral table-header-bg-nocolor">LEI Number</th>
+            <th class="w-20 table-th-portlets-collateral table-header-bg-nocolor">Counterparty</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Creation Date</th>
+            <th class="w-20 table-th-portlets-collateral table-header-bg-nocolor">CMO Location</th>
+            ## Action column header (no visible text)
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">&nbsp;</th>
+            <th class="table-th-portlets-collateral table-header-bg-nocolor">Comments</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        ## rows will be injected by DataTables via Ajax
+        </tbody>
+    </table>
+
+#else
+
+    <div class="text-center">No agreements found.</div>
+
+#end
+
+## Show More / Excel link logic – based on full result size
+#if($agreements.size() > 5)
+    <div id="allLink_PendingFinalApproval" class="showAllLink">
+        <a href="${request.contextPath}/secure/CollateralApprovalRequest.action?mode=hide"
+           title="Show more agreements">
+            <span class="badge badge-home-bnp">Show More &gt;&gt;</span>
+        </a>
+    </div>
+#else
+    <div id="excelExport_PendingFinalApproval" class="showAllLink">
+        <a href="javascript:modalWindowForExcelExport('excelExportPopupCollPen','Excel Export')">
+            <span class="badge badge-home-bnp">Excel Export</span>
+        </a>
+    </div>
+#end
+
+#if($showmore)
+    <div id="all_Comments" class="showAllComments">
+        <a href="${request.contextPath}/secure/" title="show more comments">[More] </a>
+    </div>
+#end
+
+## Excel export popup (unchanged)
+<div id="excelExportPopupCollPen" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Excel Export</h4>
+                <button type="button" class="close icon-white" align="center" data-dismiss="modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <form name="excelExportCollPen"
+                      id="excelExportCollPen"
+                      action="${request.requestURI.replaceAll(".action", ".ajax")}"
+                      method="post">
+                    <input type='hidden' name='view' value='excel'/>
+
+                    #foreach($param in $parameterNames)
+                        #foreach($paramValue in ${action.getParameterValues($param)})
+                            <input type='hidden' name='${param}' value='$paramValue'/>
+                        #end
+                    #end
+
+                    <table width='100%'>
+                        <tr>
+                            #exportColumn("PendingFinalApproval_agreementId" "Agreement Number")
+                            #exportColumn("PendingFinalApproval_cpEntity" "Counterparty Entity")
+                            #exportColumn("PendingFinalApproval_group" "Group Number")
+                            #exportColumn("PendingFinalApproval_agreementType" "Agreement Type")
+                            #exportColumn("PendingFinalApproval_crdsCode" "CRDS Code")
+                        </tr>
+                        <tr>
+                            #exportColumn("PendingFinalApproval_category" "Document Category")
+                            #exportColumn("PendingFinalApproval_standard" "Standard")
+                            #exportColumn("PendingFinalApproval_cmoLocation" "CMO Location")
+                            #exportColumn("PendingFinalApproval_collateralDocCreateDate" "Creation Date")
+                            #exportColumn("PendingFinalApproval_comments" "Comments")
+                        </tr>
+                        <tr>
+                            #exportColumn("PendingFinalApproval_segmentId" "Collateral Segment Id")
+                            #exportColumn("PendingFinalApproval_bnpLei" "BNP PARIBAS LEI")
+                            #exportColumn("PendingFinalApproval_cpLei" "Counterparty LEI")
+                        </tr>
+                    </table>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button id="exportPendingFinalApp"
+                        type="button"
+                        class="button-bnp button-bnp-raised button-bnp-info button-bnp-xs"
+                        data-dismiss="modal">
+                    <i class="fas fa-download"></i> Export To Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+## ========= Ajax + DataTables for PORTLET (top 5 rows) =========
+<script type="text/javascript">
+    j(function () {
+
+        var userType = j("#userType").val();
+        var maxRows = 5;   // 🔹 how many rows to show in the portlet
+
+        // --- Helper: parse dd-MMM-yyyy into timestamp (for sorting) ---
+        function parseDdMmmYyyyToTs(dateStr) {
+            if (!dateStr) return 0;
+            dateStr = j.trim(String(dateStr));
+            if (dateStr === '' || dateStr === 'null' || dateStr === undefined) return 0;
+            dateStr = dateStr.replace(/\s+/g, '').replace(/--+/g, '-').trim();
+
+            var months = {
+                "jan": 0, "feb": 1, "mar": 2, "apr": 3, "may": 4, "jun": 5,
+                "jul": 6, "aug": 7, "sep": 8, "oct": 9, "nov": 10, "dec": 11
+            };
+
+            var parts = dateStr.split('-');
+            if (parts.length !== 3) return 0;
+
+            var day = parseInt(parts[0], 10);
+            var monStr = parts[1].substring(0, 3).toLowerCase();
+            var month = months[monStr];
+            var year = parseInt(parts[2], 10);
+
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return 0;
+            return new Date(year, month, day).getTime();
+        }
+
+        // --- Initialize DataTable for PORTLET using Ajax data ---
+        function initPendingFinalApprovalPortletTable(data) {
+
+            // limit to top N rows
+            var limited = data.slice(0, maxRows);
+
+            if (j.fn.DataTable.isDataTable('#PendingFinalApprovalPortletTable')) {
+                j('#PendingFinalApprovalPortletTable').DataTable().clear().destroy();
+            }
+
+            j('#PendingFinalApprovalPortletTable').DataTable({
+                data: limited,
+                columns: [
+                    {
+                        data: 0,
+                        render: function (d) {
+                            if (!d) return '';
+                            return "<a href='ShowMasterAgreement.action?masterAgreementId=" +
+                                d + "&view=#COLLATERAL'><font class='a-link-table-bnp'>" +
+                                d + "</font></a>";
+                        },
+                        orderable: false
+                    },
+                    {data: 1, orderable: false}, // Group
+                    {data: 2, orderable: false}, // Segment Id
+                    {data: 3, orderable: false}, // Agreement Type
+                    {data: 4, orderable: false}, // Standard
+                    {data: 5, orderable: false}, // Doc Category
+                    {data: 6, orderable: true},  // CRDS Code  🔹 sortable
+                    {data: 7, orderable: false}, // LEI
+                    {data: 8, orderable: true},  // Counterparty 🔹 sortable
+                    {
+                        data: 9,
+                        render: function (data, type) {
+                            if (type === 'sort' || type === 'type') {
+                                return parseDdMmmYyyyToTs(data);
+                            }
+                            return data || '';
+                        },
+                        orderable: true              // 🔹 Creation Date sortable
+                    },
+                    {
+                        data: 10,
+                        render: function (data, type, row) {
+                            var chasedUser = row[13] || '';
+                            var chasedDate = row[14] || '';
+                            var display = data ? data : '';
+                            if (chasedUser && chasedUser.trim() !== '') {
+                                display += "<br/>Last Chased By : " + chasedUser +
+                                           "<br/>On : " + chasedDate;
+                            }
+                            return display;
+                        },
+                        orderable: true              // 🔹 CMO Location sortable
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (row) {
+                            var maId = row[0] || '';
+                            var segId = row[2] || '';
+                            var cmoLoc = row[10] || '';
+                            var docId = row[12] || '';
+
+                            if (userType === 'collateralOpsUser') {
+                                return "<button class='redirectClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs' " +
+                                    "data-maid='" + maId + "' " +
+                                    "data-docid='" + docId + "' " +
+                                    "value='" + segId + "' " +
+                                    "name='" + cmoLoc + "'>Redirect</button>";
+                            } else if (userType === 'legalUser') {
+                                return "<button class='chaseClass button-bnp button-bnp-raised button-bnp-info button-bnp-xs' " +
+                                    "data-maid='" + maId + "' " +
+                                    "data-docid='" + docId + "' " +
+                                    "value='" + segId + "' " +
+                                    "name='" + cmoLoc + "'>Chase</button>";
+                            } else {
+                                return "";
+                            }
+                        }
+                    },
+                    {
+                        data: 11,
+                        orderable: false,
+                        className: 'shrink'
+                    }
+                ],
+                order: [[9, 'asc']],       // default sort by Creation Date
+                paging: false,
+                searching: false,
+                info: false,
+                autoWidth: false,
+                stripeClasses: []
+            });
+        }
+
+        // --- Load data from the SAME Ajax action as the big table ---
+        j.ajax({
+            url: '${request.contextPath}/secure/CollateralPendingApprovalRequestsAjax.action?view=json',
+            type: 'POST',
+            beforeSend: function () {
+                jquery_block_ui && jquery_block_ui();
+            },
+            success: function (data) {
+                initPendingFinalApprovalPortletTable(data.parametersList || []);
+            },
+            complete: function () {
+                j.unblockUI && j.unblockUI();
+            }
+        });
+
+        // --- Redirect button behaviour (same as big table logic, but generic) ---
+        j(document).off('click', '.redirectClass').on('click', '.redirectClass', function () {
+
+            var $btn = j(this);
+            var ma_id = $btn.data('maid');
+            var collateralSegment_Id = $btn.val();
+            var doc_id = $btn.data('docid') || 0;
+
+            j.confirm({
+                title: 'Redirect CMO Location',
+                content: '<table>' +
+                    '<tr><td><input type="radio" id="london" name="cmoLocation" value="LON"></td><td>LONDON</td></tr>' +
+                    '<tr><td><input type="radio" id="brussels" name="cmoLocation" value="BRU"></td><td>BRUSSELS</td></tr>' +
+                    '<tr><td><input type="radio" id="HONGKONG" name="cmoLocation" value="HKG"></td><td>HONG KONG</td></tr>' +
+                    '<tr><td><input type="radio" id="NEWYORK" name="cmoLocation" value="NYK"></td><td>NEW YORK</td></tr>' +
+                    '</table>',
+                buttons: {
+                    "Yes": function () {
+
+                        var cmo_loc = j('input:radio[name="cmoLocation"]:checked').val();
+                        if (!cmo_loc) {
+                            j.alert('Please select a CMO Location');
+                            return;
+                        }
+
+                        j.ajax({
+                            url: '$request.contextPath/secure/RedirectCmoLocation.ajax?masterAgreementId='
+                                + encodeURIComponent(ma_id)
+                                + '&cmoLocation=' + encodeURIComponent(cmo_loc)
+                                + '&collateralSegmentId=' + encodeURIComponent(collateralSegment_Id)
+                                + '&documentId=' + encodeURIComponent(doc_id),
+                            type: 'POST',
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Request redirected and an email has been sent to CMO',
+                                    buttons: {
+                                        "OK": function () {
+                                            // simple refresh of portlet
+                                            location.reload();
+                                        }
+                                    }
+                                });
+                            },
+                            error: function () {
+                                j.alert('Error occurred while redirecting location');
+                            }
+                        });
+                    },
+                    "No": function () {
+                    }
+                }
+            });
+        });
+
+        // --- Chase button behaviour (same as big table) ---
+        j(document).off('click', '.chaseClass').on('click', '.chaseClass', function () {
+
+            var $btn = j(this);
+            var ma_id = $btn.data('maid');
+            var collateralSegment_Id = $btn.val();
+            var doc_id = $btn.data('docid');
+
+            if (!doc_id || doc_id === "" || doc_id === "0") {
+                j.alert("Document ID missing for this record. Please check backend data.");
+                return;
+            }
+
+            j.confirm({
+                title: 'Chase PFA request',
+                content: 'Do you want to proceed?',
+                buttons: {
+                    "Yes": function () {
+                        j.ajax({
+                            url: '$request.contextPath/secure/ChasePFA.ajax?masterAgreementId='
+                                + encodeURIComponent(ma_id)
+                                + '&collateralSegmentId=' + encodeURIComponent(collateralSegment_Id)
+                                + '&documentId=' + encodeURIComponent(doc_id)
+                                + '&view=json',
+                            type: 'POST',
+                            success: function (resp) {
+                                j.confirm({
+                                    title: 'Alert!',
+                                    content: 'Email sent to CMO',
+                                    buttons: {
+                                        "OK": function () {
+                                            // reload portlet to pick up latest Chase info from DB
+                                            location.reload();
+                                        }
+                                    }
+                                });
+                            },
+                            error: function () {
+                                j.alert("Error occurred while chasing request");
+                            }
+                        });
+                    },
+                    "No": function () {
+                    }
+                }
+            });
+        });
+
+    });
+</script>
+
+## Excel export JS (unchanged)
+<script type="text/javascript">
+    j(function () {
+        j(document).on("click", "#exportPendingFinalApp", function () {
+
+            j.blockUI({
+                message: '<h4 style="margin-top:12px"><img src="$request.contextPath/images/ajax-loader.gif" /> &nbsp;&nbsp;Please Wait...</h4>',
+                css: {
+                    border: "2px solid #B8B8B8",
+                    left: "45%",
+                    top: "45%",
+                    width: "160px",
+                    height: "50px",
+                    align: "center"
+                },
+                overlayCSS: {
+                    opacity: 0.01
+                }
+            });
+
+            var request = new XMLHttpRequest();
+            var url = '$request.contextPath/secure/CollateralApprovalRequest.ajax?'
+                + j("#excelExportCollPen").serialize()
+                + '&' + j('#filterform').serialize();
+
+            request.open('POST', url, true);
+            request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            request.responseType = 'blob';
+
+            request.onload = function (e) {
+                if (this.status === 200) {
+                    var filename = "";
+                    var disposition = request.getResponseHeader('Content-Disposition');
+
+                    if (disposition && disposition.indexOf('attachment') !== -1) {
+                        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                        var matches = filenameRegex.exec(disposition);
+                        if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                    }
+
+                    var blob = this.response;
+                    if (window.navigator.msSaveOrOpenBlob) {
+                        window.navigator.msSaveOrOpenBlob(blob, filename);
+                    } else {
+                        var downloadLink = window.document.createElement('a');
+                        var contentTypeHeader = request.getResponseHeader("Content-Type");
+                        downloadLink.href = window.URL.createObjectURL(new Blob([blob], {type: contentTypeHeader}));
+                        downloadLink.download = filename;
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                    }
+                }
+                j.unblockUI();
+            };
+
+            request.send();
+        });
+    });
+</script>
