@@ -1,0 +1,55 @@
+<head>
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge" >
+
+<script language="javascript" type="text/javascript">
+var j = jQuery;
+jQuery.noConflict();
+</script>
+
+<style>
+    /* Make header cells a positioning context */
+    #PendingFinalApprovalPortletTable thead th {
+        position: relative;
+        vertical-align: middle;
+    }
+
+    /* Remove DataTables default background sort icons & reduce padding */
+    #PendingFinalApprovalPortletTable thead th.sorting,
+    #PendingFinalApprovalPortletTable thead th.sorting_asc,
+    #PendingFinalApprovalPortletTable thead th.sorting_desc {
+        background-image: none !important;
+        padding-right: 18px; /* space for icon */
+    }
+
+    /* Base style for our sort icons */
+    #PendingFinalApprovalPortletTable thead th.sorting:after,
+    #PendingFinalApprovalPortletTable thead th.sorting_asc:after,
+    #PendingFinalApprovalPortletTable thead th.sorting_desc:after {
+        position: absolute;
+        right: 6px;               /* keeps icon close to header text */
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 10px;
+        color: inherit;           /* same color as header text */
+        opacity: 1;
+    }
+
+    /* Unsorted state */
+    #PendingFinalApprovalPortletTable thead th.sorting:after {
+        content: "\f0dc";         /* fa-sort */
+    }
+
+    /* Asc / desc states */
+    #PendingFinalApprovalPortletTable thead th.sorting_asc:after {
+        content: "\f0de";         /* fa-sort-up */
+    }
+
+    #PendingFinalApprovalPortletTable thead th.sorting_desc:after {
+        content: "\f0dd";         /* fa-sort-down */
+    }
+</style>
+
+</head>
