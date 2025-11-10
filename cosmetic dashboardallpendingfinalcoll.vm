@@ -1,22 +1,19 @@
-<style>
-    /* Adjusts only the default DataTables sort icons — nothing else */
-    #PendingFinalApprovalTable thead th.sorting,
-    #PendingFinalApprovalTable thead th.sorting_asc,
-    #PendingFinalApprovalTable thead th.sorting_desc {
-        /* Bring the arrow closer to the text */
-        background-position: center right 6px !important;
-        padding-right: 16px !important;
-    }
+<head>
+    <link rel="stylesheet"
+          href="$request.contextPath/js/jquery-ui-1.11.4/css/smoothness/jquery-ui.css?ver=1.0"/>
 
-    /* Match the header text color for both text and icon */
-    #PendingFinalApprovalTable thead th {
-        color: #333 !important; /* same tone as the rest of the headers */
-    }
+    <style type="text/css">
+        /* Only affect the headers of the Show-All Pending Final Approval table */
+        #PendingFinalApprovalTable thead th {
+            /* Pull the sort arrow closer to the text */
+            background-position: center right 6px !important;
+            background-repeat: no-repeat;
 
-    /* Optional fine-tune (some DataTables themes use slightly transparent icons) */
-    #PendingFinalApprovalTable thead th.sorting,
-    #PendingFinalApprovalTable thead th.sorting_asc,
-    #PendingFinalApprovalTable thead th.sorting_desc {
-        opacity: 0.9; /* make arrow darker like the header */
-    }
-</style>
+            /* Reduce the extra empty space on the right */
+            padding-right: 18px !important;
+
+            /* Make header text (and arrow, in most themes) a bit darker */
+            color: #333333 !important;
+        }
+    </style>
+</head>
