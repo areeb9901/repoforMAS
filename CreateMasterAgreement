@@ -1,0 +1,3077 @@
+This is CreateMasterAgreement.java
+
+package com.bnpparibas.beagle.ma.actions.creation;
+
+import com.bnpparibas.beagle.closeoutnettinggroup.model.CloseOutNettingGroup;
+
+import com.bnpparibas.beagle.collaterals.actions.EditCollateralDetails;
+
+import com.bnpparibas.beagle.coveredproducts.ui.ProductCoveredDisplay;
+
+import com.bnpparibas.beagle.indexing.actions.Suggest;
+
+import com.bnpparibas.beagle.indexing.ui.Option;
+
+import com.bnpparibas.beagle.isdacdealinkagecontrol.model.BannerModule;
+
+import com.bnpparibas.beagle.kernel.actions.BeagleActionSupport;
+
+import com.bnpparibas.beagle.kernel.actions.MaosRequestAction;
+
+import com.bnpparibas.beagle.kernel.actions.MultipleClearingHouseAction;
+
+import com.bnpparibas.beagle.kernel.actions.SelectOptionBuilder;
+
+import com.bnpparibas.beagle.kernel.services.EntityIds;
+
+import com.bnpparibas.beagle.kernel.ui.RequiredField;
+
+import com.bnpparibas.beagle.kernel.ui.inputfield.InputField;
+
+import com.bnpparibas.beagle.kernel.util.*;
+
+import com.bnpparibas.beagle.ma.model.*;
+
+import com.bnpparibas.beagle.ma.ui.*;
+
+import com.bnpparibas.beagle.overlap.model.OverlapAgreementInfo;
+
+import com.bnpparibas.beagle.overlap.util.OverlapHelper;
+
+import com.bnpparibas.beagle.staticdata.actions.parameters.CollateralTypeLookup;
+
+import com.bnpparibas.beagle.staticdata.indexing.search.EntitySuggestor;
+
+import com.bnpparibas.beagle.staticdata.indexing.search.NegotiatorSuggestionFactory;
+
+import com.bnpparibas.beagle.staticdata.model.*;
+
+import com.bnpparibas.beagle.staticdata.model.entity.Entity;
+
+import com.google.common.collect.ImmutableList;
+
+import org.apache.commons.lang.StringUtils;
+
+import java.text.ParseException;
+
+import java.util.*;
+
+import java.util.stream.Collectors;
+
+public class CreateMasterAgreement extends BeagleActionSupport implements MaosRequestAction, MultipleClearingHouseAction {
+
+public static final String CLOSE_OUT_NETTING_GROUP = "Close Out Netting Group";
+
+private static final String FBFD_2007 = "FBFD (2007-9)";
+
+private static final String FBFD_2013 = "FBFD (2013-6)";
+
+public static final String XPA_2018 = "X-PA (2018-11)";
+
+private static final String PREFILLING_STAGE ="IN_NEGO";
+
+public static final String DOMESTIC_BRANCH_ERROR = "Domestic Branch is mandatory";
+
+public static final String STANDARDISED_ERROR = "Please complete Standardised Contract flag";
+
+public static final String COUNTERPARTY_ENTITY_PARAMETER = "CounterpartyEntity";
+
+public static final String COUNTERPARTY_ENTITIES_PARAMETER = "CounterpartyEntities";
+
+public static final String COUNTERPARTY_ACTING_ENTITY_PARAMETER = "CounterpartyActingEntity";
+
+public static final String BNPPARIBAS_ENTITY_PARAMETER = "BnpParibasEntity";
+
+public static final String NEGOTIATOR_PARAMETER = "Negotiator";
+
+public static final String ADMIN_LOCATION_PARAMETER = "AdminLocation";
+
+public static final String FILE_OPENED_DATE_PARAMETER = "FileOpenedDate";
+
+public static final String GOVERNING_LAW_PARAMETER = "GoverningLaw";
+
+public static final String DOMESTIC_BRANCH = "domesticBranch";
+
+public static final String STANDARDISED_CONTRACT ="StandardisedContract";
+
+private static final List<String> MA_TYPE_DERIVATIVE = Arrays.asList("ISDA (2002-1)");
+
+private static final List<String> MA_TYPE_REPURCHASE = Arrays.asList("TBMA ISMA (2000-10)");
+
+private static final List<String> MA_TYPE_FBFD = Arrays.asList(FBFD_2007, FBFD_2013);
+
+private static final List<String> MA_TYPE_EMAD = Arrays.asList("EMAD (2004-11)");
+
+private static final String DUPLICATE_MA = "duplicateMa";
+
+public static final String CMA_MASTER_AGREEMENT_ID = "cma_masterAgreementId";
+
+public static final String NEGOTIATOR = "LLTM";
+
+public static final String DOCUMENT_ASSEMBLER_FOR_ISDAFRENCH_LAW = "documentAssemblerForISDAFrenchLaw";
+
+public static final String SYNTHETIC_REPO_MASTER_AGREEMENT_2024_12 = "Synthetic Repo Master Agreement (2024-12)";
+
+public static final String NETTING_CONTROL_ON_CREATION = "Netting control on creation";
+
+private static Map<Long, String> entityWarningCodes = new HashMap<Long, String>();
+
+private static List<String> isdaAlertYears = Arrays.asList("1987", "1992", "2002");
+
+public static final String LEGAL_COUNTERPARTY_OPTIONS = "showLegalCounterpartyOptions";
+
+public static final String MANAGER_CLASS = "managerClass";
+
+public static final String COUNTERPARTY_ENTITY = "counterpartyEntity";
+
+public static final String ENTITY = "entity";
+
+public static final String CLEARING_HOUSES = "clearingHouses";
+
+public static final String COLLATERAL_REGIME = "collateralRegime";
+
+public static final String AGREEMENT_CLASS = "agreementClass";
+
+public static final String AGREEMENT_WITH_CSA = "agreementWithCSA";
+
+public static final String SCRIPT_FOR_TOGGLECLASSFIELDS = "toggleManagedClassFields('false');toggleAction('false','false');";
+
+protected static final String MULTIPLE_STANDARD_CREATED = "multipleStandardCreated";
+
+private static final String DOCUMENT_ASSEMBLER_ISDA = "documentAssemblerForIsda";
+
+private static final String DOCUMENT_ASSEMBLER_ISDA_RP = "documentAssemblerForIsdaRP";
+
+private static final String DOCUMENT_ASSEMBLER_ISDA_HF = "documentAssemblerForIsdaHF";
+
+private static final String DOCUMENT_ASSEMBLER_ISDA_CORPORATE = "documentAssemblerForIsdaCorporate";
+
+private static final String DOCUMENT_ASSEMBLER_GMRA = "documentAssemblerForGMRA";
+
+private static final String DOCUMENT_ASSEMBLER_FBFD = "documentAssemblerForFBFD";
+
+private static final String DOCUMENT_ASSEMBLER_FBFD13 = "documentAssemblerForFBFD13";
+
+private static final String DOCUMENT_ASSEMBLER_EMAD = "documentAssemblerForEMAD";
+
+private static final String BLANK_STRING = "";
+
+private static final String EMAD_AGREEMENT = "EMAD (2004-11)";
+
+static {
+
+entityWarningCodes.put(1198L, "isda_BPCM_TYO");
+
+entityWarningCodes.put(1076L, "isda_BNPA_TYO");
+
+}
+
+static final String STANDARD = "STANDARD";
+
+static final String SINGLE_MANAGED = "SINGLE_MANAGED";
+
+static final String MULTIPLE_MANAGED = "MULTIPLE_MANAGED";
+
+static final String PRIVATE = "PRIVATE";
+
+static final String BP_MANAGED = "BP_MANAGED";static final String CP_MANAGED = "CP_MANAGED";
+
+static final String MULTI_MULTI_BOTH = "MULTI_MULTI_BOTH";
+
+static final String MULTIPLE_STANDARD = "MULTIPLE_STANDARD";
+
+protected WizardStep currentStep = CreateOrCopyMa.INSTANCE;
+
+protected String doSave;
+
+protected EntityIds counterparty = new EntityIds();
+
+protected EntityIds bnpParibas = new EntityIds();
+
+protected MasterAgreement masterAgreement;
+
+protected String selectedAgreementType;
+
+protected String selectedDraftType;
+
+protected Date fileOpenedDate = new Date();
+
+protected Date agreementExecutionDate = new Date();
+
+protected boolean euroOperation;
+
+protected LookupItem clientRegCategoryBucket;
+
+protected String negotiator;
+
+protected String domesticBranch;
+
+protected Location adminLocation;
+
+protected Set adminLocations;
+
+protected LookupItem acceptanceType;
+
+protected String agreementClass;
+
+protected String managerClass;
+
+protected String agreementWithCSA;
+
+protected Long governingLaw;
+
+protected String fortisFlag;
+
+protected String closeOutNettingFlag;protected String transactionSpecificMasters;
+
+protected boolean invokeDocumentAssembler;
+
+protected String legalCounterpartyType;
+
+private MasterAgreementHeaderDisplay masterAgreementHeaderDisplay;
+
+private List<PartyMaosDetails> maosRequests = new ArrayList<PartyMaosDetails>();
+
+protected List<Long> clearingHouses = new ArrayList<Long>();
+
+public CollateralTypeLookup collateralType;
+
+public Date collateralNegotiationStartDate;
+
+public LookupItem partyPostingCollateral;
+
+public LookupItem regulatoryClassification;
+
+public LookupItem collateralMarginType;
+
+public Set<LookupItem> collateralRegime;
+
+private String previousAgreementType;
+
+protected Boolean isAgreementTypeChanged;
+
+public int count=0;
+
+protected boolean createDefaultOffices = false;
+
+protected boolean displayDraftingOption = false;
+
+private String createNewMa;
+
+private String sourceMaId;
+
+private Long maId;
+
+private String responseString;
+
+private String[] entityDetails;
+
+private String[] agreementTypeDetailSourceMa;
+
+private String[] negotiatorDetailsSourceMa;
+
+private String[] nettingDetailsofSourceMa;
+
+protected Boolean StandardisedContract = Boolean.FALSE;
+
+protected Boolean defaultNegotiatorForEsa = Boolean.FALSE;
+
+protected boolean bannerMessageToBeDisplayed = false;
+
+public Long counterPartyIdForMaos;
+
+public boolean isCpPartyNonLegalForMaos;
+
+private Boolean creditQuestionaireReceived;
+
+private Date creditQuestionaireReceivedDate = new Date();
+
+private String addIsdaCommomFields;
+
+private String createMaType;
+
+private String createSingleMaType;
+
+private String  agreementCategory;
+
+protected String ackComment;
+
+protected boolean acknowledge;
+
+private Collection requirementsList;
+
+private boolean ackCommentToBeShown;
+
+protected String closeOutNettingControl;
+
+private OverlapAgreementInfo.MyParameters overlapParameters = new OverlapAgreementInfo.MyParameters();
+
+private static final RequiredField[] REQUIRED_FIELDS = {
+
+new DomesticBranchRequiredField(),
+
+new StandardisedContractRequiredField(STANDARDISED_CONTRACT, STANDARDISED_ERROR)
+
+};public static RequiredField[] getRequiredFields() {
+
+return REQUIRED_FIELDS;
+
+}
+
+@Override
+
+protected String doExecute() {
+
+setMaosCounterParty();
+
+if (notAuthorised()) {
+
+return NOT_AUTHORISED;
+
+}
+
+if (StringUtils.isNotBlank(doSave)) {
+
+if (!PreviewAndSave.INSTANCE.validate(this)) {
+
+addActionError("Some fields are missing");
+
+return INPUT;
+
+}
+
+if (DuplicateMasterAgreementCheck.isDuplicate()) {
+
+return DUPLICATE_MA;
+
+}
+
+DuplicateMasterAgreementCheck.recordOriginalRequest();
+
+return saveAgreement();
+
+}
+
+return step(currentStep);
+
+}
+
+private boolean isCounterPartyEntityChanged(){
+
+if(getCounterpartyEntity()!=null && !maosRequests.get(0).getPartyNo().equals(getCounterpartyEntity())){
+
+return true;
+
+}
+
+return false;
+
+}
+
+private void setMaosCounterParty() {
+
+if(!maosRequests.isEmpty()){
+
+if(isCounterPartyEntityChanged()){
+
+maosRequests.clear();
+
+}
+
+if(!maosRequests.isEmpty()){
+
+setCounterpartyEntity(maosRequests.get(0).getPartyNo());
+
+}
+
+}else if(counterPartyIdForMaos!=null){
+
+setCounterpartyEntity(counterPartyIdForMaos);
+
+}
+
+}
+
+public boolean notAuthorised() {
+
+return !getPolicy().canCreate();
+
+}
+
+private String backtrackOneStep() {
+
+currentStep = currentStep.getPrevious();
+
+return INPUT;
+
+}
+
+private String saveAgreement() {
+
+try {
+
+masterAgreement = doSave();
+
+StrutsUtils.storeInSession(CMA_MASTER_AGREEMENT_ID, masterAgreement.getId());
+
+String maTypeDerivative = draftForDerivative();
+
+String maTypeFbfd = draftForFbfd();
+
+if (StringUtils.isNotEmpty(maTypeDerivative)) {
+
+return maTypeDerivative;
+
+} else if (draft(MA_TYPE_REPURCHASE, "draftGMRA", draftType())) {
+
+return DOCUMENT_ASSEMBLER_GMRA;
+
+} else if (StringUtils.isNotEmpty(maTypeFbfd)) {
+
+return maTypeFbfd;
+
+} else if (draft(MA_TYPE_EMAD, "draftEMAD", draftType())) {
+
+return DOCUMENT_ASSEMBLER_EMAD;}else if (draft(MA_TYPE_DERIVATIVE, "draftISDAFrenchLaw", draftType())) {
+
+return DOCUMENT_ASSEMBLER_FOR_ISDAFRENCH_LAW;
+
+}
+
+return SUCCESS;
+
+} catch (InvalidMasterAgreementException e) {
+
+addErrorsFromException(e);
+
+return INPUT;
+
+}
+
+}
+
+private String draftType() {
+
+return getSelectedDraftType() != null ? getSelectedDraftType().replaceAll(",", "").trim() : null;
+
+}
+
+protected MasterAgreement doSave() throws InvalidMasterAgreementException {
+
+Long maosReqId = getMaosReqId();
+
+MasterAgreement masterAgreement;
+
+setDefaultDataForCog();
+
+if (StringUtils.isNotEmpty(sourceMaId)) {
+
+masterAgreement =  service.createCopyAndSaveMasterAgreement(getAgreementType(), counterparty, bnpParibas, negotiator,
+
+adminLocation, governingLaw, getDomesticBranch(), fileOpenedDate, agreementWithCSA, createDefaultOffices, getFortisFlagVal(),
+
+adminLocation, governingLaw, getDomesticBranch(), fileOpenedDate, agreementWithCSA, createDefaultOffices, getFortisFlagVal(),
+
+getCloseOutNettingFlagVal(), getTransactionSpecificMasters() != null ? Boolean.TRUE : Boolean.FALSE, BeagleStringUtils.isBlank(getLegalCounterpartyType()) ? null : Long.valueOf(getLegalCounterpartyType()),
+
+maosReqId, clearingHouses, collateralType, collateralNegotiationStartDate, getUser(), Integer.parseInt(sourceMaId), regulatoryClassification, collateralMarginType, collateralRegime, getStandardisedContract(), partyPostingCollateral, getTempCreditQuestionaireReceived(), getTempCreditQuestionaireReceivedDate(), false);
+
+if (isPBCategory()) {
+
+executeMasterAgreementActions(masterAgreement);
+
+}
+
+bannerMessageToBeDisplayed = isdaCdeaLinkageControlService.checkAndCopyMA(masterAgreement, getDomesticBranch(), createDefaultOffices, getStandardisedContract(),counterparty, bnpParibas);
+
+} else {
+
+masterAgreement =  service.createAndSaveMasterAgreement(getAgreementType(), counterparty, bnpParibas, negotiator,
+
+adminLocation, governingLaw, getDomesticBranch(), fileOpenedDate, agreementWithCSA, createDefaultOffices, getFortisFlagVal(),
+
+getCloseOutNettingFlagVal(), getTransactionSpecificMasters() != null ? Boolean.TRUE : Boolean.FALSE, BeagleStringUtils.isBlank(getLegalCounterpartyType()) ? null : Long.valueOf(getLegalCounterpartyType()),
+
+maosReqId, clearingHouses, collateralType, collateralNegotiationStartDate, getUser(), regulatoryClassification, collateralMarginType, collateralRegime, getStandardisedContract(), partyPostingCollateral, getTempCreditQuestionaireReceived(), getTempCreditQuestionaireReceivedDate(),StringUtils.isNotEmpty(getAddIsdaCommomFields()), acceptanceType, false, false, null);
+
+if (isPBCategory() || isESACategory() || isCogAgreementType() || masterAgreement.getAgreementType().toString().equalsIgnoreCase("Synthetic Repo Master Agreement (2024)")) {
+
+executeMasterAgreementActions(masterAgreement);
+
+}
+
+if(isCogAgreementType()){
+
+CloseOutNettingGroup closeOutNettingGroup = new CloseOutNettingGroup();
+
+closeOutNettingGroup.setTopUpCog(false);
+
+closeOutNettingGroup.setCogValidated(false);
+
+closeOutNettingGroup.setUsedForCalc(false);
+
+closeOutNettingGroup.setCrossBNPPEntities(false);
+
+closeOutNettingGroup.setCrossClientLegalEntity(false);
+
+closeOutNettingGroup.setMasterAgreement(masterAgreement);
+
+masterAgreement.setCloseOutNettingGroupDetails(closeOutNettingGroup);
+
+}
+
+if(AgreementHelper.isFbfEligibleForPrefilling(masterAgreement) || AgreementHelper.isRahmenvertEligibleForPrefilling(masterAgreement)){
+
+repository.prefillDatForMa(masterAgreement.getId(),PREFILLING_STAGE,getUser().getId(),
+
+masterAgreement.getAgreementType().getId().getId().toUpperCase().trim(),
+
+masterAgreement.getAgreementType().getId().getMonth(),masterAgreement.getAgreementType().getId().getYear(),masterAgreement.getCounterpartyEntity().getLeiId().trim());
+
+repository.flush();
+
+}
+
+bannerMessageToBeDisplayed = isdaCdeaLinkageControlService.checkAndCreateMasterAgreement(masterAgreement, getDomesticBranch(), createDefaultOffices, getStandardisedContract(),counterparty, bnpParibas);
+
+}
+
+if(!getCloseNettingControlList().isEmpty()){
+
+repository.updateGenericAuditForCloseOutNettingControl(masterAgreement.getId(),getUser().getFirstname()+" "+StringUtils.upperCase(getUser().getLastname()), this.closeOutNettingControl!=null && this.closeOutNettingControl.contains("true")?"Yes":"No", NETTING_CONTROL_ON_CREATION);
+
+}
+
+return masterAgreement;
+
+}
+
+public void executeMasterAgreementActions(MasterAgreement masterAgreement) {
+
+masterAgreement.setExecutionDate(agreementExecutionDate);
+
+AgreementHelper.updatePbLegalData(masterAgreement,this.clientRegCategoryBucket,this.euroOperation);
+
+Amendment amendment = repository.findMaster(masterAgreement.getId());
+
+amendment.execute(getUser(), agreementExecutionDate);
+
+setAcknowledgmentComment(masterAgreement);
+
+}
+
+private boolean isPrefillingEnabledForMa(){
+
+StringBuilder agreementTypeKey = new StringBuilder();
+
+Boolean isPreview = (currentStep == PreviewAndSave.INSTANCE && PreviewAndSave.INSTANCE.validate(this));
+
+agreementTypeKey.append(getAgreementType().getId().getId()).append(getAgreementType().getId().getMonth()).append(getAgreementType().getId().getYear());
+
+switch(agreementTypeKey.toString().toUpperCase()){
+
+case "FBFD62013" : if(isPreview)
+
+return isFbfEligibleForPrefillingPreviewAndSave();
+
+else
+
+return isFbfEligibleForPrefilling();
+
+case "RAHMENVERT92018" : return isRahmenvertEligibleForPrefilling();
+
+default: return false;
+
+}
+
+}
+
+private  void setAcknowledgmentComment(MasterAgreement ma) {
+
+String cpId = ma.getCounterpartyEntity().getId().toString();
+
+if (ackCommentToBeShown && acknowledge && BeagleStringUtils.isNotEmpty(ackComment)) {
+
+ma.setOverlappedProdComm(ackComment);
+
+ma.setAcknowledgement(acknowledge);
+
+if (overlapParameters.getOverlapAgreementsMap() != null) {
+
+Long key = Long.valueOf(cpId);
+
+List<Long> overlappedIds = overlapParameters.getOverlapAgreementsMap().get(key);
+
+if (CollectionUtils.isNotEmpty(overlappedIds)) {
+
+overlapParameters.getOverlapAgreementsMap().put(ma.getId(), overlappedIds);
+
+overlapParameters.getOverlapAgreementsMap().remove(key);
+
+}
+
+}
+
+OverlapHelper.saveOrUpdateOverlapHistory(overlapParameters, repository, getUser());
+
+}
+
+}
+
+private Long getMaosReqId() {
+
+return !maosRequests.isEmpty() ? maosRequests.get(0).getMaosId() : null;
+
+}
+
+private boolean getFortisFlagVal() {
+
+return getFortisFlag() != null ? Boolean.TRUE : Boolean.FALSE;
+
+}
+
+protected boolean getCloseOutNettingFlagVal() {
+
+return getCloseOutNettingFlag() != null ? Boolean.TRUE : Boolean.FALSE;
+
+}
+
+protected Date parse(String formattedDate) throws ParseException {
+
+return BeagleDateFormat.FORMAT.parse(formattedDate);
+
+}
+
+protected void addErrorsFromException(InvalidMasterAgreementException e) {
+
+for (Iterator i = e.getErrors().iterator(); i.hasNext(); ) {
+
+addActionError((String) i.next());}}@Override
+
+public void addClearingHouse(Long entityId) {
+
+clearingHouses.add(entityId);
+
+}
+
+private String createPreviewAgreement() {
+
+try {
+
+masterAgreement = doPreview();
+
+} catch (InvalidMasterAgreementException e) {
+
+addErrorsFromException(e);
+
+}
+
+return INPUT;
+
+}
+
+protected MasterAgreement doPreview() throws InvalidMasterAgreementException {
+
+Long maosReqId = !maosRequests.isEmpty() ? maosRequests.get(0).getMaosId() : null;
+
+populateDataForRahmenvert();
+
+setDefaultDataForCog();
+
+return service.previewMasterAgreement(getAgreementType(), counterparty, bnpParibas, negotiator,
+
+adminLocation, governingLaw, getDomesticBranch(), fileOpenedDate, agreementWithCSA, false,
+
+BeagleStringUtils.isBlank(getLegalCounterpartyType()) ? null : Long.valueOf(getLegalCounterpartyType()), null, Boolean.FALSE, Boolean.FALSE,
+
+false, maosReqId, collateralType, collateralNegotiationStartDate, regulatoryClassification, collateralMarginType, collateralRegime, getStandardisedContract(), partyPostingCollateral,acceptanceType);
+
+}
+
+private void setDefaultDataForCog() {
+
+if(isCogAgreementType()){
+
+setGoverningLaw(2L);
+
+setAdminLocation(new Location("LON",new Country("GB"),"LONDON",false));
+
+this.negotiator = NEGOTIATOR;
+
+}
+
+}
+
+public AgreementType getAgreementType() {
+
+return AgreementType.get(repository, AgreementTypeKey.parse(selectedAgreementType));
+
+}
+
+public MasterAgreementHeaderDisplay getHeaderDisplay() {
+
+if (masterAgreementHeaderDisplay == null) {
+
+masterAgreementHeaderDisplay = new MasterAgreementHeaderDisplay(masterAgreement, masterAgreement.getAmendment(0), repository, null, null, factory, getUser());
+
+}
+
+return masterAgreementHeaderDisplay;
+
+}
+
+public void setGotoStep(String gotoStep) {
+
+this.currentStep = currentStep.find(gotoStep);
+
+}
+
+public WizardStep getCurrentStep() {
+
+return currentStep;
+
+}
+
+public WizardStep[] getSteps() {
+
+return currentStep.getSteps();
+
+}
+
+public boolean isBnpParibasManagedAgreement() {
+
+return !isStandardAgreement() && !isPrivateAgreement() && BP_MANAGED.equals(managerClass);
+
+}
+
+public boolean isCounterpartyManagedAgreement() {
+
+return !isStandardAgreement() && !isPrivateAgreement() && (CP_MANAGED.equals(managerClass) || MULTI_MULTI_BOTH.equals(managerClass));
+
+}
+
+public boolean isMultiMulti(){
+
+return MULTI_MULTI_BOTH.equals(managerClass);
+
+}
+
+public void setSelectedAgreementType(String selectedAgreementType) {
+
+this.selectedAgreementType = selectedAgreementType;
+
+if(getPreviousAgreementType() !=null &&
+
+!getPreviousAgreementType().equalsIgnoreCase(selectedAgreementType) && count==0) {
+
+if(selectedAgreementType.equalsIgnoreCase("CUSTOMER ACCOUNT AGREEMENT (2011-1)")
+
+|| selectedAgreementType.equalsIgnoreCase("BP2S Rule Book (2015-10)")) {
+
+this.isAgreementTypeChanged=true;
+
+} else{
+
+this.isAgreementTypeChanged = false;
+
+}
+
+count=1;
+
+} else {
+
+setPreviousAgreementType(selectedAgreementType);
+
+count=0;
+
+}
+
+}
+
+public void setSelectedDraftType(String selectedDraftType) {
+
+this.selectedDraftType = selectedDraftType;
+
+}
+
+public String getSelectedAgreementType() {
+
+return selectedAgreementType;
+
+}
+
+public boolean isSyntheticRepo(){
+
+return selectedAgreementType.equalsIgnoreCase(SYNTHETIC_REPO_MASTER_AGREEMENT_2024_12);
+
+}
+
+public String getSelectedAgreementTypeName(){
+
+return getAgreementType().getName().toLowerCase();
+
+}
+
+public String getSelectedDraftType() {
+
+return selectedDraftType;
+
+}
+
+public MasterAgreementDisplay getMasterAgreementDisplay() {
+
+return new MasterAgreementDisplay(masterAgreement);
+
+}
+
+public MasterAgreement getMasterAgreement() {
+
+return masterAgreement;
+
+}
+
+public Date getFileOpenedDate() {
+
+return fileOpenedDate;
+
+}
+
+public void setFileOpenedDate(Date fileOpenedDate) {
+
+this.fileOpenedDate = fileOpenedDate;
+
+}public Date getAgreementExecutionDate() {
+
+return agreementExecutionDate;
+
+}
+
+public void setAgreementExecutionDate(Date agreementExecutionDate) {
+
+this.agreementExecutionDate = agreementExecutionDate;
+
+}
+
+public LookupItem getClientRegCategoryBucket() {
+
+return clientRegCategoryBucket;
+
+}
+
+public void setClientRegCategoryBucket(Long clientRegCategoryBucketId) {
+
+this.clientRegCategoryBucket = repository.findLookupItemById("PbClientRegCategoryBucket", clientRegCategoryBucketId);
+
+}
+
+public boolean getEuroOperation() {
+
+return euroOperation;
+
+}
+
+public void setEuroOperation(boolean euroOperation) {
+
+this.euroOperation = euroOperation;
+
+}
+
+public String getNegotiator() {
+
+return negotiator;
+
+}
+
+public Boolean getDefaultNegotiatorForEsa() {
+
+return defaultNegotiatorForEsa;
+
+}
+
+public void setDefaultNegotiatorForEsa(Boolean defaultNegotiatorForEsa) {
+
+this.defaultNegotiatorForEsa = defaultNegotiatorForEsa;
+
+}
+
+public void setNegotiator(String negotiator) {
+
+this.negotiator = negotiator;
+
+}
+
+public LookupItem getAcceptanceType() {
+
+return acceptanceType;
+
+}
+
+public void setAcceptanceType(Long acceptanceType) {
+
+this.acceptanceType = repository.findLookupItemById("AcceptanceType", acceptanceType);
+
+}
+
+public String getDomesticBranch() {
+
+if ("PAR".equals(getAdminLocation().getCode())  || "BRU".equals(getAdminLocation().getCode()) || "FRA".equals(getAdminLocation().getCode())) {
+
+return domesticBranch;
+
+}
+
+return null;
+
+}
+
+public void setDomesticBranch(String domesticBranch) {
+
+this.domesticBranch = domesticBranch;
+
+}
+
+public Location getAdminLocation() {
+
+return adminLocation;
+
+}
+
+public void setAdminLocation(Location adminLocation) {
+
+this.adminLocation = adminLocation;
+
+}
+
+public Set getAdminLocations() {
+
+if (adminLocations == null) {
+
+if (adminLocations == null) {
+
+List locations = repository.findAllAdminLocations();
+
+adminLocations = SelectOptionBuilder.buildAdminLocationOptions(locations, adminLocation);
+
+}
+
+return adminLocations;
+
+}
+
+public void setAgreementClass(String agreementClass) {
+
+this.agreementClass = agreementClass;
+
+}
+
+public boolean isDomesticBranchRequired() {
+
+if (getAgreementType().isDerivatives() && getAgreementType().isBilateral()) {
+
+return true;
+
+}
+
+return false;
+
+}
+
+public void setDoSave(String doSaveButtonText) {
+
+this.doSave = doSaveButtonText;
+
+}
+
+public String getAgreementClass() {
+
+return agreementClass;
+
+}
+
+public String getManagerClass() {
+
+return managerClass;
+
+}
+
+public String getAgreementWithCSA() {
+
+return agreementWithCSA;
+
+}
+
+public void setAgreementWithCSA(String agreementWithCSA) {
+
+this.agreementWithCSA = agreementWithCSA;
+
+}
+
+public Long getGoverningLaw() {
+
+return governingLaw;
+
+}public void setGoverningLaw(Long governingLaw) {
+
+this.governingLaw = governingLaw;
+
+}
+
+public void setManagerClass(String managerClass) {
+
+this.managerClass = managerClass;
+
+}
+
+public InputField getMasterAgreementClassField() {
+
+Entity cpEntity=null;
+
+List<Option> options = new ArrayList(4);
+
+if(!maosRequests.isEmpty()) {
+
+setIsCpPartyNonLegalForMaos();
+
+}
+
+if(isPBCategory() && agreementClass==null){
+
+agreementClass=SINGLE_MANAGED;
+
+}
+
+options.add(new Option("agreementClass_STANDARD", AGREEMENT_CLASS, STANDARD, formatMessage("cma.field.masterAgreementClass.standard"), SCRIPT_FOR_TOGGLECLASSFIELDS, isStandardAgreement() || StringUtils.isBlank(agreementClass)));
+
+options.add(new Option("agreementClass_SINGLE_MANAGED", AGREEMENT_CLASS, SINGLE_MANAGED, formatMessage("cma.field.masterAgreementClass.singleManaged"), "toggleManagedClassFields('true');toggleAction('false','false');toggleManagedClassFieldsForPB('true');", SINGLE_MANAGED.equals(agreementClass)));
+
+options.add(new Option("agreementClass_MULTIPLE_MANAGED", AGREEMENT_CLASS, MULTIPLE_MANAGED, formatMessage("cma.field.masterAgreementClass.multipleManaged"), "toggleManagedClassFields('true');toggleAction('true','false');toggleManagedClassFieldsForPB('false');j('input:checked')[1].click();", MULTIPLE_MANAGED.equals(agreementClass)));
+
+options.add(new Option("agreementClass_PRIVATE", AGREEMENT_CLASS, PRIVATE, formatMessage("cma.field.masterAgreementClass.private"), SCRIPT_FOR_TOGGLECLASSFIELDS, isPrivateAgreement()));
+
+return factory.radio(AGREEMENT_CLASS, options, true);
+
+}
+
+public InputField getMasterAgreementClassFieldForCopyMa() {
+
+List options = new ArrayList(4);
+
+if(isPBCategory()){
+
+options.add(new Option("agreementClass_STANDARD", AGREEMENT_CLASS, STANDARD, formatMessage("cma.field.masterAgreementClass.standard"), SCRIPT_FOR_TOGGLECLASSFIELDS, false));
+
+options.add(new Option("agreementClass_SINGLE_MANAGED", AGREEMENT_CLASS, SINGLE_MANAGED, formatMessage("cma.field.masterAgreementClass.singleManaged"), "toggleManagedClassFields('true');toggleAction('false','false');", true));
+
+options.add(new Option("agreementClass_MULTIPLE_MANAGED", AGREEMENT_CLASS, MULTIPLE_MANAGED, formatMessage("cma.field.masterAgreementClass.multipleManaged"), "toggleManagedClassFields('true');toggleAction('false','false');toggleManagedClassFieldsForPB('true');", MULTIPLE_MANAGED.equals(agreementClass)));
+
+}else{
+
+options.add(new Option("agreementClass_STANDARD", AGREEMENT_CLASS, STANDARD, formatMessage("cma.field.masterAgreementClass.standard"), SCRIPT_FOR_TOGGLECLASSFIELDS, isStandardAgreement() || StringUtils.isBlank(agreementClass)));
+
+options.add(new Option("agreementClass_SINGLE_MANAGED", AGREEMENT_CLASS, SINGLE_MANAGED, formatMessage("cma.field.masterAgreementClass.singleManaged"), "toggleManagedClassFields('true');toggleAction('false','false');", SINGLE_MANAGED.equals(agreementClass)));
+
+}
+
+options.add(new Option("agreementClass_PRIVATE", AGREEMENT_CLASS, PRIVATE, formatMessage("cma.field.masterAgreementClass.private"), SCRIPT_FOR_TOGGLECLASSFIELDS, isPrivateAgreement()));
+
+return factory.radio(AGREEMENT_CLASS, options, true);
+
+}
+
+public boolean isFbfEligibleForPrefillingPreviewAndSave(){
+
+return (getSelectedAgreementType().equalsIgnoreCase("FBFD (2013-6)")&&
+
+getAgreementClass().equalsIgnoreCase(STANDARD)
+
+&& getBnpParibasEntity()==1070
+
+&& getAgreementWithCSA()!=null && getAgreementWithCSA().equalsIgnoreCase(AmendmentType.MA_ONLY)
+
+&& getAdminLocation().getCode().equalsIgnoreCase("PAR")
+
+&& getGoverningLaw()!=null && getGoverningLaw() == 1
+
+&& getStandardisedContract()!=null && getStandardisedContract());
+
+}
+
+public boolean isFbfEligibleForPrefilling(){
+
+return (isFbfEligibleForPrefillingPreviewAndSave()
+
+&& getTransactionSpecificMasters().equalsIgnoreCase("yes"));
+
+}
+
+public boolean isRahmenvertEligibleForPrefilling(){return (getSelectedAgreementType().equalsIgnoreCase("RAHMENVERT (2018-9)")&&
+
+getAgreementClass().equalsIgnoreCase(STANDARD)
+
+&& getBnpParibasEntity()==1070
+
+&& getAgreementWithCSA()!=null && getAgreementWithCSA().equalsIgnoreCase(AmendmentType.MA_ONLY)
+
+&& getAdminLocation().getCode().equalsIgnoreCase("FRA")
+
+&& getGoverningLaw()!=null && getGoverningLaw() == 6
+
+&& getStandardisedContract()!=null && getStandardisedContract());
+
+}
+
+public InputField getCreateMaOptions() {
+
+InputField field = factory.checkBox("createNewMa", getCreateNewMa() == null ? Boolean.FALSE : Boolean.TRUE, "");
+
+field.setLabel("Create a new MA");
+
+return field;
+
+// return factory.checkBox("createNewMa", "createNewMa", getCreateNewMa() != null);
+
+}
+
+public InputField getCopyMaOptions() {
+
+InputField inputField =  factory.text("sourceMaId", "");
+
+/*inputField.setCellClass("form-control");*/
+
+return inputField;
+
+}
+
+public List<String> getAgrCategoriesForUser() {
+
+if(getUser().isPbUser())return AgreementType.getCATEGORIES().stream().filter(cat -> AgreementType.PB.equals(cat) || AgreementType.DERIV.equals(cat)).collect(Collectors.toList());
+
+if(getUser().isEsaUser())
+
+return AgreementType.getCATEGORIES().stream().filter(cat -> AgreementType.ESA.equals(cat)).collect(Collectors.toList());
+
+return AgreementType.getCATEGORIES();
+
+}
+
+/*public InputField getSuggestionBar(){
+
+return factory.text("suggestionBar","");
+
+}*/
+
+public boolean isEsaUser() {
+
+return getUser().isEsaUser() ;
+
+}
+
+public InputField getMasterAgreementManagerClassField() {
+
+List options = new ArrayList(2);
+
+options.add(new Option("managerClass_CP_MANAGED", MANAGER_CLASS, CP_MANAGED, formatMessage("cma.field.managerClass.cp_managed"), "j('input:checked')[0].click();",CP_MANAGED.equals(managerClass) || StringUtils.isBlank(managerClass)));options.add(new Option("managerClass_BP_MANAGED", MANAGER_CLASS, BP_MANAGED, formatMessage("cma.field.managerClass.bp_managed"),"j('input:checked')[0].click();", BP_MANAGED.equals(managerClass)));
+
+if(isPBCategory())
+
+options.add(new Option("managerClass_MULTI_MULTI_BOTH", MANAGER_CLASS, MULTI_MULTI_BOTH, formatMessage("cma.field.managerClass.multi_multi_both"), "toggleAction('true','true')",MULTI_MULTI_BOTH.equals(managerClass)));
+
+return factory.radio(MANAGER_CLASS, options, true);
+
+}
+
+public InputField getWithOrWithoutCSAField() {
+
+AgreementType type = getAgreementType();
+
+if (!(type.isDerivatives() || AgreementCategoryHelper.isCategoryRestricted(type.getCategory())) || MULTIPLE_MANAGED.equals(agreementClass)) {
+
+return factory.doNotDisplay();
+
+}
+
+if (AgreementType.getClearingTypes().contains(type.getId().getId()) || AgreementType.FX_PB_AGREEMENT.contains(type.getId().getId())) {
+
+return factory.doNotDisplay();
+
+}
+
+List options = new ArrayList(2);
+
+options.add(new Option("agreementWithCSA_MA_ONLY", AGREEMENT_WITH_CSA, AmendmentType.MA_ONLY, formatMessage("cma.field.csaOption.without"),"onChangeOfCollateralType()" ,AmendmentType.MA_ONLY.equals(agreementWithCSA) || StringUtils.isBlank(agreementWithCSA)));
+
+if(!isCogAgreementType())
+
+options.add(new Option("agreementWithCSA_MA_AND_CSA", AGREEMENT_WITH_CSA, AmendmentType.MA_AND_CSA, formatMessage("cma.field.csaOption.with"),"onChangeOfCollateralType()", AmendmentType.MA_AND_CSA.equals(agreementWithCSA)));
+
+return factory.radio(AGREEMENT_WITH_CSA, options, false);
+
+}
+
+public InputField getAgreementTypeField() {
+
+if(isPBUserCreatingDeriv()){
+
+return factory.suggest("selectedAgreementType", selectedAgreementType, "agreementType", "showAgreementTypeInfo",MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+category"+":"+agreementCategory,Suggest.ADDITIONAL_QUERY_TERM_2,"isCOGAgreementType:Y"),"createMaWorkflow");
+
+}
+
+if(agreementCategory ==null){
+
+return factory.suggest("selectedAgreementType", selectedAgreementType, "agreementType", "showAgreementTypeInfo", MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+isCategoryRestricted:N",Suggest.ADDITIONAL_QUERY_TERM_2,"isCOGAgreementType:N"),"createMaWorkflow");
+
+}
+
+if((isStandardAgreement() || isSingleManagedAgreement())&& AgreementCategoryHelper.isDERIVCategory(getAgreementCategory()))
+
+return factory.suggest("selectedAgreementType", selectedAgreementType, "agreementType", "showAgreementTypeInfo",MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+category"+":"+agreementCategory),"createMaWorkflow");
+
+if(isPrivateAgreement())
+
+return factory.suggest("selectedAgreementType", selectedAgreementType, "agreementType", "showAgreementTypeInfo",MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+category"+":"+agreementCategory,Suggest.ADDITIONAL_QUERY_TERM_2,"isCOGAgreementType:N",Suggest.ADDITIONAL_QUERY_TERM_3,"isSyntheticRepo:N"),"createMaWorkflow");
+
+return factory.suggest("selectedAgreementType", selectedAgreementType, "agreementType", "showAgreementTypeInfo",MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+category"+":"+agreementCategory,Suggest.ADDITIONAL_QUERY_TERM_2,"isCOGAgreementType:N"),"createMaWorkflow");
+
+}
+
+public InputField getFileOpenedDateField() {
+
+return factory.date("fileOpenedDate", fileOpenedDate);
+
+}
+
+public InputField getNegotiatorField() {
+
+return factory.suggest("negotiator", negotiator, "negotiator", "showAdminLocationsForNego", NegotiatorSuggestionFactory.getActiveNegotiatorsOnly());
+
+}
+
+public InputField getDomesticBranchField() {
+
+if (!isDomesticBranchRequired()) {
+
+return factory.doNotDisplay();
+
+}
+
+return factory.suggest(DOMESTIC_BRANCH, domesticBranch, DOMESTIC_BRANCH, null);
+
+}
+
+public InputField getAdminLocationField() {
+
+return factory.select("adminLocation", Collections.emptyList());
+
+}
+
+public InputField getGoverningLawField() {
+
+return factory.suggestForGoverningLaw("governingLaw", BeagleStringUtils.valueOf(governingLaw), "governingLaw", "updateStandardisedContractOnChangingGoverningLaw",null,getAgreementClass(),"",getSelectedAgreementType());
+
+}
+
+public InputField getClientRegCategoryBucketField() {
+
+Set options = SelectOptionBuilder.buildLookupItemOptions(
+
+repository.findLookupItems("PbClientRegCategoryBucket", null), clientRegCategoryBucket, "");
+
+return factory.select("clientRegCategoryBucket", options);
+
+}
+
+public InputField getDefaultNegotiator(){
+
+List<Option> options = new ArrayList(2);
+
+options.add(new Option("DefaultNego_Yes", "defaultNegotiatorForEsa", "Yes", "Yes","toggleDefaultNegoAndAdminLocField()", defaultNegotiatorForEsa!= null ? defaultNegotiatorForEsa: false));
+
+options.add(new Option("DefaultNego_No", "defaultNegotiatorForEsa", "No", "No","toggleDefaultNegoAndAdminLocField()",defaultNegotiatorForEsa!= null ? defaultNegotiatorForEsa? false : true : false));
+
+return factory.radio("defaultNegotiatorForEsa",options,false);
+
+}
+
+public InputField getAcceptanceTypeField(){
+
+Set<Option> option = SelectOptionBuilder.buildLookupItemOptions(
+
+repository.findLookupItems(LookupItem.ESA_ACCEPTANCE_TYPE,""),acceptanceType,""
+
+);
+
+return factory.select("acceptanceType",option,"selectAcceptanceType()");
+
+}
+
+public InputField getAgreementExecutionDateField() {
+
+if (isCategoryRestricted()) {
+
+return factory.date("agreementExecutionDate", agreementExecutionDate);
+
+}
+
+return null;
+
+}
+
+public InputField getEuroOperationModelField() {
+
+if (isPBCategory()) {
+
+return factory.yesNo("euroOperation", euroOperation);
+
+}
+
+return null;
+
+}
+
+public List<Entity> getTopTenEntities() {
+
+List<Entity> entities = repository.findTopTenBnpParibasEntities(isStandardAgreement());
+
+Entity e1 = Entity.find(repository, 3122);
+
+Entity e2 = Entity.find(repository, 306583);
+
+if (!entities.contains(e1)) {
+
+entities.add(e1);
+
+}
+
+if (!entities.contains(e2)) {
+
+entities.add(e2);
+
+}
+
+return entities;
+
+}
+
+public List<Entity> getTopEntities(){
+
+if(isPBCategory()){
+
+return repository.getTopEntitiesPrimeBrokerage();
+
+}
+
+else if(isESACategory()){
+
+return repository.getTopEntitiesForEsa();
+
+}
+
+return repository.getTopEntities();
+
+}
+
+public List getAvailableViews() {
+
+List result = new LinkedList();
+
+result.add(Tabs.PRODUCT);
+
+return result;
+
+}
+
+public InputField getCounterpartyEntityField() {
+
+/*if(counterPartyIdForMaos!=null){
+
+counterparty.entity = counterPartyIdForMaos;
+
+}*/
+
+if (!maosRequests.isEmpty()) {
+
+setCounterpartyEntity(maosRequests.get(0).getPartyNo());
+
+}
+
+if ((AgreementCategoryHelper.isPBCategory(getAgreementCategory()) && agreementClass.equals(SINGLE_MANAGED)) ||
+
+(AgreementCategoryHelper.isESACategory(getAgreementCategory())&& isStandardAgreement())) {
+
+return factory.suggest(COUNTERPARTY_ENTITY, counterparty.entity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, AgreementCategoryHelper.isPBCategory(getAgreementCategory()) ? Collections.emptyMap(): EntitySuggestor.VALID_FOR_CATEGORY);
+
+}
+
+if ((agreementClass.equals(MULTIPLE_MANAGED) || agreementClass.equals(MULTIPLE_STANDARD)) && (managerClass.equals(CP_MANAGED) || managerClass.equals(MULTI_MULTI_BOTH))) {
+
+return factory.custom(ENTITY, "/controls/widgets/multipleEntitySuggestor.vm");
+
+} else if ((agreementClass.equals(SINGLE_MANAGED) || agreementClass.equals(MULTIPLE_MANAGED)) && managerClass.equals(BP_MANAGED)) {
+
+return factory.suggest(COUNTERPARTY_ENTITY, counterparty.entity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, EntitySuggestor.getLegalOnlyOptions());
+
+} else if (isPrivateAgreement()) {
+
+return factory.suggest(COUNTERPARTY_ENTITY, counterparty.entity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, EntitySuggestor.getPrivateOnlyOptions());
+
+} else if (isStandardAgreement()) {
+
+return factory.suggestForStandardAgreement(COUNTERPARTY_ENTITY, counterparty.entity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, EntitySuggestor.getLegalOrNonLegalSuggestOptions(), agreementClass);
+
+} else {
+
+return factory.suggest(COUNTERPARTY_ENTITY, counterparty.entity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, EntitySuggestor.getEntityOptions(isStandardAgreement()));
+
+}
+
+}
+
+public Map getAdditionalQueryTermForPrivateEntity() {
+
+if(agreementClass.equals(MULTIPLE_MANAGED) && managerClass.equals(BP_MANAGED)){
+
+return MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+isPrivate:N",Suggest.ADDITIONAL_QUERY_TERM_2,"isBnpAuthorisedEntity:Y");
+
+}
+
+return MapBuilder.make(Suggest.ADDITIONAL_QUERY_TERM, "+isPrivate:N");
+
+}
+
+public Long getCounterpartyEntity() {
+
+return counterparty.entity;
+
+}
+
+public void setCounterpartyEntity(Long id) {
+
+counterparty.entity = id;
+
+}
+
+public InputField getCounterpartyActingEntityField() {
+
+if (isCounterpartyManagedAgreement()) {
+
+return factory.suggest("counterpartyActingEntity", counterparty.actingEntity, ENTITY, LEGAL_COUNTERPARTY_OPTIONS, EntitySuggestor.getLegalOnlyOptions());
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public Long getCounterpartyActingEntity() {
+
+return counterparty.actingEntity;
+
+}
+
+public void setCounterpartyActingEntity(Long id) {
+
+counterparty.actingEntity = id;
+
+}
+
+public InputField getCounterpartyFundManagingCompanyField() {
+
+if (!isPrivateAgreement()) {
+
+InputField inputField = factory.suggest("counterpartyFundManagingCompany", counterparty.fundManagingCompany, ENTITY, null, EntitySuggestor.getLegalOnlyOptions());
+
+if(isPBCategory()){
+
+inputField.disable();
+
+}
+
+return inputField;
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public Long getCounterpartyFundManagingCompany() {
+
+return counterparty.fundManagingCompany;
+
+}
+
+public void setCounterpartyFundManagingCompany(Long id) {
+
+counterparty.fundManagingCompany = id;
+
+}counterparty.fundManagingCompany = id;
+
+}
+
+public Long getCounterpartyFundWithCompartments() {
+
+return counterparty.fundWithCompartments;
+
+}
+
+public void setCounterpartyFundWithCompartments(Long id) {
+
+counterparty.fundWithCompartments = id;
+
+}
+
+public InputField getCounterpartyFundWithCompartmentsField() {
+
+if (!isPrivateAgreement() && !isESACategory()) {
+
+return factory.suggest("counterpartyFundWithCompartments", counterparty.fundWithCompartments, ENTITY, null, EntitySuggestor.getLegalOnlyOptions());
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public InputField getBnpParibasEntityField() {
+
+if (agreementClass.equals(MULTIPLE_MANAGED) && managerClass.equals(BP_MANAGED)) {
+
+return factory.custom(ENTITY, "/controls/widgets/multipleEntitySuggestor.vm");
+
+} else if (managerClass.equals(MULTI_MULTI_BOTH)){
+
+return factory.custom("secondEntity","/pages/createmasteragreement/selectBPEntityWidget.vm", EntitySuggestor.getAuthBNPLegalOnlyOptions());} else if ((agreementClass.equals(SINGLE_MANAGED) || agreementClass.equals(MULTIPLE_MANAGED)) && managerClass.equals(CP_MANAGED)) {
+
+return factory.custom("bnpParibasEntity", "/pages/createmasteragreement/selectBPEntityWidget.vm", EntitySuggestor.getAuthBNPLegalOnlyOptions());
+
+} else {
+
+return factory.custom("bnpParibasEntity", "/pages/createmasteragreement/selectBPEntityWidget.vm", EntitySuggestor.getAuthBNPEntityOptions(isStandardAgreement()));
+
+}
+
+}
+
+public void populateDataForRahmenvert(){
+
+if(isRahmenvertEligibleForPrefilling()){
+
+setCloseOutNettingFlag("yes");
+
+setTempCreditQuestionaireReceived(true);
+
+}
+
+}
+
+public InputField getClearingHousesField() {
+
+String id = getAgreementType().getId().getId();
+
+InputField inputField = null;
+
+inputField = getSuggestorForClearingHouses(AgreementType.EXECUTION_AGREEMENT, id, CLEARING_HOUSES, inputField);
+
+if (inputField == null && StringUtils.equalsIgnoreCase(AgreementType.CUSTOMER_ACCOUNT_AGREEMENT, id)) {
+
+inputField = multipleSelect("clearingHousesForCAA");
+
+}
+
+if(inputField == null && StringUtils.equalsIgnoreCase(AgreementType.BP2S_RULE_BOOK,id)){
+
+inputField = multipleSelect("clearingHousesForBP2SRB");
+
+}
+
+inputField = getSuggestorForClearingHouses(AgreementType.EUROPEAN_EXECUTION_AGREEMENT, id, "clearingHousesEUEA", inputField);
+
+//        cdea changes
+
+inputField = getSuggestorForClearingHouses(AgreementType.CDEA_EUROPEAN_EXECUTION_AGREEMENT, id, "clearingHousesCDEA", inputField);
+
+//        drv changes
+
+inputField = getSuggestorForClearingHouses(AgreementType.DRV_GERMAN_EXECUTION_AGREEMENT, id, "clearingHousesDRV", inputField);
+
+inputField = getSuggestorForClearingHouses(AgreementType.FBF_FRENCH_EXECUTION_AGREEMENT, id, "clearingHousesFBF", inputField);
+
+inputField = getSuggestorForClearingHouses(AgreementType.EUROMASTER_EXECUTION_AGREEMENT, id, "clearingHousesEUROMASTER", inputField);
+
+return inputField != null ? inputField : factory.doNotDisplay();
+
+}
+
+public InputField getCollateralTypeField() {
+
+String field = EditCollateralDetails.COLLATERAL_TYPE_FIELD;
+
+Set options = SelectOptionBuilder.buildLookupItemOptionsWithoutTitleCase(repository.findAllCollateralTypes(), collateralType, "");
+
+return factory.select(field, options);
+
+}
+
+public InputField getCollateralNegotiationStartDateInputField() {
+
+String field = EditCollateralDetails.NEGOTIATION_START_DATE_FIELD;
+
+return factory.date(field, collateralNegotiationStartDate);
+
+}
+
+protected InputField multipleSelect(String field) {
+
+List<Long> clearingHouseList = repository.getFcmClearingHouseList();
+
+List<Entity> entities = repository.findObjects(Entity.class, clearingHouseList);
+
+Set<Option> options = getOptions(entities);
+
+if(field.equalsIgnoreCase("clearingHousesForCAA")){
+
+TreeSet<Option> tree_set = new TreeSet<>(options);
+
+options=tree_set;
+
+}
+
+List<Long> newClearingHouseList = clearingHouses;
+
+if (newClearingHouseList != null && !newClearingHouseList.isEmpty()) {
+
+for (Option option : options) {
+
+if (newClearingHouseList != null && !newClearingHouseList.isEmpty()) {
+
+for (Option option : options) {
+
+for (Long item : newClearingHouseList) {
+
+if (!StringUtils.isEmpty(option.getValue()) && item.equals(Long.valueOf(option.getValue()))) {
+
+option.setSelected(true);
+
+} else if (StringUtils.isEmpty(option.getValue())) {
+
+option.setSelected(false);
+
+}
+
+}
+
+}
+
+}
+
+return factory.select(field, options).multiple();
+
+}
+
+private static Set getOptions(List<Entity> entities) {
+
+Set<Option> result = new LinkedHashSet<Option>();
+
+result.add(new Option("", "", "", "- Not Set -"));
+
+for (Entity entity : entities) {
+
+String text = entity.getLegalName() != null ? entity.getLegalName() : entity.getNonLegalName();
+
+String value = entity.getId().toString();
+
+String id = entity.getId().toString();
+
+Option option = new Option(id, text, value, text);
+
+result.add(option);
+
+}
+
+return result;
+
+}
+
+public Long getBnpParibasEntity() {
+
+return bnpParibas.entity;
+
+}
+
+public void setBnpParibasEntity(Long id) {
+
+bnpParibas.entity = id;
+
+}
+
+public InputField getBnpParibasActingEntityField() {
+
+if (isBnpParibasManagedAgreement()) {
+
+return factory.suggest("bnpParibasActingEntity", bnpParibas.actingEntity, ENTITY, null, EntitySuggestor.getAuthBNPLegalOnlyOptions());
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public Long getBnpParibasActingEntity() {
+
+return bnpParibas.actingEntity;
+
+}
+
+public void setBnpParibasActingEntity(Long id) {
+
+bnpParibas.actingEntity = id;
+
+}
+
+public InputField getBnpParibasFundManagingCompanyField() {
+
+if (isBnpParibasManagedAgreement()) {
+
+return factory.suggest("bnpParibasFundManagingCompany", bnpParibas.fundManagingCompany, ENTITY, null, EntitySuggestor.getLegalOnlyOptions());
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public Long getBnpParibasFundManagingCompany() {
+
+return bnpParibas.fundManagingCompany;
+
+}
+
+public void setBnpParibasFundManagingCompany(Long id) {
+
+bnpParibas.fundManagingCompany = id;
+
+}
+
+public InputField getBnpParibasFundWithCompartmentsField() {
+
+if (isBnpParibasManagedAgreement()) {
+
+return factory.suggest("bnpParibasFundWithCompartments", bnpParibas.fundWithCompartments, ENTITY, null, EntitySuggestor.getLegalOnlyOptions());
+
+} else {
+
+return factory.doNotDisplay();
+
+}
+
+}
+
+public Long getBnpParibasFundWithCompartments() {
+
+return bnpParibas.fundWithCompartments;
+
+}
+
+public void setBnpParibasFundWithCompartments(Long id) {
+
+bnpParibas.fundWithCompartments = id;
+
+}
+
+public String getActionName() {
+
+return "CreateMasterAgreement";
+
+}
+
+public ProductCoveredDisplay.Builder getProductsCoveredDisplay() {
+
+return new ProductCoveredDisplay.Builder(masterAgreement);
+
+}
+
+public void setCreateDefaultOffices(boolean createDefaultOffices) {
+
+this.createDefaultOffices = createDefaultOffices;
+
+}
+
+public String getFortisFlag() {
+
+return fortisFlag;
+
+}
+
+public void setFortisFlag(String fortisFlag) {
+
+this.fortisFlag = fortisFlag;
+
+}
+
+public String getCloseOutNettingFlag() {
+
+return closeOutNettingFlag;
+
+}
+
+public void setCloseOutNettingFlag(String closeOutNettingFlag) {
+
+this.closeOutNettingFlag = closeOutNettingFlag;
+
+}
+
+public String getTransactionSpecificMasters() {
+
+return transactionSpecificMasters;
+
+}
+
+public void setTransactionSpecificMasters(String transactionSpecificMasters) {
+
+this.transactionSpecificMasters = transactionSpecificMasters;
+
+}
+
+public String getLegalCounterpartyType() {
+
+return legalCounterpartyType;
+
+}
+
+public void setLegalCounterpartyType(String legalCounterpartyType) {
+
+this.legalCounterpartyType = legalCounterpartyType;
+
+}
+
+public InputField getFortisFlagInputField() {
+
+if(EMAD_AGREEMENT.equals(getSelectedAgreementType())) {
+
+if (StandardisedContract == true && adminLocation.isBrussel() &&if(EMAD_AGREEMENT.equals(getSelectedAgreementType())) {
+
+if (StandardisedContract == true && adminLocation.isBrussel() &&
+
+(isStandardAgreement() || agreementClass.equals(SINGLE_MANAGED)) && masterAgreement.getBnpLei().equals("KGCEPHLVVKVRZYO1T647")) {
+
+masterAgreement.setFortisFlag(Boolean.TRUE);
+
+} else {
+
+masterAgreement.setFortisFlag(Boolean.FALSE);
+
+}
+
+}
+
+if( masterAgreement.getFortisFlag()) {
+
+InputField field = factory.checkBox("fortisFlag", masterAgreement.getFortisFlag() == null ? Boolean.FALSE : masterAgreement.getFortisFlag(), "javascript:setCloseOutNetting();");
+
+field.setLabel("Fortis Netting Rule");
+
+return field;
+
+}
+
+return null;
+
+}
+
+public InputField getCreditQuestionnaireReceivedField() {
+
+boolean initialVal = EMAD_AGREEMENT.equals(getSelectedAgreementType()) && StandardisedContract==true ? true : false;
+
+InputField inputField = factory.yesNo("tempCreditQuestionaireReceived", initialVal?initialVal:getTempCreditQuestionaireReceived()==null?false:getTempCreditQuestionaireReceived());
+
+InputField inputField = factory.yesNo("tempCreditQuestionaireReceived", initialVal?initialVal:getTempCreditQuestionaireReceived()==null?false:getTempCreditQuestionaireReceived());
+
+inputField.setLabel("Credit Questionnaire/Approval Received");
+
+inputField.setOnChange("toggleCreditQuestionnaireReceivedDate()");
+
+return inputField;
+
+}
+
+public InputField getCreditQuestionaireReceivedDateField() {
+
+return factory.date("tempCreditQuestionaireReceivedDate", creditQuestionaireReceivedDate);
+
+}
+
+public InputField getTransactionSpecificMastersInputField() {
+
+InputField field = factory.checkBox("transactionSpecificMasters", getTransactionSpecificMasters()==null ?Boolean.FALSE:Boolean.TRUE,"prefillForFbfd()");
+
+field.setLabel("Transaction-Specific Master");
+
+return field;
+
+}
+
+public InputField getCloseOutNettingInputField() {
+
+InputField field;
+
+if (AgreementType.OUTRIGHT_BNL_AGREEMENT.equalsIgnoreCase(masterAgreement.getAgreementType().getId().getId())) {
+
+field = factory.checkBox("closeOutNettingFlag", Boolean.TRUE);
+
+} else {
+
+field = factory.checkBox("closeOutNettingFlag", getCloseOutNettingFlag()==null ?Boolean.FALSE:Boolean.TRUE);
+
+}
+
+return field;
+
+}
+
+public InputField getAddIsdaCommomFieldsInputField() {
+
+InputField field = factory.checkBox("addIsdaCommomFields", Boolean.FALSE);
+
+field.setLabel("ISDA Common Terms [NY]");
+
+return field;
+
+}
+
+public void setInvokeDocumentAssembler(boolean invokeDocumentAssembler) {
+
+this.invokeDocumentAssembler = invokeDocumentAssembler;
+
+}
+
+private boolean isStandardAgreement() {
+
+return STANDARD.equals(agreementClass);
+
+}
+
+private boolean isPrivateAgreement() {
+
+return PRIVATE.equals(agreementClass);
+
+}
+
+public boolean isMultipleManagedAgreement() {
+
+return MULTIPLE_MANAGED.equals(agreementClass);
+
+}
+
+public boolean isMultipleStandardAgreement() {
+
+return MULTIPLE_STANDARD.equals(agreementClass);
+
+}
+
+public boolean isSingleManagedAgreement() {
+
+return SINGLE_MANAGED.equals(agreementClass);
+
+}public List agreementExistsWithSameCounterPartyAndBNPEntity() {
+
+List entitiesWhichDoNotHaveCorrespondingBilateralAgr = new ArrayList();
+
+//Commented for CCP urgent release.
+
+//        if(counterparty.entity != null){
+
+//            Integer numberOfExistingAgreement = repository.countOfMAsWithGivenBNPAndCounterpartyEntities(bnpParibas.entity, counterparty.entity);
+
+//            if(numberOfExistingAgreement > 0)
+
+//                return entitiesWhichDoNotHaveCorrespondingBilateralAgr;
+
+//            else{
+
+//                entitiesWhichDoNotHaveCorrespondingBilateralAgr.add(Entity.find(repository ,counterparty.entity));
+
+//                return entitiesWhichDoNotHaveCorrespondingBilateralAgr;
+
+//            }
+
+//        }
+
+return entitiesWhichDoNotHaveCorrespondingBilateralAgr;
+
+}
+
+public boolean getDisplayDraftingOption() {
+
+return (!isCategoryRestricted() && getDisplayIsdaFrenchLawDraftingOption() || isDisplayFBFDDraftingOption() || isDisplayEMADDraftOption())
+
+&& repository.isDraftEnabledForDocAssemble(getSelectedAgreementType());
+
+}
+
+public boolean getDisplayIsdaFrenchLawDraftingOption(){
+
+return (MA_TYPE_DERIVATIVE.contains(getSelectedAgreementType()) && isStandardAgreement() && getGoverningLaw()==1);
+
+}
+
+private boolean isDisplayDerivativeAndRepurchaseDraftingOption() {
+
+return (MA_TYPE_DERIVATIVE.contains(getSelectedAgreementType()) || MA_TYPE_REPURCHASE
+
+.contains(getSelectedAgreementType())) && (!isMultipleManagedAgreement() ) && (!isMultipleStandardAgreement());
+
+}
+
+private boolean isDisplayFBFDDraftingOption() {
+
+return MA_TYPE_FBFD.contains(getSelectedAgreementType()) && isStandardAgreement();
+
+}
+
+private boolean isDisplayEMADDraftOption() {return MA_TYPE_EMAD.contains(getSelectedAgreementType()) && isStandardAgreement() && getStandardisedContract()
+
+&& ("KGCEPHLVVKVRZYO1T647").equalsIgnoreCase(masterAgreement.getBnpLei());
+
+}
+
+public List<PartyMaosDetails> getMaosRequests() {
+
+return maosRequests;
+
+}
+
+public void setMaosRequest(PartyMaosDetails maosRequest) {
+
+this.maosRequests.add(maosRequest);
+
+}
+
+public LookupItem getCollateralTypeValue() {
+
+return collateralType;
+
+}
+
+public void setCollateralType(Long collateralTypeId) {
+
+this.collateralType = (CollateralTypeLookup) repository
+
+.findLookupItemById("CollateralType", collateralTypeId);
+
+}
+
+public Date getCollateralNegotiationStartDate() {
+
+return collateralNegotiationStartDate;
+
+}
+
+public void setCollateralNegotiationStartDate(Date collateralNegotiationStartDate) {
+
+this.collateralNegotiationStartDate = collateralNegotiationStartDate;
+
+}
+
+@Override
+
+public void addMaosRequest(PartyMaosDetails maos) {
+
+this.maosRequests.add(maos);
+
+}
+
+public void setClearingHousesForCAA(List<Long> clearingHouses) {
+
+this.clearingHouses = clearingHouses;
+
+}
+
+public void setClearingHousesForBP2SRB(List<Long> clearingHouses) {
+
+this.clearingHouses = clearingHouses;
+
+}
+
+public List getClearingHouses() {
+
+return this.clearingHouses;
+
+}
+
+public String getAlertCode() {
+
+String alertCode = null;
+
+if (needAlert()) {
+
+Long entityToAlert = getEntityToAlert();
+
+alertCode = entityWarningCodes.get(entityToAlert);
+
+}
+
+return alertCode == null ? StringUtils.EMPTY : alertCode;
+
+}
+
+private boolean needAlert() {
+
+return getAgreementType().isIsda() && isdaAlertYears.contains(getAgreementType().getYear());
+
+}
+
+private Long getEntityToAlert() {
+
+return isBnpParibasManagedAgreement() ? getBnpParibasActingEntity() : getBnpParibasEntity();
+
+}
+
+public String getNego() {
+
+return negotiator;
+
+}
+
+public String getAdminSelected() {
+
+return adminLocation.getCode();
+
+}
+
+/*public void addCsaLaw() {
+
+List<CollateralTypeLookup> colTypes = repository.findAllCollateralTypes();
+
+for (CollateralTypeLookup collateralTypeLookup : colTypes) {
+
+if (collateralTypeLookup.getCollateralTypeLaw() != null) {
+
+if (collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_NY) && !CollateralData.NEW_YORK_LAW.contains(collateralTypeLookup.getId().toString())) {
+
+CollateralData.NEW_YORK_LAW.add(collateralTypeLookup.getId().toString());
+
+} else if (collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_EN) && !CollateralData.ENGLISH_LAW.contains(collateralTypeLookup.getId().toString())) {
+
+CollateralData.ENGLISH_LAW.add(collateralTypeLookup.getId().toString());
+
+} else if (isOtherLawType(collateralTypeLookup)) {
+
+CollateralData.OTHER_LAW.add(collateralTypeLookup.getId().toString());
+
+}
+
+}
+
+}
+
+}
+
+private boolean isOtherLawType(CollateralTypeLookup collateralTypeLookup) {
+
+return ((collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_OT) && !CollateralData.OTHER_LAW.contains(collateralTypeLookup.getId().toString())) ||
+
+(collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_GM) && !CollateralData.OTHER_LAW.contains(collateralTypeLookup.getId().toString())) ||
+
+(collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_JP) && !CollateralData.OTHER_LAW.contains(collateralTypeLookup.getId().toString())) ||
+
+(collateralTypeLookup.getCollateralTypeLaw().equalsIgnoreCase(CollateralData.CSA_TYPE_FR) && !CollateralData.OTHER_LAW.contains(collateralTypeLookup.getId().toString()))
+
+);
+
+}*/
+
+public String getCreateNewMa() {
+
+return createNewMa;
+
+}
+
+public void setCreateNewMa(String createNewMa) {
+
+this.createNewMa = createNewMa;
+
+}
+
+public String fetchSourceMaDetails() {
+
+String agreementCategory= getReq().getParameter("agreementCategory");
+
+responseString = repository.findTempletMa(maId,agreementCategory);
+
+return SUCCESS;
+
+}
+
+public Long getMaId() {
+
+return maId;
+
+}
+
+public void setMaId(Long maId) {
+
+this.maId = maId;
+
+}
+
+public String getResponseString() {
+
+return responseString;
+
+}
+
+public void setResponseString(String responseString) {
+
+this.responseString = responseString;
+
+}
+
+public String getSourceMasterAgreementId() {
+
+return this.sourceMaId;
+
+}
+
+public String getEntityDetailsOfSourceMa() {
+
+entityDetails = repository.getEntityDetails(maId);
+
+return SUCCESS;
+
+}
+
+public String[] getEntityDetails() {
+
+return entityDetails;
+
+}
+
+public void setEntityDetails(String[] thatEntityDetails) {
+
+if (thatEntityDetails != null) {
+
+String[] newEntityDetails = new String[thatEntityDetails.length];
+
+int i = 0;
+
+for (String detail : thatEntityDetails) {
+
+newEntityDetails[i++] = detail;
+
+}
+
+this.entityDetails = newEntityDetails;
+
+}
+
+}
+
+public String getSourceMaId() {
+
+return sourceMaId;
+
+}public void setSourceMaId(String sourceMaId) {
+
+this.sourceMaId = sourceMaId;
+
+}
+
+public String getAgreementTypeForSourceMa() {
+
+agreementTypeDetailSourceMa = repository.getAgreementTypeOfSourceMa(maId);
+
+return SUCCESS;
+
+}
+
+public String[] getAgreementTypeDetailSourceMa() {
+
+return agreementTypeDetailSourceMa;
+
+}
+
+public void setAgreementTypeDetailSourceMa(String[] thatAgreementTypeDetailSourceMa) {
+
+if (agreementTypeDetailSourceMa != null) {
+
+String[] copyOfAgreementTypeDetailSourceMa = new String[thatAgreementTypeDetailSourceMa.length];
+
+int i = 0;
+
+for (String detail : thatAgreementTypeDetailSourceMa) {
+
+copyOfAgreementTypeDetailSourceMa[i++] = detail;
+
+}
+
+this.agreementTypeDetailSourceMa = copyOfAgreementTypeDetailSourceMa;
+
+}
+
+}
+
+public String getSourceMaNegotiatorDetails() {
+
+negotiatorDetailsSourceMa = repository.getNegotiatorDetailsForSourceMa(maId);
+
+return SUCCESS;
+
+}
+
+public String[] getNegotiatorDetailsSourceMa() {
+
+return negotiatorDetailsSourceMa;
+
+}public void setNegotiatorDetailsSourceMa(String[] thatNegotiatorDetailsSourceMa) {
+
+if (thatNegotiatorDetailsSourceMa != null) {
+
+String[] copyNegotiatorDetailsSourceMa = new String[thatNegotiatorDetailsSourceMa.length];
+
+int i = 0;
+
+for (String detail : thatNegotiatorDetailsSourceMa) {
+
+copyNegotiatorDetailsSourceMa[i++] = detail;
+
+}
+
+this.negotiatorDetailsSourceMa = copyNegotiatorDetailsSourceMa;
+
+}
+
+}
+
+public boolean getCopyMAFlag() {
+
+boolean copyMAFlag;
+
+if (sourceMaId == null || sourceMaId.equals(BLANK_STRING)) {
+
+copyMAFlag = false;
+
+} else {
+
+copyMAFlag = true;
+
+}
+
+return copyMAFlag;
+
+}
+
+public Set<LookupItem> getCollateralRegime() {
+
+return collateralRegime;
+
+}
+
+public LookupItem getCollateralMarginType() {
+
+return collateralMarginType;
+
+}
+
+public void setCollateralMarginType(Long collateralMarginTypeId) {
+
+this.collateralMarginType = repository.findLookupItemById("MarginType", collateralMarginTypeId);
+
+}public LookupItem getRegulatoryClassification() {
+
+return regulatoryClassification;
+
+}
+
+public void setRegulatoryClassification(Long regulatoryClassificationId) {
+
+this.regulatoryClassification = repository.findLookupItemById("RegulatoryClassification", regulatoryClassificationId);
+
+}
+
+public LookupItem getPartyPostingCollateral() {
+
+return partyPostingCollateral;
+
+}
+
+public void setPartyPostingCollateral(Long partyPostingCollateralId) {
+
+this.partyPostingCollateral = repository.findLookupItemById("PartyPostingCollateralLookup", partyPostingCollateralId);
+
+}
+
+public InputField getRegulatoryClassificationInputField() {
+
+Set options = SelectOptionBuilder.buildLookupItemOptions(
+
+repository.findLookupItems("RegulatoryClassification", null), regulatoryClassification, "");
+
+InputField regulatoryClassification = factory.select("regulatoryClassification", options);
+
+regulatoryClassification.setOnChange("showHideMarginType()");
+
+return regulatoryClassification;
+
+}
+
+public InputField getMarginTypeInputField() {
+
+Set options = SelectOptionBuilder.buildLookupItemOptions(
+
+repository.findLookupItems("MarginType", null), collateralMarginType,
+
+"");
+
+InputField marginType = factory.select("collateralMarginType", options);
+
+marginType.setOnChange("showPartyPostingCollateral()");
+
+return marginType;
+
+}
+
+public InputField getPartyPostingCollateralInputField() {
+
+Set options = SelectOptionBuilder.buildLookupItemOptions(repository.findLookupItems("PartyPostingCollateralLookup", null), partyPostingCollateral, "");
+
+return factory.select(EditCollateralDetails.PARTY_POSTING_COLLATERAL, options);
+
+}
+
+public InputField getCollateralRegimeInputField() {
+
+List lookupItems = repository.findAllObjects(EditCollateralDetails.COLLATERAL_REGIME_LIST);
+
+Set<Option> options = SelectOptionBuilder.buildMultiSelectLookupItemOptions(lookupItems, Collections.emptyList(), "- Not Set -");
+
+Set<LookupItem> collateralRegimeSet = collateralRegime;if (collateralRegimeSet != null && !collateralRegimeSet.isEmpty()) {
+
+for (Option option : options) {
+
+for (LookupItem item : collateralRegimeSet) {
+
+if (!StringUtils.isEmpty(option.getValue()) && item.getId().equals(Long.valueOf(option.getValue()))) {
+
+option.setSelected(true);
+
+} else if (StringUtils.isEmpty(option.getValue())) {
+
+option.setSelected(false);
+
+}
+
+}
+
+}
+
+}
+
+InputField collateralRegime = factory.select(COLLATERAL_REGIME, options).multiple();
+
+collateralRegime.setInitialHeight("height:90px");
+
+return collateralRegime;
+
+}
+
+public void setCollateralRegime(Long[] collateralRegimeIdList) {
+
+Set<LookupItem> collateralRegimeSet = new HashSet<>();
+
+getNewRegimeOptionsSelected(Arrays.asList(collateralRegimeIdList), collateralRegimeSet);
+
+this.collateralRegime = collateralRegimeSet;
+
+}
+
+private void getNewRegimeOptionsSelected(List<Long> newRegimeIds, Set<LookupItem> collateralRegimeSet) {
+
+List<LookupItem> lookupItems = repository.findAllObjects(EditCollateralDetails.COLLATERAL_REGIME_LIST);
+
+if (!lookupItems.isEmpty()) {
+
+for (LookupItem item : lookupItems) {
+
+if (newRegimeIds.contains(item.getId())) {
+
+collateralRegimeSet.add(item);
+
+}
+
+}
+
+}
+
+}
+
+public String getNettingDetailsOfSourceMa() {
+
+nettingDetailsofSourceMa = repository.getNettingDetailsOfSourceMa(maId);
+
+return SUCCESS;
+
+}
+
+public String[] getNettingDetailsofSourceMa() {
+
+return nettingDetailsofSourceMa;
+
+}
+
+public void setNettingDetailsofSourceMa(String[] thatNettingDetailsofSourceMa) {
+
+if (thatNettingDetailsofSourceMa != null) {
+
+String[] copyNettingDetailsofSourceM = new String[thatNettingDetailsofSourceMa.length];
+
+int i = 0;
+
+for (String detail : thatNettingDetailsofSourceMa) {
+
+copyNettingDetailsofSourceM[i++] = detail;
+
+}
+
+this.nettingDetailsofSourceMa = copyNettingDetailsofSourceM;
+
+}
+
+}
+
+@SuppressWarnings("squid:S2447")
+
+public Boolean getStandardisedContract() {
+
+if((getAdminLocation() != null) &&
+
+("PAR".equals(getAdminLocation().getCode()) || "BRU".equals(getAdminLocation().getCode()) ||"FRA".equals(getAdminLocation().getCode()))) {
+
+return StandardisedContract;
+
+}
+
+return null;
+
+}
+
+public void setStandardisedContract(Boolean StandardisedContract) {
+
+this.StandardisedContract = StandardisedContract;
+
+}
+
+public InputField getStandardisedContractField() {
+
+if (!isDomesticBranchRequired() || (MULTIPLE_MANAGED.equals(agreementClass) &&  EMAD_AGREEMENT.equals(getSelectedAgreementType()))) {
+
+return factory.doNotDisplay();
+
+}
+
+Collection option = new ArrayList(2);
+
+option.add(new Option("StandardisedContract_Yes", STANDARDISED_CONTRACT, "Yes", "Yes","prefillDomesticBranch()", StandardisedContract != null ? StandardisedContract : false));
+
+option.add(new Option("StandardisedContract_No", STANDARDISED_CONTRACT, "No", "No","clearValForDomesticBranch()", StandardisedContract != null ? StandardisedContract ? false : true : false));return factory.radio(STANDARDISED_CONTRACT, option, false);
+
+}
+
+public InputField getSuggestorForClearingHouses(String str1, String str2, String suggestorName, InputField inputField) {
+
+if (inputField == null) {
+
+if (StringUtils.equalsIgnoreCase(str1, str2)) {
+
+return factory.suggest(suggestorName, !clearingHouses.isEmpty() ? clearingHouses.get(0).toString() : null, ENTITY, null, EntitySuggestor.getEntityOptions(false));
+
+}
+
+}
+
+return inputField;
+
+}
+
+public String step(WizardStep currentStep) {
+
+if (currentStep != null) {
+
+if (isPrevious(currentStep)) {
+
+return backtrackOneStep();
+
+}
+
+if (currentStep.getPrevious() == CreateOrCopyMa.INSTANCE) {
+
+boolean validationStatus = CreateOrCopyMa.INSTANCE.validate(this);
+
+if (!validationStatus) {
+
+return INPUT;
+
+}
+
+}
+
+}
+
+if (currentStep == PreviewAndSave.INSTANCE && PreviewAndSave.INSTANCE.validate(this)) {
+
+return createPreviewAgreement();
+
+}
+
+setMaDefaults();
+
+return INPUT;
+
+}
+
+private boolean isPrevious(WizardStep currentStep) {
+
+return currentStep.getPrevious() != null && !currentStep.getPrevious().validate(this);
+
+}
+
+public void setMaDefaults() {
+
+if (StringUtils.isNotEmpty(sourceMaId)) {
+
+MasterAgreement sourceMa = repository.findObject(MasterAgreement.class, Long.valueOf(sourceMaId));
+
+selectedAgreementType = String.valueOf(sourceMa.getAgreementType().getId());
+
+if (governingLaw == null) {
+
+governingLaw = (Long) sourceMa.getGoverningLaw().getId();
+
+}
+
+if (negotiator == null) {
+
+negotiator = sourceMa.getLastAmendment().getNegotiator().getId();
+
+}
+
+if (adminLocation == null) {
+
+adminLocation = sourceMa.getLastAmendment().getAdminLocation();
+
+}
+
+//            jira 12416 / 12417
+
+if(isPBCategory()) {
+
+if(null != sourceMa.getPbLegalData()) {
+
+clientRegCategoryBucket = sourceMa.getPbLegalData().getPbClientBucket();
+
+euroOperation = sourceMa.getPbLegalData().getEuroOperationModel();
+
+}
+
+}
+
+}
+
+}
+
+public boolean draft(List<String> maType, String draftOption, String draftType) {if (this.invokeDocumentAssembler && maType.contains(getSelectedAgreementType()) && (draftOption.equals(draftType))) {
+
+return true;
+
+}
+
+return false;
+
+}
+
+public String draftForDerivative() {
+
+if (draft(MA_TYPE_DERIVATIVE, "draftIsda", draftType())) {
+
+return DOCUMENT_ASSEMBLER_ISDA;
+
+} else if (draft(MA_TYPE_DERIVATIVE, "draftIsdaRP", draftType())) {
+
+return DOCUMENT_ASSEMBLER_ISDA_RP;
+
+} else if (draft(MA_TYPE_DERIVATIVE, "draftIsdaHF", draftType())) {
+
+return DOCUMENT_ASSEMBLER_ISDA_HF;
+
+} else if (draft(MA_TYPE_DERIVATIVE, "draftIsdaCorporate", draftType())) {
+
+return DOCUMENT_ASSEMBLER_ISDA_CORPORATE;
+
+}
+
+return null;
+
+}
+
+private String draftForFbfd() {
+
+if (draft(ImmutableList.of(FBFD_2007), "draftFBFD", draftType())) {
+
+return DOCUMENT_ASSEMBLER_FBFD;
+
+} else if (draft(ImmutableList.of(FBFD_2013), "draftFBFD2013", draftType())) {
+
+return DOCUMENT_ASSEMBLER_FBFD13;
+
+}
+
+return null;
+
+}
+
+public String getMasterAgreementIdFromSession() {
+
+return StrutsUtils.getFromSession(CMA_MASTER_AGREEMENT_ID).toString();
+
+}
+
+public String isBannerMessageToBeDisplayed() {
+
+return bannerMessageToBeDisplayed ? BannerModule.CREATION.getId() : null;
+
+}
+
+public List<AgreementType> getTopFiveAgreementTypes() {
+
+List<AgreementType> agreementTypes = new ArrayList<>();
+
+if(isESACategory()){
+
+agreementTypes.add( repository.findEsaAgreementTypeForEsaCategory());
+
+}else if(isPBCategory()){
+
+agreementTypes= repository.findPBAgreementTypeForPBCategory();
+
+}
+
+else{
+
+agreementTypes = repository.findTopFiveAgreementTypes();
+
+}
+
+return agreementTypes;
+
+}
+
+public Long getCounterPartyIdForMaos() {
+
+return counterPartyIdForMaos;
+
+}
+
+public void setCounterPartyIdForMaos(Long counterPartyIdForMaos) {
+
+this.counterPartyIdForMaos = counterPartyIdForMaos;
+
+}
+
+public void setIsCpPartyNonLegalForMaos(){
+
+Entity cpEntity=null;
+
+cpEntity=Entity.find(repository,maosRequests.get(0).getPartyNo());
+
+if(cpEntity!=null && cpEntity.isNonLegal()){
+
+this.isCpPartyNonLegalForMaos=true;
+
+}
+
+}
+
+public boolean getIsCpPartyNonLegalForMaos(){
+
+return  isCpPartyNonLegalForMaos;
+
+}
+
+public String getXpaWarning(String id){
+
+return  XPAAgreementConstants.getXPAMessage(id);
+
+}
+
+public Boolean getTempCreditQuestionaireReceived() {
+
+return creditQuestionaireReceived;
+
+}
+
+public void setTempCreditQuestionaireReceived(Boolean creditQuestionaireReceived) {
+
+this.creditQuestionaireReceived = creditQuestionaireReceived;
+
+}
+
+public Date getTempCreditQuestionaireReceivedDate() {
+
+return creditQuestionaireReceivedDate;
+
+}
+
+public void setTempCreditQuestionaireReceivedDate(Date creditQuestionaireReceivedDate) {
+
+this.creditQuestionaireReceivedDate = creditQuestionaireReceivedDate;
+
+}public Entity retrieveEntityDetails(Long entityId){
+
+return entityId != null ? Entity.get(repository,entityId) : null;
+
+}
+
+public String getAddIsdaCommomFields() {
+
+return addIsdaCommomFields;
+
+}
+
+public void setAddIsdaCommomFields(String addIsdaCommomFields) {
+
+this.addIsdaCommomFields = addIsdaCommomFields;
+
+}
+
+public boolean isDisplayAddIsdaCommonFieldOption(){
+
+return "NYK".equals(getAdminLocation().getCode()) && ("ISDA (2002-1)".equals(selectedAgreementType) || "ISDA (1992-1)".equals(selectedAgreementType))
+
+&& ((masterAgreement.getBnpLei() != null) && ("R0MUWSFPU8MPRO8K5P83").equalsIgnoreCase(masterAgreement.getBnpLei()));
+
+}
+
+public String getCreateMaType() {
+
+return createMaType;
+
+}
+
+public void setCreateMaType(String createMaType) {
+
+this.createMaType = createMaType;
+
+}
+
+public String getCreateSingleMaType() {
+
+return createSingleMaType;
+
+}
+
+public void setCreateSingleMaType(String createSingleMaType) {
+
+this.createSingleMaType = createSingleMaType;
+
+}
+
+public boolean isESACategory() {
+
+return AgreementCategoryHelper.isESACategory(agreementCategory);
+
+}
+
+public boolean isPBCategory() {
+
+return AgreementCategoryHelper.isPBCategory(agreementCategory);
+
+}
+
+public boolean isCategoryRestricted() {
+
+return AgreementCategoryHelper.isCategoryRestricted(agreementCategory);
+
+}
+
+public void setAgreementCategory(String agreementCategory) {
+
+this.agreementCategory = agreementCategory;
+
+}
+
+public String getAgreementCategory() {
+
+return this.agreementCategory;
+
+}
+
+public String getAckComment() {
+
+return ackComment;
+
+}
+
+public void setAckComment(String ackComment) {
+
+this.ackComment = ackComment;
+
+}
+
+public boolean isAcknowledge() {
+
+return acknowledge;
+
+}
+
+public void setAcknowledge(boolean acknowledge) {
+
+this.acknowledge = acknowledge;
+
+}
+
+public Collection getRequirementsList() {
+
+return requirementsList;
+
+}
+
+public void setRequirementsList(Collection requirementsList) {
+
+this.requirementsList = requirementsList;
+
+}
+
+public boolean isAckCommentToBeShown() {
+
+return ackCommentToBeShown;
+
+}
+
+public void setAckCommentToBeShown(boolean ackCommentToBeShown) {
+
+this.ackCommentToBeShown = ackCommentToBeShown;
+
+overlapParameters.setAckCommentToBeShown(ackCommentToBeShown);
+
+}
+
+public OverlapAgreementInfo.MyParameters getOverlapParameters() {
+
+return overlapParameters;
+
+}
+
+public void setOverlapParameters(OverlapAgreementInfo.MyParameters overlapParameters) {
+
+this.overlapParameters = overlapParameters;
+
+}
+
+public String getPreviousAgreementType() {
+
+return previousAgreementType;
+
+}
+
+public void setPreviousAgreementType(String previousAgreementType) {
+
+this.previousAgreementType = previousAgreementType;
+
+}
+
+public Boolean getAgreementTypeChanged() {
+
+return isAgreementTypeChanged;
+
+}
+
+public void setAgreementTypeChanged(Boolean agreementTypeChanged) {
+
+isAgreementTypeChanged = agreementTypeChanged;
+
+}
+
+public boolean isCogAgreementType(){
+
+return getSelectedAgreementType().contains(CLOSE_OUT_NETTING_GROUP);
+
+}
+
+public Boolean getPermissionToDisplayRmpmCode(){
+
+Entity entity = masterAgreement.getCounterpartyEntity();
+
+if((entity.isUndisclosedEntity() && getUser().isLegalUserAndAdmin()) || !entity.isUndisclosedEntity()){
+
+return true;
+
+}
+
+return false;
+
+}
+
+public String getShowRmpmpCodeBasedOnPermission(){
+
+String rmpmCode = "";
+
+Entity entity = masterAgreement.getCounterpartyEntity();
+
+if(getPermissionToDisplayRmpmCode()){
+
+rmpmCode = entity.getRmpmIinCode();
+
+}
+
+return rmpmCode;
+
+}
+
+public Boolean isExecuteMaster(){
+
+return getAgreementType().isExecutionMaster();
+
+}public boolean isPBUserCreatingDeriv(){
+
+return AgreementCategoryHelper.isDERIVCategory(getAgreementCategory()) && getUser().isPbUser();
+
+}
+
+public String getCloseOutNettingControl() {
+
+return closeOutNettingControl;
+
+}
+
+public void setCloseOutNettingControl(String closeOutNettingControl) {
+
+this.closeOutNettingControl = closeOutNettingControl;
+
+}
+
+public List<Long> getCloseNettingControlList(){
+
+List<Long> result = new ArrayList<>();
+
+if(!AgreementCategoryHelper.isCategoryRestricted(getAgreementCategory())){
+
+result= repository.getScopeForCloseOutNettingControl(getCounterpartyEntity(), getCloseOutNettingFlagVal(), getAgreementCategory())
+
+.stream().mapToLong(s->s.getId()).boxed().collect(Collectors.toList());
+
+}
+
+return result;
+
+}
+
+}
