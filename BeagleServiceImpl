@@ -1,0 +1,2589 @@
+package com.bnpparibas.beagle.ma.services;
+
+import com.bnpparibas.beagle.bulkupload.agreementupload.modal.AgreementUploadData;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralData;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralHeaderDetails; import com.bnpparibas.beagle.collaterals.model.CollateralRegimeDetail;
+
+import com.bnpparibas.beagle.collaterals.model.CollateralStatus;
+
+import com.bnpparibas.beagle.config.helper. LoadLuaKeyTermEnum;
+
+import com.bnpparibas.beagle.config.helper. LoadPbaKeyTermEnum;
+
+import com.bnpparibas.beagle.coveredoffices.model.CoveredOffice;
+
+import com.bnpparibas.beagle.crossdefaults.model.CrossDefault;
+
+import com.bnpparibas.beagle.documents. NegotiationService;
+
+import com.bnpparibas.beagle.documents.model.Attachment;
+
+import com.bnpparibas.beagle.groups.job.model.GroupEditFailedJob;
+
+import com.bnpparibas.beagle.groups.job.model.GroupEditJob;
+
+import com.bnpparibas.beagle.groups.job.model.GroupEditJobStatus;
+
+import com.bnpparibas.beagle.groups.job.model.GroupEditOperationDetail
+
+; import com.bnpparibas.beagle.groups.job.operation.GroupEditJobExecutor;
+
+import com.bnpparibas.beagle.groups.job.service.GroupEditJobNotification;
+
+import com.bnpparibas.beagle.groups.job.service.GroupEditJobService;
+
+import com.bnpparibas.beagle.groups.model.Group;
+
+import com.bnpparibas.beagle.groups.operations.ExecuteGroupOperation;
+import com.bnpparibas.beagle.indexing.IndexingService;
+
+import com.bnpparibas.beagle.isdacdealinkagecontrol.services. IsdaCdealinkageControlService;
+
+import com.bnpparibas.beagle.kernel.actions.*;
+
+import com.bnpparibas.beagle.kernel.database. BeagleRepository;
+
+import com.bnpparibas beagle.kernel.logging. BeagleLogger;
+
+import com.bnpparibas.beagle.kernel.operations.*;
+
+import com.bnpparibas.beagle.kernel.security.Auditor;
+
+import com.bmpparibas.beagle.kernel.security.PermissionActions;
+
+import com.bnpparibas.beagle.kernel.security. UserRolePermissions;
+
+import com.bnpparibas.beagle.kernel.services. EntityIds;
+
+import com.bnpparibas.beagle.kernel.services.MailService;
+
+import com.bnpparibas.beagle.kernel.services.MailServiceImpl;
+
+import com.bnpparibas.beagle.kernel.util.*;
+
+import com.bnpparibas.beagle.lei.service.LeiService;
+
+import com.bnpparibas.beagle.luaKeyTerms.model.*;
+
+import com.bnpparibas.beagle.ma.model.*;
+
+import com.bnpparibas.beagle.ma.operations.ExecuteMasterAgreement Operation;
+
+import com.bnpparibas.beagle.ma.operations. OverlapProductInfoOperation;
+
+import com.bnpparibas.beagle.ma.operations. TerminateMasterAgreementOperation;
+
+import com.bnpparibas.beagle.ma.requiredfield. RequiredField Analyser;
+
+import com.bnpparibas.beagle.ma.tableuObject.*;
+
+import com.bnpparibas.beagle.maos.actions.Maos DashBoardActions;
+
+import com.bnpparibas.beagle.maos.model.Maos AuditHistory;
+
+import com.bnpparibas.beagle.pbakeyterms.model.*;
+
+import com.bnpparibas.beagle.pbakeyterms.model.FishOrCutBait;
+
+import com.bnpparibas.beagle.regulationsandprotocols.service. RegulationsAnd ProtocolsService;
+
+import com.bnpparibas.beagle.staticdata.actions. UpdateBeagleOnMaos Feed;
+
+import com.bnpparibas.beagle.staticdata.actions.parameters.CollateralTypeLookup;
+
+import com.bnpparibas.beagle.staticdata.model.*;
+
+import com.bnpparibas.beagle.staticdata.model.Currency;
+
+import com.bnpparibas.beagle.staticdata.model.entity.Entity;
+
+import com.bnpparibas.beagle.tradereconstruction. TradeReconstructionUtils;
+import com.thoughtworks.xstream.XStream;
+
+import oracle.jdbc.pool.OracleDataSource;
+
+import org.apache.commons.collections.CollectionUtils;
+
+import org.apache.commons.lang.ArrayUtils;
+
+import org.apache.commons.lang.StringUtils;
+
+import org.apache.commons.lang.exception. ExceptionUtils;
+
+import org.apache.commons.lang.time.DateFormatUtils;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+
+import org.apache.poi.hssf.util.HSSFColor;
+
+import org.apache.poi.openxml4j.exceptions. InvalidFormatException;
+
+import org.apache.poi.openxml4j.opc.OPCPackage;
+
+import org.apache.poi.openxml4j.opc.PackageAccess;
+
+import org.apache.poi.ss.usermodel.Cell;
+
+import org.apache.poi.ss.usermodel.Workbook;
+
+import org.apache.poi.xssf.usermodel.*;
+
+import org.hibernate.criterion.DetachedCriteria;
+
+import org.hibernate.criterion. Order;
+
+import org.hibernate.criterion. Restrictions;
+
+import org.springframework.beans.Beans Exception;
+
+import org.springframework.context.ApplicationContext;
+
+import org.springframework.context.ApplicationContextAware;
+
+import org.springframework.context.support. ResourceBundleMessageSource;
+
+import org.springframework.transaction.annotation. Transactional;
+
+import javax.jms.JMSException;
+
+import java.io.*;
+
+import java.nio.file.Files;
+
+import java.nio.file.Path;
+
+import java.nio.file.Paths;
+
+import java.text.SimpleDateFormat;
+
+import java.util.*;
+
+import java.util.stream.Collectors;
+
+import java.io.File;
+
+import java.io.FileOutputStream;
+
+public class BeagleServiceImpl implements BeagleService, ApplicationContextAware {
+
+public static final String NEW_ISDA "New ISDA";
+
+private static final BeagleLogger LOGGER BeagleLogger.getLogger (BeagleServiceImpl.class);
+
+public static final List DOMESTIC_TYPES = Collections.unmodifiableList(ListBuilder.build("FBF", "AFB", "FBFD"));
+
+public static final String DOCUMENTS_UPDATE_ON_ISDA = "Documents update on ISDA";
+
+public static final String ALL = "ALL";
+
+public static final String SSNDA_ISDA_REPORT = "SSNDA ISDA Report";
+
+public static final String MSFTA_REPORT = "MSFTA Weekly Report";
+
+private BeagleRepository repository;
+
+private Collection<Operation> operations;
+
+private NegotiationService negotiationService;
+
+private Auditor auditor;
+
+private ApplicationContext applicationContext;
+
+private TradeReconstructionUtils tradeReconstructionUtils;
+
+private Map<String, String> tabAuditPermissions = new HashMap<String, String>();
+
+private static final String TABS "TABS";
+
+private static final String PRINT_PREVIEW = "PRINT PREVIEW";
+
+private static final String MAIL_MA_IN_NEGO = "MAIL_MA_IN_NEGO"; private static final String MAIL_MA_ENTITY_FINAL = "MAIL_MA_ENTITY_FINAL";
+
+private static final String MAIL_MA_COLLATERAL_IN_NEGO = "MAIL_MA_COLLATERAL_IN_NEGO";
+
+
+private static final List<String> PERMISSIONS_LDI = Arrays.asList("UnTerminateGroupOperation", "PreExecuteGroupOperation", "TerminateGroupOperation", "DormantGroupOperation", "AddAmendment ToGroupOperation", "AddAgreement ToGroupOperation",
+
+"ExecuteGroupOperation", "UnExecuteGroupOperation",
+
+"ChangeAgreementTypeForGroupOperation",
+
+"ChangeEntities ForGroupOperation", "AddAgreementToGroupUploadOperation");
+private static final String TRANSFER_DOCUMENTS = "Transfer";
+
+private static final String EMAIL DOCUMENTS = "Email";
+
+private static final List<String> BNP_ENTITY_LEI = Arrays.asList
+
+("6EWKUOFGVX5QQJHFGT48", "ROMUWSFPUSMPRO8K5P83");
+
+private static final List<String> WM_AGR_TYPES Arrays.asList ("Monaco MA OTC Derivs", "Singapore Hong Kong MA WM", "Swiss MA WM", "TW MA WM");
+
+private static final String BILATERAL "Bilateral";
+
+private IndexingService indexing Service;
+
+private BeagleService beagleService;
+
+private ClientOnboardingService clientOnboardingService;
+
+private IsdaCdeaLinkageControlService isdaCdealinkageControlService;
+
+private RegulationsAndProtocols Service regulationsAndProtocolsService;
+
+private LeiService leiService;
+
+private Resource BundleMessageSource messageSource;
+
+public static final String FILE_FORMAT_XLSX = ".xlsx";
+
+private static final String PBMNA_REPORT = "PBMNA Report";
+
+private static final String PBA_REPORT = "PBA Report";
+
+private static final String SSNDA_REPORT = "SSNDA Report";
+
+private static final String ISDA_REPORT = "ISDA Report";
+
+private static final String PRDR_CEP_REPORT = "CEP Report";
+private static final List<String> PBMNA_LIST = Arrays.asList("PB-MNA ID", "Admin Location", "Entity Name", "PB-MNA Netting Flag", "Linked Agreement ID", "Agreement Type", "Netting Flag", "New to Rec");
+
+private static final List<String> SSNDA_ISDA_REPORT_TAB1_COLUMNS = Arrays.asList ("MA ID", "GRP ID", "Status", "Agreement Date", "Execution", "Negotiator", "Negotiator Admin Location", "BNPP Crds Code", "CP Entity CRDS Code", "CP Entity Name", "CP Acting Entity Code", "CP Acting Entity Name"
+
+);
+
+private static final List<String> SSNDA_ISDA_REPORT_TAB2_COLUMNS Arrays.asList ("MA ID", "GRP ID", "Group Document", "Document Category", "Document Type", "Summary", "Document Detail", "Date", "Negotiator", "Negotiator Admin Location", "Uploaded By", "Document Name", "Document id", "Date Of Upload");
+
+private static final List<String> MSFTA REPORT_COLUMNS = Arrays.asList("Group Number", "Agreement Number", "Agreement Type", "Agreement Year",
+
+"Agreement Status", "File Opened Date", "Added to Group Date", "Amendment Date", "Pre Execution /Execution Date", "BNPP Entity Name", "Counterparty Entity Name", "Counterparty CRDS Code");
+
+private static final List<String> PBA_LIST = Arrays.asList ("PBA ID", "Admin Location", "Entity Name", "Netting Flag", "New to Rec");
+
+private static final List<String> SSNDA_LIST = Arrays.asList ("MA Id Document Id", "Document Name", "Document Category", "Document Type", "Negotiator", "Document Date", "Document Upload Date");
+private static final List<String> ISDA_LIST = Arrays.asList("ISDA ID", "Admin Location",
+
+"Entity Name", "Netting Flag", "New to Rec");
+
+private GroupEditJobService groupEditJobService;
+
+private AutoExecuteAgreementService autoExecuteAgreement Service;
+
+private OracleDataSource beagleDataSource;
+
+public void setBeagleDataSource (OracleDataSource beagleDataSource) {
+
+this beagleDataSource beagleDataSource;
+
+}
+
+public AutoExecuteAgreementService getAutoExecuteAgreementService() {
+
+return autoExecuteAgreementService;
+
+}
+
+public TradeReconstructionUtils getTradeReconstructionUtils() {
+
+return tradeReconstructionUtils;
+
+}
+
+public void setTradeReconstructionUtils (TradeReconstructionUtils tradeReconstructionUtils) {
+
+this.tradeReconstructionUtils tradeReconstructionUtils;
+
+}
+
+public void setAutoExecuteAgreementService
+
+(AutoExecuteAgreement Service autoExecuteAgreementService) { this.autoExecuteAgreement Service = autoExecuteAgreementService;
+
+}DailySchedularExeStatus dailySchedularExeStatus;
+
+private static final String MA_IN_NEGO_JOB_ID = "MAIL_NEGOTIATOR_FOR_IN_NEGO_AGRMNTS";
+
+private static final String MA_IN_NEGO_JOB_NAME = "schedule.maInNego.notification";
+
+private static final String MA_IN_NEGO_JOB_DESC = "Sending Mail To Negotiator for In Negotiation agreements";
+
+private static final String FILE_SIZE_ZERO_JOB_NAME = "schedule.fileSizeZero.notification";
+
+private static final String FILE_SIZE_ZERO_JOB_ID = "MAIL_NEGOTIATOR_FOR_FILE_SIZE_ZERO_REPORTS";
+
+private static final String FILE_SIZE_ZERO_JOB_DESC = "Sending Mail To user for file size zero reports";
+
+private static final String SEND_MAIL_SSNDA_JOB_NAME = "schedule.ssnda.notification";
+
+private static final String SEND_MAIL_SSNDA_JOB_ID = "MAIL_NEGOTIATOR_FOR_SSNDA_REPORTS";
+
+private static final String SEND_MAIL_SSNDA_JOB_DESC = "Sending Mail To user for SSNDA reports";
+
+private static final String SEND_MAIL_PBMNA_JOB_NAME = "schedule.pbmna.notification";
+
+private static final String SEND_MAIL_PBMNA_JOB_ID = "MAIL_NEGOTIATOR_FOR_PBMNA_REPORTS";
+private static final String SEND_MAIL_PBMNA_JOB_DESC = "Sending Mail To user for pbmna reports";
+
+private static final String SSNDA_MAIL_ISDA_JOB_ID="SSNDA_REPORT_FOR_ISDA_BI_MONTHLY";
+
+private static final String SSNDA_MAIL_ISDA_JOB_DESC = "Sending email to users for recently executed ISDA ith SSNDA";
+
+private static final String SSNDA_MAIL_ISDA_JOB_NAME = "schedule.ssndaReport GenerationForIsdaBiMonthly.trigger"; 11 Jira 12364 changes start
+
+private static final String SEND_MAIL_MSFTA_JOB_ID="REPORT_FOR_MSFTA_WEEKLY";
+
+private static final String SEND_MAIL_MSFTA_JOB_DESC = "Sending email to users for recently
+
+created MSFTA, added to group for NY Admin location ";
+
+private static final String SEND_MAIL_MSFTA_JOB_NAME = "schedule.MSFTAWeeklyReport.trigger";
+
+11 jira 12364 changes end
+
+private static final String MA_RTS_JOB_ID = "MAIL_NEGOTIATOR_FOR_RTS_AGRMNTS";
+
+private static final String MA_RTS_JOB_NAME = "schedule.maReadyToSign.notification";
+
+private static final String MA_RTS_JOB_DESC "Sending Mail To Negotiator for Ready To Sign agreements"; private static final String MA_COLLATERAL_IN_NEGO_JOB_ID = "MAIL_NEGOTIATOR_FOR_MA_COLLATERAL_IN_NEGO";
+
+private static final String MA_COLLATERAL_IN_NEGO_JOB_NAME = "schedule.maAndCollateralInNego.notification";
+
+private static final String MA_COLLATERAL_IN_NEGO_JOB_DESC = "Sending mail for Agreement and Collateral In Nego";
+
+private static final String MOVE_GRP_EDIT_FAILED_JOB_ID = "MOVE_GRP_EDIT_FAILED";
+
+private static final String MOVE_GRP_EDIT_FAILED_JOB_NAME = "schedule.groupjob.moveGroupEditFailedJob";
+
+private static final String MOVE_GRP_EDIT_FAILED_JOB_DESC = "Moving Group Edit Failed Job";
+
+private static final String MOVE_GRP_EDIT_COMPLETED_JOB_ID = "MOVE_GRP_EDIT_COMPLETED";
+
+private static final String MOVE_GRP_EDIT_COMPLETED_JOB_NAME = "schedule.groupjob.moveGroupEditCompletedJob";
+private static final String MOVE_GRP_EDIT_COMPLETED_JOB_DESC = "Moving Group Edit Completed Job";
+
+private static final String DELETE_GRP_EDIT_OLD_FAILED_JOB_ID = "DELETE_GRP_EDIT_OLD_FAILED";
+
+private static stati final String DELETE_GRP_EDIT_OLD_FAILED_JOB_NAME = "schedule.groupjob.deleteGroupEditFailedJob";
+
+private static final String DELETE_GRP_EDIT_OLD_FAILED_JOB_DESC = "Deleting Group Edit Old Failed Job";
+
+private static final String DELETE_GRP_EDIT_OLD_COMPLETED_JOB_ID = "DELETE_GRP_EDIT_OLD_COMPLETED";
+
+private static final String DELETE_GRP_EDIT_OLD_COMPLETED_JOB_NAME = "schedule.groupjob.deleteGroupEditCompletedJob";
+
+private static final String DELETE_GRP_EDIT_OLD_COMPLETED_JOB_DESC = "Deleting Group Edit Old Completed Job";
+
+private static final String NO_REL_MA_JOB_ID = "NO_REL_MA";
+
+private static final String NO_REL_MA_JOB_NAME = "schedule.norel.notification";
+
+private static final String NO_REL_MA_JOB_DESC = "Mail for No Relation on Master agreements";
+
+private static final String TABLEU_DAILY_XML = "TABLEU_DAILY_XML";
+
+private static final String TABLEU_DAILY_XML_NAME = "schedule.genrateXml.tableu";
+
+private static final String TABLEU_DAILY_XML_DESC = "Daily XML generation for tableu";
+
+private static final String TABLEU_LUA_DAILY_XML = "TABLEU_LUA_DAILY_XML";
+
+private static final String TABLEU_LUA DAILY XML NAME = "schedule.genrateXml.tableu.lua";
+
+private static final String TABLEU_LUA_DAILY_XML_DESC = "Daily XML generation for tableu LUA";
+
+private static final String DO_NOT_TRD_MA_JOB_ID = "DO_NOT_TRADE_MA";
+
+private static final String DO_NOT_TRD_MA_JOB_NAME = "schedule.dntr.notification";
+
+private static final String DO_NOT_TRD_MA_JOB_DESC = "Mail for Do Not Trade on Master agreements";
+
+private static final String SEG_IA_NOTIFICATION_JOB_ID = "SEG_IA_NOTIFICATION";
+
+private static final String SEG_IA_NOTIFICATION_JOB_NAME ="schedule.segia.notification";
+
+private static final String SEG_IA_NOTIFICATION_JOB_DESC = "Seg IA Election Notification automatic changes";
+
+private static final String AUTO_EXECUTE_RTS_MA_JOB_ID = "AUTO_EXECUTE_RTS_MA";
+
+private static final String AUTO_EXECUTE_RTS_MA_JOB_NAME = "schedule.readyToSignAutoExecutor.trigger";
+
+private static final String AUTO_EXECUTE_RTS_MA_JOB_DESC = "Auto execute RTS agreements for final entity";
+
+protected boolean flag;
+
+private String node;
+
+private static final String DETAIL_ERR_MSG = "User is not authorised to use Beagle!";
+
+private static final String FILE_NOT_FOUND = "Exception occured. File not found.";
+
+private static final String LOAD_EXCEPTION = "Exception occured. Unable to load file.";
+
+private static final String FILE_CONVERSION_EXCEPTION = "Exception while trying to convert file from csv to excel.";
+
+private static final String AUTO_UPLOAD_BMR_JOB_ID = "AUTO_UPLOAD_BMR";
+private static final String AUTO_UPLOAD_BMR_JOB_NAME = "schedule.autoUploadBMRFile.trigger";
+
+private static final String AUTO_UPLOAD_BMR_JOB_DESC = "Auto upload for ISDA BMR file.";
+
+private static final String AUTO_UPLOAD_RSP_JOB_ID = "AUTO_UPLOAD_RSP";
+
+private static final String AUTO_UPLOAD_RSP_JOB_NAME = "schedule.autoUploadRSPFile.trigger";
+
+private static final String AUTO_UPLOAD_RSP_JOB_DESC = "Auto upload for ISDA RSP file.";
+
+private static final String AUTO_UPLOAD_PRDR_JOB_ID = "AUTO_UPLOAD_PRDR";
+
+private static final String AUTO_UPLOAD_PRDR_JOB_NAME =
+
+"schedule.autoUploadPRDRFile.trigger";
+
+private static final String AUTO_UPLOAD_PRDR_JOB_DESC = "Auto upload for ISDA PRDR file.";
+
+private static final String AUTO_UPLOAD_JMP_JOB_ID = "AUTO_UPLOAD_JMP";
+
+private static final String AUTO_UPLOAD_JMP_JOB_NAME = "schedule.autoUploadJMPFile.trigger";
+
+private static final String AUTO_UPLOAD_JMP_JOB_DESC = "Auto upload for ISDA JMP file.";
+
+private static final String AUTO_UPLOAD_BAIL_IN_JOB_ID = "AUTO_UPLOAD_BAIL_IN";
+
+private static final String AUTO_UPLOAD_BAIL_IN_JOB_NAME = "schedule.autoUploadBAILINFile.trigger";
+
+private static final String AUTO_UPLOAD_BAIL_IN_JOB_DESC = "Auto upload for ISDA BAIL IN file.";
+private static final String ISDA_BMR = "ISDA_BMR";
+
+private static final String ISDA_RSP = "ISDA_RSP";
+
+private static final String ISDA_PRDR = "ISDA_PRDR";
+
+private static final String ISDA_JMP = "ISDA_JMP";
+
+private static final String ISDA_BAIL_IN = "ISDA_BAIL_IN";
+
+private static final String FILE_PATTERN = "yyyyMMddHHmm'.xlsx'";
+
+private static final String FORMAT_PATTERN = "yyyyMMddHHmm";
+
+private static final String ISDA_CSV_PATH = "CSV";
+
+private static final String BRRD_CSV_PATH = "CSV";
+
+private static final String BRRDII_RSP = "BRRDII_RSP";
+
+private String filePath;
+
+private String isdaBatchPath;
+
+private String isdaFormURLBatchPath;
+private static final String AUTO_UPLOAD_BRRD2_JOB_NAME = "schedule.autoUploadBRRD2File.trigger";
+
+private static final String AUTO_UPLOAD_BRRD2_JOB_ID = "AUTO_UPLOAD_BRRD2";
+
+private static final String AUTO_UPLOAD_BRRD2_JOB_DESC = "Auto upload for ISDA BRRD2 file.";
+
+private String tradeReconstructionInputPath;
+
+private String tradeReconstructionOutputPath;
+
+private String tableuXmlOutputPath;
+
+private String tradeReconstruction ArchivePath;
+
+private String prodUrl;
+
+private String stagingUrl;
+
+private String uatUrl;
+
+public String getIsdaFormURLBatchPath() {
+
+return isdaFormURLBatchPath;
+
+}
+
+public void setIsdaFormURLBatchPath (String isdaFormURLBatchPath) {
+
+this.isdaFormURLBatchPath = isdaFormURLBatchPath;
+
+}
+
+public String getIsdaBatchPath() {
+
+return isdaBatchPath;
+
+}
+
+public void setIsdaBatchPath(String isdaBatchPath) {
+
+this.isdaBatchPath= isdaBatchPath;
+
+}
+
+public String getFilePath() { }
+
+return filePath;
+
+public void setFilePath(String filePath) {
+
+this.filePath = filePath;
+
+}
+
+public String getTradeReconstructionInputPath() {
+
+return tradeReconstructionInputPath;
+
+}
+
+public void setTradeReconstruction InputPath(String trade ReconstructionInputPath) {
+
+this.trade ReconstructionInputPath = trade ReconstructionInputPath;
+
+}
+
+public String getTradeReconstructionOutputPath() { return trade ReconstructionOutputPath;
+
+}public void setTradeReconstructionOutputPath(String tradeReconstructionOutputPath) {
+
+this.tradeReconstructionOutputPath = tradeReconstructionOutputPath;
+
+}
+
+public String getTableuXmlOutputPath() {
+
+return tableuXmlOutputPath;
+
+}
+
+public void setTableuXmlOutputPath(String tableuXmlOutputPath) {
+
+this.tableuXmlOutputPath = tableuXmlOutputPath;
+
+}
+
+public String getTradeReconstructionArchivePath() {
+
+return tradeReconstructionArchivePath;
+
+}
+
+public void setTradeReconstructionArchivePath(String tradeReconstructionArchivePath) {
+
+this.tradeReconstructionArchivePath = tradeReconstructionArchivePath;
+
+}
+
+public String getProdUrl() {
+
+return prodUrl;
+
+}
+
+public void setProdUrl(String prodUrl) {
+
+this.prodUrl = prodUrl;
+
+}
+
+public String getStagingUrl() {
+
+return stagingUrl;
+
+}
+
+public void setStagingUrl(String stagingUrl) {
+
+this.stagingUrl = stagingUrl;
+
+}
+
+public String getUatUrl() {
+
+return uatUrl;
+
+}public void setUatUrl(String uatUrl) {
+
+this.uatUrl = uatUrl;
+
+}
+
+public String getNode() {
+
+return node;
+
+}
+
+public void setNode(String node) {
+
+this.node = node;
+
+}
+
+public void setDailySchedularExeStatus(DailySchedularExeStatus dailySchedularExeStatus) {
+
+this.dailySchedularExeStatus = dailySchedularExeStatus;
+
+}
+
+public void setIsdaCdeaLinkageControlService(IsdaCdeaLinkageControlService isdaCdeaLinkageControlService) {
+
+this.isdaCdeaLinkageControlService = isdaCdeaLinkageControlService;
+
+}
+
+public void setRegulationsAndProtocolsService(RegulationsAndProtocolsService regulationsAndProtocolsService) {
+
+this.regulationsAndProtocolsService = regulationsAndProtocolsService;
+
+}
+
+public BeagleServiceImpl(BeagleRepository beagleRepository, NegotiationService negotiationService, Auditor auditor) {
+
+this.repository = beagleRepository;
+
+this.negotiationService = negotiationService;
+
+this.auditor = auditor;
+
+}
+
+public void setClientOnboardingService(ClientOnboardingService clientOnboardingService) {
+
+this.clientOnboardingService = clientOnboardingService;
+
+}
+
+public void setIndexingService(IndexingService indexingService) {
+
+this.indexingService = indexingService;
+
+}
+
+public IndexingService getIndexingService() {
+
+return indexingService;
+
+}
+
+public GroupEditJobService getGroupEditJobService() {
+
+return groupEditJobService;
+
+}
+
+public void setGroupEditJobService(GroupEditJobService groupEditJobService) {
+
+this.groupEditJobService = groupEditJobService;
+
+}
+
+public ResourceBundleMessageSource getMessageSource() {
+
+return messageSource;
+
+}
+
+public void setMessageSource(ResourceBundleMessageSource messageSource) {
+
+this.messageSource = messageSource;
+
+}
+
+@Override
+
+public List operationsForAgreement(Amendment a) {
+
+int docCategory = a!=null ? a.getMasterAgreement().getAgreementType().getDocCategory().getId() : 0;
+
+List<UserRolePermissions> userPermissions = repository.fetchUserPemissions(auditor.getUser().getRole().getId(),docCategory);
+
+boolean exportDocAdded = false;
+
+List<Operation> result = new ArrayList<Operation>();
+
+for (Iterator iterator = getOperations().iterator(); iterator.hasNext(); ) {
+
+Operation operation = (Operation) iterator.next();
+
+for (Iterator itr = userPermissions.iterator(); itr.hasNext(); ) {
+
+UserRolePermissions userRolePermissions = (UserRolePermissions) itr.next();
+
+for (PermissionActions permissionActions : userRolePermissions.getPermission().getPermissionActionsSet()) {
+
+if (permissionActions.getAction().equalsIgnoreCase(operation.getClass().getSimpleName()) && userRolePermissions.isPermissionReadWrite()) {
+
+if (operation.isAvailable(a)) {
+
+if ("LEGAL_DATA_INTEGRITY".equalsIgnoreCase(auditor.getUser().getRole().getId())) {
+
+if (!PERMISSIONS_LDI.contains(permissionActions.getAction()))
+
+result.add(operation);
+
+} else {
+
+result.add(operation);
+
+}
+
+break;
+
+}
+
+}
+
+if (userRolePermissions.getPermission().getPermission().equalsIgnoreCase(PRINT_PREVIEW) && permissionActions.getAction().equalsIgnoreCase(operation.getClass().getSimpleName()) && userRolePermissions.isPermissionReadOnly()) {
+
+result.add(operation);
+
+}
+
+if (!exportDocAdded && "ExportExecutedDocumentsOperation".equalsIgnoreCase(operation.getClass().getSimpleName()) && ((isUserPermittedToTransferDocumentsAndIsPermissionReadOnly(userRolePermissions)) ||
+
+(isUserPermittedToEmailDocumentsAndIsPermissionReadWrite(userRolePermissions)))) {
+
+exportDocAdded = true;
+
+result.add(operation);
+
+}
+
+}
+
+if (userRolePermissions.getPermissionCategorization().getCategorization().equalsIgnoreCase(TABS)) {
+
+if ("Audit".equalsIgnoreCase(userRolePermissions.getPermission().getPermission())) {
+
+tabAuditPermissions.put(userRolePermissions.getPermissionCategorization().getGroupPermission(), userRolePermissions.getAccessRights());
+
+}
+
+}
+
+}
+
+}
+
+return result;
+
+}private boolean isUserPermittedToTransferDocumentsAndIsPermissionReadOnly(UserRolePermissions userRolePermissions) {
+
+return userRolePermissions.getPermission().getPermission().equalsIgnoreCase(TRANSFER_DOCUMENTS) && userRolePermissions.isPermissionReadWrite();
+
+}
+
+private boolean isUserPermittedToEmailDocumentsAndIsPermissionReadWrite(UserRolePermissions userRolePermissions) {
+
+return userRolePermissions.getPermission().getPermission().equalsIgnoreCase(EMAIL_DOCUMENTS) && userRolePermissions.isPermissionReadWrite();
+
+}
+
+private synchronized Collection<Operation> getOperations() {
+
+if (operations == null) {
+
+operations = applicationContext.getBeansOfType(Operation.class).values();
+
+}
+
+return operations;
+
+}
+
+@Override
+
+public void runOperation(Class operationClass, Parameters p) throws OperationIsNotRunnable {
+
+Operation operation = findOperation(operationClass);
+
+Report authorizationReport = isAuthorised(operation, p);
+
+if (authorizationReport.hasFailures()) {
+
+throw new OperationIsNotRunnable(authorizationReport);
+
+}
+
+Report report = isRunnable(operation, p);
+
+if (report.hasFailures()) {
+
+throw new OperationIsNotRunnable(report);
+
+} else if (operation instanceof TerminateMasterAgreementOperation && repository.getNSDRepositoryCode(p.amendment.getMasterAgreementId()) == null ) {
+
+} else {
+
+report = isWarning(operation, p);
+
+if (ExecuteMasterAgreementOperation.class.equals(operation.getClass())) {
+
+ExecuteMasterAgreementOperation executeMasterAgreementOperation = (ExecuteMasterAgreementOperation) operation;
+
+if (p instanceof ExecuteMasterAgreementOperation.MyParameters) {
+
+executeMasterAgreementOperation.setCollateralData(p.masterAgreement, (ExecuteMasterAgreementOperation.MyParameters) p);
+
+}
+
+}
+
+}
+
+if (report.hasWarnings()) {
+
+throw new OperationHasWarnings(report);
+
+}
+
+GroupEditJobExecutor executor = new GroupEditJobExecutor(repository);
+
+if (executor.isValid(p.masterAgreement, operationClass.getName()) && !p.multipleTerminate) {
+
+Group group = p.masterAgreement.getGroup();
+
+if (executor.isAlreadyRequested(group.getId())) {
+
+((GroupReplicationParameters) p).setGroupEditJobSubmitted(true);
+
+} else if (executor.canRunAsBackgroundJob(p, group.getAgreements().size())) {
+
+GroupEditOperationDetail operationDetail = executor.getOperationDetail();
+
+GroupEditJob job = new GroupEditJob(group.getId(), operationDetail, p, auditor.getUser(), GroupEditJobStatus.NOT_STARTED);
+
+repository.save(job);
+
+LOGGER.info("Created " + operationClass.getSimpleName() + " job for Group " + group.getId() + ": " + job.getId());
+
+} else {
+
+operation.execute(p);
+
+}
+
+}
+
+else {
+
+operation.execute(p);
+
+}
+
+}
+
+@Override
+
+public Report isRunnable(Class operationClass, Amendment amendment) {
+
+Operation operation = findOperation(operationClass);
+
+Parameters p = new Parameters();
+
+p.amendment = amendment;
+
+return isRunnable(operation, p);
+
+}
+
+private Report isRunnable(Operation operation, Parameters p) {
+
+Report report = new Report(operation, p);
+
+operation.isRunnable(report);
+
+return report;
+
+}private Report isAuthorised(Operation operation, Parameters p) {
+
+Report report = new Report(operation, p);
+
+operation.isAuthorised(report, p);
+
+return report;
+
+}
+
+private Report isWarning(Operation operation, Parameters p) {
+
+Report report = new Report(operation, p);
+
+operation.isWarning(report);
+
+return report;
+
+}
+
+private Operation findOperation(Class operationClass) {
+
+if (getOperations() == null) {
+
+throw new BeagleError(BeagleServiceImpl.class, "Operations not set on " + this + " (maybe you should go to previous page and try again)");
+
+}
+
+for (Iterator iterator = getOperations().iterator(); iterator.hasNext(); ) {
+
+Operation operation = (Operation) iterator.next();
+
+if (operation.getClass() == operationClass) {
+
+return operation;
+
+}
+
+}
+
+throw new BeagleRuntimeException(BeagleServiceImpl.class, "Could not find operation " + operationClass + " - check operations.xml file");
+
+}
+
+@Override
+
+public MasterAgreement previewMasterAgreement(AgreementType agreementType,
+
+EntityIds counterparty, EntityIds bnpParibas,
+
+String negotiator,
+
+Location adminLocation, Long governingLaw, String domesticBranch,
+
+Date fileOpenedDate,
+
+String agreementWithCSA,
+
+boolean createDefaultOffices, Long legalCounterpartyType, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, boolean doSave, Long maosRequestId, CollateralTypeLookup collateralType, Date collNegoStartDate,
+
+LookupItem regulatoryClassification,
+
+LookupItem collateralMarginType,
+
+Set<LookupItem> collateralRegime, Boolean StandardisedContract, LookupItem partyPostingCollateral,LookupItem acceptanceType
+
+) throws InvalidMasterAgreementException {
+
+MasterAgreement masterAgreement = new MasterAgreement();
+
+masterAgreement.setAgreementType(agreementType);
+
+setCounterpartyEntities(masterAgreement, counterparty);
+
+setBnpParibasEntities(masterAgreement, bnpParibas);
+
+masterAgreement.setFileOpenedDate(fileOpenedDate);
+
+masterAgreement.setWithCSA(AmendmentType.hasCSA(agreementWithCSA));
+
+Long entityId = bnpParibas.entity;Entity bnpEntity = Entity.get(repository, entityId);
+
+boolean containsFortisEntity = bnpEntity.getLegalEntityIdentifier() !=null ?
+
+ArrayUtils.contains(Entity.getBnppFortisEntitiesLEI(), bnpEntity.getLegalEntityIdentifier().getLeiId()) : false;
+
+if (!doSave) {
+
+// boolean contains = ArrayUtils.contains(Entity.getBnppFortisEntityIds(), bnpEntity.getId()) || ArrayUtils.contains(Entity.getBnppFortisEntities(), bnpEntity.getRmpmGroupCode());
+
+masterAgreement.setFortisFlag(Boolean.valueOf(containsFortisEntity));
+
+} else {
+
+masterAgreement.setFortisFlag(containsFortisEntity ? (fortisFlag == null ? Boolean.FALSE : fortisFlag) : Boolean.FALSE);
+
+}
+
+createAndAddFirstAmendment(masterAgreement, adminLocation, negotiator, governingLaw, domesticBranch, agreementWithCSA,legalCounterpartyType, doSave, closeOutNettingFlag, transactionSpecificMasters, collateralType, collNegoStartDate, regulatoryClassification, collateralMarginType, collateralRegime, StandardisedContract, partyPostingCollateral);
+
+if (createDefaultOffices) {
+
+AgreementHelper.createDefaultOffices(masterAgreement, repository);
+
+}
+
+if (maosRequestId != null) {
+
+MaosDetails maosDetails = repository.getObject(MaosDetails.class, maosRequestId);
+
+if (maosDetails != null) {
+
+MaosIdJoin maosIdJoin = new MaosIdJoin(masterAgreement, maosDetails);
+
+masterAgreement.setLinkedMaosJoin(maosIdJoin);
+
+maosDetails.getMaosLinkedMAs().add(maosIdJoin);
+
+}
+
+}
+
+masterAgreement.validateEntities();
+
+masterAgreement.setInitialDefaults();
+
+if(acceptanceType!=null){
+
+AcceptanceTypeEsa acceptanceTypeEsa = new AcceptanceTypeEsa(acceptanceType);
+
+masterAgreement.setAcceptanceTypeEsa(acceptanceTypeEsa);
+
+acceptanceTypeEsa.setMasterAgreement(masterAgreement);
+
+}
+
+masterAgreement.setGuaranteeFlagBnp(false);
+
+masterAgreement.setGuaranteeFlagCp(false);NettingCalculator calculator = new NettingCalculator(masterAgreement, LegalOpinion.getLegalOpinion(repository, masterAgreement));
+
+calculator.calculateCoveredProductNetting(true);
+
+//NO MASTER AGREEMENT PRDR EMIR CREATION
+
+if(null!= masterAgreement.getAgreementType() && masterAgreement.getAgreementType().isNoMasterPRDRAgreement()) {
+
+Set<EMIRSpecialClauseJoin> targetEmirSpecialClauseJoins = new HashSet<>();
+
+targetEmirSpecialClauseJoins.add(copyEMIRPRDRClauseForNMPRDRAgr(masterAgreement,null));
+
+masterAgreement.setEmirSpecialClauseJoins(targetEmirSpecialClauseJoins);
+
+}
+
+autoLinkExecutionAgreements(masterAgreement);
+
+return masterAgreement;
+
+}
+
+@Override
+
+public MasterAgreement createAndSaveMasterAgreement(AgreementType agreementType, EntityIds counterparty, EntityIds bnpParibas,
+
+String negotiator, Location adminLocation, Long governingLaw,
+
+String domesticBranch, Date fileOpenedDate, String agreementWithCSA,boolean createDefaultOffices, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, Long legalCounterpartyType, Long maosRequestId, List clearingHouses, CollateralTypeLookup collateralType, Date collNegoStartDate, User user,
+
+LookupItem regulatoryClassification,
+
+LookupItem collateralMarginType,
+
+Set<LookupItem> collateralRegime, Boolean StandardisedContract, LookupItem partyPostingCollateral,
+
+Boolean creditQuestionnaireReceived, Date creditQuestionnaireReceivedDate, Boolean addIsdaCommonFields, LookupItem acceptanceType, Boolean isAutoCreateCdea, boolean shouldSetDerivDataForBulkUpload, AgreementUploadData agreementUploadData) throws InvalidMasterAgreementException {
+
+MasterAgreement masterAgreement = previewMasterAgreement(agreementType, counterparty, bnpParibas, negotiator,
+
+adminLocation, governingLaw, domesticBranch, fileOpenedDate, agreementWithCSA, createDefaultOffices,legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters, true, maosRequestId, collateralType, collNegoStartDate,
+
+regulatoryClassification, collateralMarginType, collateralRegime, StandardisedContract, partyPostingCollateral,acceptanceType);
+
+String agreementTypeId = masterAgreement.getAgreementType().getId().getId();
+
+String action = "";
+
+if (isClearingHouseAgreementType(agreementTypeId)) {
+
+setClearingHouses(clearingHouses, masterAgreement);
+
+}
+
+if (AgreementType.OUTRIGHT_BNL_AGREEMENT.equalsIgnoreCase(agreementTypeId)) {
+
+setLegalData(masterAgreement);
+
+setCrossDefaultData(masterAgreement);
+
+}
+
+if (AgreementType.getReportingServiceAgreements().contains(agreementTypeId)) {
+
+setCrossDefaultData(masterAgreement);
+
+setLegalDataForReportingServiceAgreement(masterAgreement);
+
+}
+
+if (isNoMasterOrFbfdAgreementType(masterAgreement, agreementTypeId) && !AgreementHelper.isFbfEligibleForPrefilling(masterAgreement)) {
+
+EMIRData emirData = new EMIRData(masterAgreement);emirData.setDisputeReporting(Boolean.TRUE);
+
+emirData.setTradeReporting(Boolean.TRUE);
+
+masterAgreement.setEMIRData(emirData);
+
+}
+
+if (AgreementType.FBFD.equals(agreementTypeId) && ("2013".equals(masterAgreement.getAgreementType().getYear())) && !AgreementHelper.isFbfEligibleForPrefilling(masterAgreement)) {
+
+masterAgreement.setCounterpartyCreditEventUponMerger(Boolean.TRUE);
+
+masterAgreement.setBnpParibasCreditEventUponMerger(Boolean.TRUE);
+
+masterAgreement.setCounterpartyAutomaticTermination(Boolean.FALSE);
+
+masterAgreement.setBnpParibasAutomaticTermination(Boolean.FALSE);
+
+masterAgreement.setTerminationCurrencyOfTrade("Currency Of Trade");
+
+}
+
+if(AgreementType.EMAD.equals(agreementTypeId) && StandardisedContract != null && StandardisedContract == true && adminLocation.isBrussel() &&
+
+masterAgreement.getBnpLei().equals("KGCEPHLVVKVRZYO1T647") && (masterAgreement.isStandard() || masterAgreement.isSingleManaged())){
+
+AgreementHelper.setDataForEMAD(masterAgreement, repository);
+
+}
+
+if(masterAgreement.isSyntheticRepo() && !masterAgreement.isPrivate()){
+
+AgreementHelper.setDataForSyntheticRepo(masterAgreement,repository);
+
+}
+
+masterAgreement.setNegoStatusCommentLastModifiedDate(new Date());
+
+masterAgreement.updateNegotiationDateForMa();
+
+if (addIsdaCommonFields) {
+
+saveDefaultValuesCrossDefaultTab(masterAgreement);
+
+saveDefaultValuesLegalTab(masterAgreement);
+
+saveDefaultBnpOfficeCovered(masterAgreement);
+
+}else if(masterAgreement.isAgreementTypeIsda() && "2002".equals(masterAgreement.getAgreementType().getYear())){
+
+final List<AdditionalTerminationEvent> terminationEvents = repository.findAdditionalTerminationEvents();
+
+terminationEvents.stream().forEach(event -> {if( (TerminationEvent.BNP_FORCE_MAJEURE.getId().equals(event.getId()) ||
+
+TerminationEvent.CP_FORCE_MAJEURE.getId().equals(event.getId()))) {
+
+masterAgreement.addAdditionalTerminationEvent(new TerminationEvent(masterAgreement, (Long) event.getId(), "Y"));
+
+}
+
+});
+
+}if(isAutoCreateCdea)
+
+isdaCdeaLinkageControlService.removeFieldsForCdea(masterAgreement);
+
+if(shouldSetDerivDataForBulkUpload){
+
+setExecutionDataForBulkUpload(masterAgreement,agreementUploadData);
+
+}
+
+if(((masterAgreement.getAgreementType().toString().equals("RAHMENVERT (2018)") && !AgreementHelper.isRahmenvertEligibleForPrefilling(masterAgreement)) ||
+
+masterAgreement.getAgreementType().toString().equals("Clearing-Rahmenvereinbarung Ger CRV (2019)")) &&
+
+(masterAgreement.getGoverningLaw()!=null) ? new Long(LookupItem.idOf(masterAgreement.getGoverningLaw()).toString()) == 6 : false) {
+
+masterAgreement.setCounterpartyAutomaticTermination(true);
+
+masterAgreement.setBnpParibasAutomaticTermination(true);
+
+}
+
+repository.save(masterAgreement);
+
+repository.getSession().flush();
+
+createAndSaveCreditQuestionnaireDetailsForNegotiation(masterAgreement, creditQuestionnaireReceived, creditQuestionnaireReceivedDate);
+
+LOGGER.info("Master Agreement Created with Id : " + masterAgreement.getId());updateContactAndCorrespondence(masterAgreement);
+
+action = "CreateMasterAgreement";
+
+if(!AgreementCategoryHelper.isCategoryRestricted(masterAgreement.getAgreementType().getCategory())){
+
+Entity entity = repository.findObject(Entity.class, counterparty.entity);
+
+regulationsAndProtocolsService.assignIsdaRspAndIsdaJmpProtocolToMa(
+
+entity.getLegalEntityIdentifier() != null ? Arrays.asList(entity.getLegalEntityIdentifier().getLeiId())
+
+: new ArrayList<>(), repository);
+
+regulationsAndProtocolsService.assignArt55BailInProtocolToMa(
+
+entity.getLegalEntityIdentifier() != null ? Arrays.asList(entity.getLegalEntityIdentifier().getLeiId())
+
+: new ArrayList<>(), repository);
+
+regulationsAndProtocolsService.updateSFTRDateForMA(masterAgreement);
+
+}
+
+if(maosRequestId!=null){
+
+saveMaosAuditData(maosRequestId,masterAgreement, user, repository, action);
+
+sendNotificationToMaos(masterAgreement.getAllLinkedMaosDetails(), maosRequestId);
+
+}if(addIsdaCommonFields) {
+
+repository.updateAuditCommentIsdaCommonFields(masterAgreement.getId());
+
+}
+
+if(agreementType.isESA()){
+
+AgreementHelper.setDataForCountryAnnexWithAgreement(masterAgreement,repository);
+
+}
+
+setSftrFlagForCreateMa(masterAgreement);
+
+return masterAgreement;
+
+}
+
+private boolean isNoMasterOrFbfdAgreementType(MasterAgreement masterAgreement, String agreementTypeId) {
+
+return AgreementType.NO_MASTER_REPORTING_SERVICE_AGMT.contains(agreementTypeId) || (AgreementType.FBFD.equals(agreementTypeId) && ("2013".equals(masterAgreement.getAgreementType().getYear()) || "2007".equals(masterAgreement.getAgreementType().getYear())));
+
+}
+
+public void sendNotificationToMaos(List<MaosDetails> maosDetails, Long maosId) {
+
+for(MaosDetails maosDetail : maosDetails) {
+
+if ( maosDetails != null && BeagleNumberUtils.isLongEquals(maosId, maosDetail.getMaosId())  ) {
+
+try {
+
+clientOnboardingService.sendNotificationToMaos(maosDetail, MaosNotification.get(maosDetail.getMaosIdStatus()));} catch (JMSException e) {
+
+LOGGER.error("Error while sending notification to MAOS", e);
+
+}
+
+}
+
+}
+
+}
+
+@Override
+
+public void createAndSaveCreditQuestionnaireDetailsForNegotiation(MasterAgreement masterAgreement, Boolean creditQuestionnaireReceived, Date creditQuestionnaireReceivedDate) {
+
+setCreditQuestionnaireDetailsForNegotiation(masterAgreement, creditQuestionnaireReceived, creditQuestionnaireReceivedDate);
+
+AgreementHelper.setDefaultNegotiationStatus(masterAgreement, creditQuestionnaireReceived, repository);
+
+}
+
+private void setCreditQuestionnaireDetailsForNegotiation(MasterAgreement masterAgreement, Boolean creditQuestionnaireReceived, Date creditQuestionnaireReceivedDate) {
+
+if( creditQuestionnaireReceived != null ) {
+
+Negotiation negotiation = repository.findOrCreateNegotiationForAgreement(masterAgreement);
+
+negotiation.setCreditQuestionnaireReceived(creditQuestionnaireReceived);
+
+negotiation.setCreditQuestionaireReceivedDate(creditQuestionnaireReceivedDate);
+
+}
+
+}private void saveMaosAuditData(Long maosRequestId, MasterAgreement masterAgreement, User user, BeagleRepository repository, String action) {
+
+Long maId = masterAgreement.getMa().getId();
+
+Long groupId = masterAgreement.getMa().getGrp_id();
+
+String maGroupId = maId.toString();
+
+if(groupId!=null){
+
+maGroupId = maGroupId+"/"+groupId.toString();
+
+}
+
+MaosAuditHistory auditHistory = new MaosAuditHistory(maosRequestId,null,null,maGroupId,null,
+
+MaosDashBoardActions.CREATE_A_NEW_MA,new Date(),user.getFullname());
+
+repository.save(auditHistory);
+
+}
+
+private void setLegalData(MasterAgreement masterAgreement) {
+
+masterAgreement.setCounterpartyCreditEventUponMerger(Boolean.TRUE);
+
+masterAgreement.setBnpParibasCreditEventUponMerger(Boolean.FALSE);
+
+masterAgreement.setCounterpartyAutomaticTermination(Boolean.TRUE);
+
+masterAgreement.setBnpParibasAutomaticTermination(Boolean.TRUE);
+
+masterAgreement.setFullTwoWayPayment(Boolean.TRUE);
+
+//masterAgreement.setCapacityAndAuthority(Boolean.TRUE);
+
+}private void setLegalDataForReportingServiceAgreement(MasterAgreement masterAgreement) {
+
+masterAgreement.setCounterpartyCreditEventUponMerger(Boolean.FALSE);
+
+masterAgreement.setBnpParibasCreditEventUponMerger(Boolean.FALSE);
+
+masterAgreement.setCounterpartyAutomaticTermination(Boolean.FALSE);
+
+masterAgreement.setBnpParibasAutomaticTermination(Boolean.FALSE);
+
+masterAgreement.setSchedule("N");
+
+masterAgreement.setFullTwoWayPayment(Boolean.FALSE);
+
+//masterAgreement.setCapacityAndAuthority(Boolean.FALSE);
+
+}
+
+private void setCrossDefaultData(MasterAgreement masterAgreement) {
+
+masterAgreement.getOrCreateBnpParibasCrossDefault().setType(CrossDefaultType.NO_CROSS_DEFAULT_PROVISION);
+
+masterAgreement.getOrCreateCounterpartyCrossDefault().setType(CrossDefaultType.NO_CROSS_DEFAULT_PROVISION);
+
+}
+
+@Override
+
+public MasterAgreement createAndSaveGroup(AgreementType agreementType, EntityIds counterparty, EntityIds bnpParibas,
+
+List entityIds, String negotiator, Location adminLocation,
+
+Long governingLaw, String domesticBranch, Date fileOpenedDate,
+
+String agreementWithCSA, String ackComment, boolean acknowledge, List<Long> overlappedIds, boolean createDefaultOffices, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, Long legalCounterpartyType,
+
+List<PartyMaosDetails> maosRequest, List clearingHouses, User user, Boolean StandardisedContract, Boolean creditQuestionnaireReceived, Date creditQuestionnaireReceivedDate, Boolean addIsdaCommonFields, LookupItem clientRegCategoryBucket, Boolean euroOperation, List<MasterAgreement> maList, Date agreementExecutionDate, Boolean shouldExecute, boolean shouldSetDerivDataForExecution, AgreementUploadData agreementUploadData) throws InvalidMasterAgreementException {
+
+MasterAgreement result = null;
+
+Group group = new Group();
+
+repository.save(group);
+
+LOGGER.info("Group Created with Group Id : " + group.getId());
+
+boolean managedByCounterparty = counterparty.actingEntity != null;
+
+String action = "";
+
+for (Iterator iterator = entityIds.iterator(); iterator.hasNext(); ) {
+
+Long entityId = (Long) iterator.next();
+
+if (managedByCounterparty) {
+
+counterparty.entity = entityId;
+
+} else {
+
+bnpParibas.entity = entityId;
+
+}
+
+PartyMaosDetails maos = PartyMaosDetails.getPartyMaosDetailsByParty(maosRequest, counterparty.entity);
+
+MasterAgreement masterAgreement = previewMasterAgreement(agreementType, counterparty, bnpParibas,
+
+negotiator, adminLocation, governingLaw, domesticBranch, fileOpenedDate, agreementWithCSA,
+
+createDefaultOffices, legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters, true, maos != null ?
+
+maos.getMaosId() : null, null, null, null, null, null, StandardisedContract, null,null);masterAgreement.setGroup(group);
+
+masterAgreement.setAddToGroupDate(new Date());
+
+String agreementTypeId = masterAgreement.getAgreementType().getId().getId();
+
+if (isClearingHouseAgreementType(agreementTypeId)) {
+
+setClearingHouses(clearingHouses, masterAgreement);
+
+}
+
+if (AgreementType.OUTRIGHT_BNL_AGREEMENT.equalsIgnoreCase(agreementTypeId)) {
+
+setLegalData(masterAgreement);
+
+setCrossDefaultData(masterAgreement);
+
+}
+
+if (AgreementType.getReportingServiceAgreements().contains(agreementTypeId)) {
+
+setCrossDefaultData(masterAgreement);
+
+setLegalDataForReportingServiceAgreement(masterAgreement);
+
+}
+
+if (isNoMasterOrFbfdAgreementType(masterAgreement, agreementTypeId)) {
+
+EMIRData emirData = new EMIRData(masterAgreement);
+
+emirData.setDisputeReporting(Boolean.TRUE);
+
+emirData.setTradeReporting(Boolean.TRUE);
+
+masterAgreement.setEMIRData(emirData);
+
+}
+
+if (addIsdaCommonFields) {
+
+saveDefaultValuesCrossDefaultTab(masterAgreement);
+
+saveDefaultValuesLegalTab(masterAgreement);
+
+saveDefaultBnpOfficeCovered(masterAgreement);
+
+}else if(masterAgreement.isAgreementTypeIsda() && "2002".equals(masterAgreement.getAgreementType().getYear())){
+
+final List<AdditionalTerminationEvent> terminationEvents = repository.findAdditionalTerminationEvents();
+
+terminationEvents.stream().forEach(event -> {if( (TerminationEvent.BNP_FORCE_MAJEURE.getId().equals(event.getId()) ||
+
+TerminationEvent.CP_FORCE_MAJEURE.getId().equals(event.getId()))) {
+
+masterAgreement.addAdditionalTerminationEvent(new TerminationEvent(masterAgreement, (Long) event.getId(), "Y"));
+
+}
+
+});
+
+}
+
+if(AgreementCategoryHelper.isPBCategory(masterAgreement.getAgreementType().getCategory())){
+
+masterAgreement.setExecutionDate(agreementExecutionDate);
+
+if(overlappedIds != null && overlappedIds.contains(entityId)) {
+
+masterAgreement.setOverlappedProdComm(ackComment);
+
+masterAgreement.setAcknowledgement(acknowledge);
+
+}else if(!managedByCounterparty){
+
+masterAgreement.setOverlappedProdComm(ackComment);
+
+masterAgreement.setAcknowledgement(acknowledge);
+
+}masterAgreement.updateRelationDate();
+
+}
+
+if(shouldExecute || (masterAgreement.isSyntheticRepo() && !masterAgreement.isPrivate())){
+
+masterAgreement.setExecutionDate(agreementExecutionDate);
+
+Amendment amendment = masterAgreement.getAmendments().get(0);
+
+if(masterAgreement.isSyntheticRepo()){
+
+amendment.execute(user,new Date());
+
+} else if(agreementUploadData!=null && agreementUploadData.getAgreementExecDate()!=null)
+
+amendment.execute(user,agreementUploadData.getAgreementExecDate());
+
+else
+
+amendment.execute(user,agreementUploadData.getAgreementSignDate());
+
+masterAgreement.updateRelationDate();
+
+}
+
+if(masterAgreement.isSyntheticRepo() && !masterAgreement.isPrivate()){
+
+AgreementHelper.setDataForSyntheticRepo(masterAgreement,repository);
+
+}
+
+if(shouldSetDerivDataForExecution){
+
+setExecutionDataForBulkUpload(masterAgreement,agreementUploadData);
+
+}
+
+if(AgreementCategoryHelper.isPBCategory(masterAgreement.getAgreementType().getCategory()))
+
+AgreementHelper.updatePbLegalData(masterAgreement,clientRegCategoryBucket,euroOperation);
+
+if(maList!=null)
+
+maList.add(masterAgreement);
+
+if(((masterAgreement.getAgreementType().toString().equals("RAHMENVERT (2018)") && !AgreementHelper.isRahmenvertEligibleForPrefilling(masterAgreement)) ||
+
+masterAgreement.getAgreementType().toString().equals("Clearing-Rahmenvereinbarung Ger CRV (2019)")) &&
+
+(masterAgreement.getGoverningLaw()!=null) ? new Long(LookupItem.idOf(masterAgreement.getGoverningLaw()).toString()) == 6 : false) {
+
+masterAgreement.setCounterpartyAutomaticTermination(true);
+
+masterAgreement.setBnpParibasAutomaticTermination(true);
+
+}
+
+repository.save(masterAgreement);
+
+repository.getSession().flush();
+
+LOGGER.info("Master Agreement Created with Id : " + masterAgreement.getId() + " within Group : " + group.getId());
+
+action = "Create Group Agreement";
+
+masterAgreement.setGrp_id(group.getId());updateContactAndCorrespondence(masterAgreement);
+
+createAndSaveCreditQuestionnaireDetailsForNegotiation(masterAgreement, creditQuestionnaireReceived, creditQuestionnaireReceivedDate);
+
+masterAgreement.updateNegotiationDateForMa();
+
+if(maos!=null){
+
+saveMaosAuditData(maos.getMaosId(),masterAgreement, user, repository, action);
+
+sendNotificationToMaos(masterAgreement.getAllLinkedMaosDetails(), maos.getMaosId());
+
+}
+
+if (result == null) {
+
+result = masterAgreement;
+
+}
+
+isdaCdeaLinkageControlService.checkAndCreateMasterAgreement(masterAgreement, domesticBranch, createDefaultOffices, StandardisedContract, counterparty, bnpParibas);
+
+if(!AgreementCategoryHelper.isCategoryRestricted(masterAgreement.getAgreementType().getCategory())){
+
+Entity entity = repository.findObject(Entity.class, counterparty.entity);
+
+regulationsAndProtocolsService.assignIsdaRspAndIsdaJmpProtocolToMa(
+
+entity.getLegalEntityIdentifier() != null ? Arrays.asList(entity.getLegalEntityIdentifier().getLeiId())
+
+: new ArrayList<>(),repository);
+
+regulationsAndProtocolsService.assignArt55BailInProtocolToMa(
+
+entity.getLegalEntityIdentifier() != null ? Arrays.asList(entity.getLegalEntityIdentifier().getLeiId())
+
+: new ArrayList<>(),repository);
+
+regulationsAndProtocolsService.updateSFTRDateForMA(masterAgreement);
+
+}
+
+if(addIsdaCommonFields) {
+
+repository.updateAuditCommentIsdaCommonFields(masterAgreement.getId());
+
+}
+
+if(AgreementCategoryHelper.isPBCategory(masterAgreement.getAgreementType().getCategory())){
+
+Amendment amendment = repository.findMaster(masterAgreement.getId());
+
+amendment.execute(user, masterAgreement.getExecutionDate());
+
+}
+
+setSftrFlagForCreateMa(masterAgreement);
+
+}
+
+return result;
+
+}
+
+@Override
+
+public MasterAgreement createAndSaveMultiMultiGroup(AgreementType agreementType, EntityIds counterparty, EntityIds bnpParibas,
+
+List cpEntities,List bnpEntities, String negotiator, Location adminLocation,
+
+Long governingLaw, String domesticBranch, Date fileOpenedDate,
+
+String agreementWithCSA, String ackComment, boolean acknowledge, List<Long> overlappedIds, boolean createDefaultOffices, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, Long legalCounterpartyType,
+
+List<PartyMaosDetails> maosRequest, List clearingHouses, User user, Boolean StandardisedContract, Boolean creditQuestionnaireReceived, Date creditQuestionnaireReceivedDate, Boolean addIsdaCommonFields, LookupItem clientRegCategoryBucket, Boolean euroOperation, List<MasterAgreement> maList, Date agreementExecutionDate) throws InvalidMasterAgreementException {
+
+MasterAgreement result = null;
+
+Group group = new Group();
+
+repository.save(group);
+
+LOGGER.info("Group Created with Group Id : " + group.getId());
+
+String action = "";
+
+for (Object cp : cpEntities  ) {
+
+for (Object bnp : bnpEntities){
+
+counterparty.entity = (Long) cp;
+
+bnpParibas.entity = (Long) bnp;
+
+PartyMaosDetails maos = PartyMaosDetails.getPartyMaosDetailsByParty(maosRequest, counterparty.entity);MasterAgreement masterAgreement = previewMasterAgreement(agreementType, counterparty, bnpParibas,
+
+negotiator, adminLocation, governingLaw, domesticBranch, fileOpenedDate, agreementWithCSA,
+
+createDefaultOffices, legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters, true, maos != null ?
+
+maos.getMaosId() : null, null, null, null, null, null, StandardisedContract, null,null);
+
+masterAgreement.setGroup(group);
+
+masterAgreement.setAddToGroupDate(new Date());
+
+masterAgreement.setMultiMultiGroup(true);
+
+if(AgreementCategoryHelper.isPBCategory(masterAgreement.getAgreementType().getCategory())){
+
+masterAgreement.setExecutionDate(agreementExecutionDate);
+
+}
+
+AgreementHelper.updatePbLegalData(masterAgreement,clientRegCategoryBucket,euroOperation);
+
+if(maList!=null)
+
+maList.add(masterAgreement);
+
+masterAgreement.updateRelationDate();
+
+if(((masterAgreement.getAgreementType().toString().equals("RAHMENVERT (2018)") && !AgreementHelper.isRahmenvertEligibleForPrefilling(masterAgreement)) ||
+
+masterAgreement.getAgreementType().toString().equals("Clearing-Rahmenvereinbarung Ger CRV (2019)")) &&
+
+(masterAgreement.getGoverningLaw()!=null) ? new Long(LookupItem.idOf(masterAgreement.getGoverningLaw()).toString()) == 6 : false) {
+
+masterAgreement.setCounterpartyAutomaticTermination(true);
+
+masterAgreement.setBnpParibasAutomaticTermination(true);
+
+}
+
+repository.save(masterAgreement);
+
+repository.getSession().flush();
+
+LOGGER.info("Master Agreement Created with Id : " + masterAgreement.getId() + " within Group : " + group.getId());
+
+action = "Create Group Agreement";
+
+masterAgreement.setGrp_id(group.getId());
+
+updateContactAndCorrespondence(masterAgreement);
+
+createAndSaveCreditQuestionnaireDetailsForNegotiation(masterAgreement, creditQuestionnaireReceived, creditQuestionnaireReceivedDate);
+
+masterAgreement.updateNegotiationDateForMa();
+
+if(maos!=null){
+
+saveMaosAuditData(maos.getMaosId(),masterAgreement, user, repository, action);
+
+sendNotificationToMaos(masterAgreement.getAllLinkedMaosDetails(), maos.getMaosId());
+
+}
+
+if (result == null) {
+
+result = masterAgreement;
+
+}
+
+if(AgreementCategoryHelper.isPBCategory(masterAgreement.getAgreementType().getCategory())){
+
+Amendment amendment = repository.findMaster(masterAgreement.getId());
+
+amendment.execute(user, masterAgreement.getExecutionDate());
+
+}
+
+setSftrFlagForCreateMa(masterAgreement);
+
+}
+
+}
+
+return result;
+
+}
+
+private void saveDefaultValuesCrossDefaultTab(MasterAgreement ma) {
+
+saveCpCrossDefaultValues(ma);
+
+saveBnpCrossDefaultValues(ma);
+
+ma.setSpecifiedIndebtednessValues(true, LookupItem.getSpecIndebtListDepositCarvedOut());
+
+}
+
+private void saveCpCrossDefaultValues(MasterAgreement ma) {
+
+CrossDefault crossDefault = ma.getOrCreateCounterpartyCrossDefault();
+
+crossDefault.setAllParameters(CrossDefaultType.PERCENTAGE, null, null
+
+, "", false, null, false, LookupItem.EQUITY_TYPE_NAV, 3.0F, null,
+false, false, null, false, AffiliateType.AFFILIATE_TYPE_ANY,
+
+null, null, "");
+
+}
+
+private void saveBnpCrossDefaultValues(MasterAgreement ma) {
+
+CrossDefault crossDefault = ma.getOrCreateBnpParibasCrossDefault();
+
+crossDefault.setAllParameters(CrossDefaultType.PERCENTAGE, null, null
+
+, "", false, null, false, LookupItem.EQUTY_TYPE_SHE, 3.0F, null,
+
+false, false, null, false, AffiliateType.AFFILIATE_TYPE_ANY,
+
+null, null, "");
+
+}
+
+private void saveDefaultValuesLegalTab(MasterAgreement ma) {
+
+ma.setTerminationCurrency(Currency.find(repository,"USD"));
+
+ma.setSchedule("N");
+
+ma.setCounterpartyCreditEventUponMerger(true);
+
+ma.setBnpParibasCreditEventUponMerger(true);
+
+ma.setCounterpartyAutomaticTermination(false);
+
+ma.setBnpParibasAutomaticTermination(false);
+
+ma.setAutomaticTermination(Boolean.FALSE);
+
+AutomaticEarlyTermination bnpDetails=new AutomaticEarlyTermination(new AgreementKey(ma, Party.BNP_PARIBAS.getAbbreviatedId()));
+
+bnpDetails.setCanActivated(false);
+
+bnpDetails.setActivationReason(null);
+
+AutomaticEarlyTermination cpDetails=new AutomaticEarlyTermination(new AgreementKey(ma, Party.COUNTERPARTY.getAbbreviatedId()));
+
+cpDetails.setCanActivated(false);
+
+cpDetails.setActivationReason(null);
+
+saveDefaultSpecialClauses(ma);
+
+saveDefaultAddTermEvents(ma);
+
+}
+
+private void saveDefaultSpecialClauses(MasterAgreement ma){
+
+final List<LookupItem> specialClauses = repository.findSpecialClauses();
+
+specialClauses.stream().forEach(clause -> {
+
+if (clause.getId().equals(LookupItem.SPC_NEW_CTD_CODE) && !isMAEligileForDefaultCTD(ma)) {
+
+ma.addSpecialClause(AgreementHelper.getSpecialClauseInstance(ma, (Long) clause.getId(), true));
+
+}else if (!clause.getId().equals(LookupItem.SPC_NEW_CTD_CODE)){
+
+ma.addSpecialClause(AgreementHelper.getSpecialClauseInstance(ma, (Long) clause.getId(), false));
+
+}
+
+});
+
+ma.setHasSpecialClauses(true);
+
+}private void saveDefaultAddTermEvents(MasterAgreement ma){
+
+final List<AdditionalTerminationEvent> terminationEvents = repository.findAdditionalTerminationEvents();
+
+terminationEvents.stream().forEach(event -> {if(isEventEligble(event) ){
+
+ma.addAdditionalTerminationEvent(new TerminationEvent(ma, (Long) event.getId(), "Y"));
+
+}else {
+
+ma.addAdditionalTerminationEvent(new TerminationEvent(ma, (Long) event.getId(), "N"));
+
+}
+
+});
+
+ma.setHasAdditionalTerminationEvents(true);
+
+}
+
+private boolean isEventEligble(AdditionalTerminationEvent event){
+
+return event.getId().toString().equals("107") || event.getId().toString().equals("45") || event.getId().toString().equals("43")
+
+|| event.getId().toString().equals("3") || event.getId().toString().equals("4") || event.getId().toString().equals("42")
+
+|| (TerminationEvent.BNP_FORCE_MAJEURE.getId().equals(event.getId())) ||
+
+TerminationEvent.CP_FORCE_MAJEURE.getId().equals(event.getId());
+
+}
+
+private void saveDefaultBnpOfficeCovered(MasterAgreement ma){
+
+List existing= ma.getBnpParibasCoveredOffices().stream()
+
+.map(coveredOffice -> coveredOffice.getId().getJoinedId()).collect(Collectors.toList());
+
+Arrays.stream(Entity.getBnppIsdaCommonTermsEntities()).filter(id-> !existing.contains(id)).forEach(ids -> ma.addBnpParibasCoveredOffice(createCoveredOffice(ma,Entity.find(repository,ids))));
+
+}
+
+public static CoveredOffice createCoveredOffice(MasterAgreement masterAgreement, Entity entity) {
+
+CoveredOffice office = new CoveredOffice(masterAgreement, entity);
+
+office.setCloseOutNetting(false);
+
+office.setRingFenced(false);
+
+office.setCeasedTrading(false);
+
+return office;
+
+}
+
+@SuppressWarnings("squid:S1067")
+
+private boolean isClearingHouseAgreementType(String agreementTypeId) {
+
+return AgreementType.EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.EUROPEAN_EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.CUSTOMER_ACCOUNT_AGREEMENT.equalsIgnoreCase(agreementTypeId)|| AgreementType.CDEA_EUROPEAN_EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.DRV_GERMAN_EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.FBF_FRENCH_EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.EUROMASTER_EXECUTION_AGREEMENT.equalsIgnoreCase(agreementTypeId)
+
+|| AgreementType.BP2S_RULE_BOOK.equalsIgnoreCase(agreementTypeId);
+
+}
+
+private void updateContactAndCorrespondence(MasterAgreement masterAgreement) {
+
+//Amendment amd = masterAgreement.getLastAmendment();
+
+if (!masterAgreement.getLinkedMaosJoin().isEmpty()) {
+
+//UpdateBeagleOnMaosFeed.update(amd.getMaosDetail(), repository);
+
+UpdateBeagleOnMaosFeed.updateAnAgreement(masterAgreement.getLinkedMaosJoin().iterator().next().getMaosDetails(), masterAgreement, repository);
+
+}
+
+}
+
+private void setClearingHouses(List<Long> clearingHouses, MasterAgreement masterAgreement) {
+
+Set<ClearingHouseValue> clearingHouseValues = masterAgreement.getClearingHouses();
+
+for (Long clearingHouse : clearingHouses) {
+
+if (clearingHouse != null) {
+
+clearingHouseValues.add(new ClearingHouseValue(masterAgreement, clearingHouse));
+
+}
+
+}
+
+}
+
+@Override
+
+public MasterAgreement previewGroup(AgreementType agreementType, EntityIds counterparty, EntityIds bnpParibas, List managedEntityIds, String negotiator,
+
+Location adminLocation, Long governingLaw, String domesticBranch, Date fileOpenedDate, Long previewEntityId,
+
+String agreementWithCSA, Long legalCounterpartyType, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, boolean doSave, List<PartyMaosDetails> maosRequests, Boolean StandardisedContract) throws InvalidMasterAgreementException {
+
+MasterAgreement result = null;
+
+boolean managedByCounterparty = counterparty.actingEntity != null;
+
+boolean isFortisEntityPresentInGrp = false;
+
+Group group = new Group();
+
+if(!managedByCounterparty) {
+
+List<Entity> bnpEntities = Entity.getAll(repository, managedEntityIds);
+
+isFortisEntityPresentInGrp = bnpEntities.stream().anyMatch(bnpEntity->bnpEntity.getLegalEntityIdentifier() !=null ?
+
+ArrayUtils.contains(Entity.getBnppFortisEntitiesLEI(), bnpEntity.getLegalEntityIdentifier().getLeiId()) : false);
+
+}
+
+for (Iterator iterator = managedEntityIds.iterator(); iterator.hasNext(); ) {
+
+Long entityId = (Long) iterator.next();
+
+if (managedByCounterparty) {
+
+counterparty.entity = entityId;
+
+} else {
+
+bnpParibas.entity = entityId;
+
+}
+
+PartyMaosDetails maos = PartyMaosDetails.getPartyMaosDetailsByParty(maosRequests, counterparty.entity);
+
+MasterAgreement masterAgreement = previewMasterAgreement(agreementType, counterparty, bnpParibas, negotiator, adminLocation, governingLaw, domesticBranch,
+
+fileOpenedDate, agreementWithCSA, true, legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters,
+
+false, maos != null ? maos.getMaosId() : null, null, null, null, null, null, StandardisedContract, null,null);
+
+if(!managedByCounterparty) {
+
+masterAgreement.setFortisFlag(isFortisEntityPresentInGrp);
+
+}
+
+masterAgreement.setGroup(group);
+
+group.getAgreements().add(masterAgreement);
+
+if (previewEntityId == null && result == null) {
+
+result = masterAgreement;
+
+} else if (managedByCounterparty && masterAgreement.getSigningEntity(Party.COUNTERPARTY).getId().equals(previewEntityId)) {
+
+result = masterAgreement;
+
+} else if (masterAgreement.getSigningEntity(Party.BNP_PARIBAS).getId().equals(previewEntityId)) {
+
+result = masterAgreement;
+
+}
+
+}
+
+return result;
+
+}
+
+@Override public MasterAgreement previewMultiMultiGroup(
+
+AgreementType agreementType,
+
+EntityIds counterparty,
+
+EntityIds bnpParibas,
+
+List cpEntities,
+
+List bnpEntities,
+
+String negotiator,
+
+Location adminLocation,
+
+Long governingLaw,
+
+String domesticBranch,
+
+Date fileOpenedDate,
+
+Long previewEntityId,
+
+String agreementWithCSA, Long legalCounterpartyType, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, boolean doSave, List<PartyMaosDetails> maosRequests, Boolean StandardisedContract) throws InvalidMasterAgreementException {
+
+MasterAgreement result = null;
+
+Group group = new Group();
+
+for(Iterator iterator = cpEntities.iterator(); iterator.hasNext();){
+
+counterparty.entity =(Long) iterator.next();
+
+for(Iterator iterator1 = bnpEntities.iterator() ; iterator1.hasNext();){
+
+bnpParibas.entity = (Long) iterator1.next();
+
+PartyMaosDetails maos = PartyMaosDetails.getPartyMaosDetailsByParty(maosRequests, counterparty.entity);
+
+MasterAgreement masterAgreement = previewMasterAgreement(agreementType, counterparty, bnpParibas, negotiator, adminLocation, governingLaw, domesticBranch,
+
+fileOpenedDate, agreementWithCSA, true, legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters,false, maos != null ? maos.getMaosId() : null, null, null, null, null, null, StandardisedContract, null,null);
+
+masterAgreement.setGroup(group);
+
+group.getAgreements().add(masterAgreement);
+
+result = masterAgreement;
+
+}
+
+}
+
+return result;
+
+}
+
+@Override
+
+public void deleteNegotiationItem(List documents, boolean forGroup, User user) {
+
+if(!documents.isEmpty()){
+
+getNegotiationService().deleteNegotiationItem(documents, forGroup, user);
+
+}
+
+}
+
+@Override
+
+public void deleteNegotiationItemForExec(List documents) {
+
+getNegotiationService().deleteNegotiationItemForExec(documents);
+
+}
+
+@Override
+
+public void deleteSharedNegotiationItemForExec(List documents) {
+
+getNegotiationService().deleteShared NegotiationItemForExec(documents);
+
+}
+
+private void setBnpParibasEntities (MasterAgreement masterAgreement, EntityIds bnpParibas) {
+
+masterAgreement.setBnpParibasEntities(
+
+retrieveEntity(bnpParibas.entity),
+
+retrieveEntity(bnpParibas.actingEntity),
+
+retrieveEntity (bnpParibas.fundManagingCompany),
+retrieveEntity(bnpParibas.fundWithCompartments));
+
+}
+
+private void setCounterpartyEntities(MasterAgreement masterAgreement, EntityIds counterparty) {
+
+masterAgreement.setCounterpartyEntities(
+
+retrieveEntity(counterparty.entity),
+
+retrieveEntity(counterparty.actingEntity),
+
+retrieveEntity(counterparty.fundManagingCompany),
+
+retrieveEntity(counterparty.fundWithCompartments));
+
+}
+
+private Entity retrieveEntity(Long entityId) {
+
+return entityId == null ? null : Entity.get(repository, entityId);
+
+}
+
+private void createAndAddFirstAmendment(MasterAgreement masterAgreement, Location location, String negotiator, Long governingLaw, String domesticBranch,
+
+String agreementWithCSA, Long legalCounterpartyType, boolean doSave, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, CollateralTypeLookup collateralType, Date collNegoStartDate,
+
+LookupItem regulatoryClassification,
+
+LookupItem collateralMarginType,
+
+Set<LookupItem> collateralRegime, Boolean StandardisedContract, LookupItem partyPostingCollateral) {Amendment amendment = new Amendment();
+
+Negotiator negotiatorLookup = Negotiator.find(repository, negotiator);
+
+amendment.setAdminLocation(location);
+
+//amendment.setNegotiator(Negotiator.find(repository, negotiator));
+
+amendment.setNegotiator(negotiatorLookup);
+
+masterAgreement.setGoverningLaw(repository.findGoverningLaw(governingLaw));
+
+masterAgreement.setLegalCounterpartyType(repository.findLegalCounterpartyTypeById(legalCounterpartyType));
+
+masterAgreement.setCloseOutNetting(closeOutNettingFlag);
+
+masterAgreement.setTransactionSpecificMasters(transactionSpecificMasters);
+
+NettingCalculator calculator = new NettingCalculator(masterAgreement, LegalOpinion.getLegalOpinion(repository, masterAgreement));
+
+calculator.calculateCloseOutNettingForBNPPFortisEntities();
+
+if (!doSave) {
+
+masterAgreement.setTempCloseOutNetting(masterAgreement.getCloseOutNetting());
+
+masterAgreement.setTempReasonForNonNetting(masterAgreement.getReasonForNonNetting());
+
+masterAgreement.setCloseOutNetting(false);masterAgreement.setReasonForNonNetting(null);
+
+} else {
+
+if (!Boolean.TRUE.equals(masterAgreement.getFortisFlag()) && closeOutNettingFlag.equals(Boolean.FALSE)) {
+
+masterAgreement.setCloseOutNetting(false);
+
+masterAgreement.setReasonForNonNetting(null);
+
+} else if (closeOutNettingFlag.equals(Boolean.TRUE)) {
+
+masterAgreement.setCloseOutNetting(true);
+
+masterAgreement.setReasonForNonNetting(null);
+
+}
+
+}
+
+if (domesticBranch != null && !"".equals(domesticBranch)) {
+
+amendment.setDomesticBranch(repository.getObject(DomesticBranch.class, domesticBranch));
+
+}
+
+if (StandardisedContract != null) {
+
+amendment.setStandardisedContract(StandardisedContract);
+
+}
+
+if (masterAgreement.getAgreementType().isDerivatives() || masterAgreement.getAgreementType().isPrimeBrokerage()) {
+
+if (AmendmentType.MA_ONLY.equals(agreementWithCSA) || (!masterAgreement.belongsToGroup() && AgreementType.getClearingTypes().contains(masterAgreement.getAgreementType().getId().getId()))) {
+
+amendment.setType(AmendmentType.get(repository, AmendmentType.AMENDMENT_TO_MA_ONLY_ID));
+
+amendment.setCollateralStatus(CollateralStatus.get(repository, CollateralStatus.NO_CSA_ID));
+
+}
+
+if (AmendmentType.MA_AND_CSA.equals(agreementWithCSA)) {
+
+amendment.setType(AmendmentType.get(repository, AmendmentType.AMENDMENT_TO_MA_AND_COLLATERAL_ID));
+
+masterAgreement.setCollateralFlag(true);
+
+}
+
+//BGL-1215 4-Feb-2010
+
+if (masterAgreement.getAgreementType().getIsClearingAgreement() || masterAgreement.isAgreementTypeDeemedIsda()) {
+
+final List<AdditionalTerminationEvent> terminationEvents = repository.findAdditionalTerminationEvents();
+
+for (AdditionalTerminationEvent terminationEvent : terminationEvents) {
+
+if ("Clearing ISDA LCH".equalsIgnoreCase(masterAgreement.getAgreementType().getId().getId()) && terminationEvent.getId().equals(LookupItem.CLEARING_MEMBER_BNPP_ATE.getId())) {
+
+masterAgreement.addAdditionalTerminationEvent(new TerminationEvent(masterAgreement, (Long) terminationEvent.getId(), "Y"));
+
+}
+
+}
+
+}if (isMAEligileForDefaultCTD(masterAgreement)) {
+
+final List<LookupItem> specialClauses = repository.findSpecialClauses();
+
+for (LookupItem specialClause : specialClauses) {
+
+if (specialClause.getId().equals(LookupItem.SPC_NEW_CTD_CODE)) {
+
+AgreementJoin agreementJoin = AgreementHelper.getSpecialClauseInstance(masterAgreement, (Long) specialClause.getId(), true);
+
+masterAgreement.getSpecialClauseJoins().remove(agreementJoin);
+
+agreementJoin.setCreation(User.BEAGLE, new Date());
+
+masterAgreement.addSpecialClause(agreementJoin);
+
+}
+
+}
+
+}
+
+}
+
+//        amendment.join(masterAgreement, new Long(0));
+
+masterAgreement.addAmendment(amendment);
+
+AmendmentKey key = new AmendmentKey(masterAgreement, Long.valueOf(0));
+
+amendment.setId(key);
+
+//        this.id = key;
+
+AgreementType agreementType = masterAgreement.getAgreementType();
+
+masterAgreement.setCounterpartyCrossDefault(new CrossDefault(masterAgreement));
+
+masterAgreement.setBnpParibasCrossDefault(new CrossDefault(masterAgreement));
+
+if (agreementType.isDerivatives() || agreementType.isPrimeBrokerage()) {
+
+if (amendment.getType() != null && !AmendmentType.AMENDMENT_TO_MA_ONLY_ID.equals(amendment.getType().getId())) {
+
+masterAgreement.setCollateralData(new CollateralData(masterAgreement));
+
+}
+
+} else if (agreementType.isStockLending()) {
+
+masterAgreement.setStockLending(new StockLending(masterAgreement));
+
+} else if (agreementType.isRepurchase()) {
+
+masterAgreement.setRepurchase(new Repurchase(masterAgreement));
+
+}
+
+if (collateralType != null) {
+
+CollateralData collateralData = masterAgreement.getCollateralData();
+
+if (collateralData != null) {
+
+collateralData.setCollateralId(repository.fetchNextCollateralSeq());
+
+CollateralHeaderDetails collateralHeaderDetails = getCollateralHeaderDetails(regulatoryClassification, collateralMarginType,  collateralData.getCollateralId());
+
+collateralData.setType(collateralType);
+
+collateralData.setAdminLocation(location);
+
+collateralData.setNegotiator(negotiatorLookup);
+
+collateralData.setNegotiationStartDate(collNegoStartDate);
+
+collateralData.setCsaLawId(collateralType.getCollateralTypeLaw() != null ? collateralType.getCollateralTypeLaw().getId().toString() : null);
+
+/* CollateralAdditionalData data = setCollateralType(masterAgreement, amendment, collateralType, 1L);
+
+if (data != null) {
+
+collateralData.getCollateralAdditionalDetail().add(data);
+
+}*/
+
+collateralData.setRegulatoryClassification(regulatoryClassification);
+
+collateralData.setCollateralMarginType(collateralMarginType);
+
+collateralData.setCollateralRegimeDetail(createCollateralRegimeDetail(collateralData, collateralRegime));
+
+collateralData.setCollateralSegmentId(generateCollateralSegmentId(collateralData, collateralHeaderDetails));
+
+collateralData.setCollateralHeaderDetails(collateralHeaderDetails);
+
+collateralData.setPartyPostingCollateral(partyPostingCollateral);}}
+
+if ("MSFTA".equals(masterAgreement.getAgreementType().getName())) {
+
+masterAgreement.getRepurchase().setCurrency(Currency.find(repository, "USD"));}
+
+}
+
+private boolean isMAEligileForDefaultCTD(MasterAgreement ma){
+
+return ma.getAgreementType().isDerivatives() && ((GoverningLaw) ma.getGoverningLaw()).isFrench() && LookupItem.getBnppEntityIdList().contains(ma.getBnpParibasEntity().getId());
+
+}
+
+@Override
+
+public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+
+this.applicationContext = applicationContext;
+
+}
+
+private NegotiationService getNegotiationService() {
+
+return negotiationService;
+
+}
+
+@Override
+
+public MasterAgreement createAndSaveGroupDeemedISDA(AgreementType agreementType, Entity counterparty, Entity actingEntity, Entity bnpParibas,
+
+List entityIds, String negotiator, Location adminLocation,
+
+Long governingLaw, String domesticBranch, Date fileOpenedDate,
+
+String agreementWithCSA, boolean createDefaultOffices, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, Long legalCounterpartyType, Date signed_on, Date agreement_date, String comments, Boolean StandardisedContract) throwsInvalidMasterAgreementException {
+
+MasterAgreement result = null;
+
+Group group = new Group();
+
+repository.save(group);
+
+LOGGER.info("Group Created with Group Id : " + group.getId());
+
+//boolean managedByCounterparty = counterparty.actingEntity != null;
+
+for (Iterator iterator = entityIds.iterator(); iterator.hasNext(); ) {
+
+/* Long entityId = (Long) iterator.next();
+
+if (managedByCounterparty) {
+
+counterparty.entity = entityId;
+
+} else {
+
+bnpParibas.entity = entityId;
+
+}*/
+
+MasterAgreement masterAgreement = previewMasterAgreementDeemedISDA(agreementType, (Entity) iterator.next(), actingEntity, bnpParibas,
+
+negotiator, adminLocation, governingLaw, domesticBranch, fileOpenedDate, agreementWithCSA,
+
+createDefaultOffices, legalCounterpartyType, fortisFlag, closeOutNettingFlag, transactionSpecificMasters, true, null, StandardisedContract);
+
+masterAgreement.setGroup(group);
+
+masterAgreement.setAddToGroupDate(new Date());
+
+if (signed_on != null) {
+
+masterAgreement.setExecutionDate(signed_on);
+
+}Amendment amendment = masterAgreement.getAmendments().get(0);
+
+amendment.setSignedDate(agreement_date);  //To excute the agreement
+
+masterAgreement.setCloseOutNetting(closeOutNettingFlag);
+
+masterAgreement.setFullTwoWayPayment(agreementType.getFullTwoWayPayment());
+
+amendment.setComment(comments);
+
+if(((masterAgreement.getAgreementType().toString().equals("RAHMENVERT (2018)") && !AgreementHelper.isRahmenvertEligibleForPrefilling(masterAgreement)) ||
+
+masterAgreement.getAgreementType().toString().equals("Clearing-Rahmenvereinbarung Ger CRV (2019)")) &&
+
+(masterAgreement.getGoverningLaw()!=null) ? new Long(LookupItem.idOf(masterAgreement.getGoverningLaw()).toString()) == 6 : false) {
+
+masterAgreement.setCounterpartyAutomaticTermination(true);
+
+masterAgreement.setBnpParibasAutomaticTermination(true);
+
+}
+
+repository.save(masterAgreement);
+
+LOGGER.info("Master Agreement Created with Id : " + masterAgreement.getId() + " within Group : " + group.getId());//updateContactAndCorrespondence(masterAgreement);
+
+if (result == null) {
+
+result = masterAgreement;
+
+}
+
+setSftrFlagForCreateMa(masterAgreement);
+
+}
+
+return result;
+
+}
+
+@Override
+
+public MasterAgreement previewMasterAgreementDeemedISDA(AgreementType agreementType,
+
+Entity counterparty, Entity actingEntity, Entity bnpParibas,
+
+String negotiator,
+
+Location adminLocation, Long governingLaw, String domesticBranch,
+
+Date fileOpenedDate,
+
+String agreementWithCSA,
+
+boolean createDefaultOffices, Long legalCounterpartyType, Boolean fortisFlag, Boolean closeOutNettingFlag, Boolean transactionSpecificMasters, boolean doSave, Long maosRequestId, Boolean StandardisedContract) throws InvalidMasterAgreementException {
+
+MasterAgreement masterAgreement = new MasterAgreement();
+
+masterAgreement.setAgreementType(agreementType);
+
+//setCounterpartyEntities(masterAgreement, counterparty);
+
+masterAgreement.setCounterpartyEntities(counterparty, actingEntity, null, null);
+
+//setBnpParibasEntities(masterAgreement, bnpParibas);List<String> toList = repository.getFilteredMailIdsForAdminLocAndMailTriggerFromEmailExceptions (loc, event, catIds);
+
+MailService mailService applicationContext.getBean (MailService.class);
+
+String message = SimpleTextMessageBuilder.parseMessage(vm, buildcontext(relation, relations));
+
+String subject = subjectPrefix + DateFormatUtils.format(Calendar.getInstance(), "yyyy/MM/dd");
+
+mailService.sendMimeMail (toList, Collections. <String>emptyList(), subject,
+
+}
+
+message, event, loc, Collections. <String>emptyList());
+
+@Override
+
+public void updateNotificationsForSegIA() {
+
+if(!checkIfJobIsExeOnAnyNode (SEG_IA_NOTIFICATION_JOB_ID)) {
+
+makeJobExecutionEntry (node, SEG_IA_NOTIFICATION_JOB_ID,
+
+SEG_IA_NOTIFICATION_JOB_NAME, SEG_IA_NOTIFICATION_JOB_DESC);
+
+LOGGER.info("Started Job execution for Seg IA
+
+Election Notification automatic changes on" node);
+
+DetachedCriteria criteria DetachedCriteria.forEntityName("seg_ia");
+
+criteria.add(Restrictions.isNull("election"));
+
+criteria.add(Restrictions.isNotNull("noticeSentDate"));
+
+criteria.add(Restrictions.eq("noticeSent", true));
+
+criteria.add(Restrictions.le("noticeSentDate", BeagleDateUtils.addXWorking Days Before Today(12)));
+
+List<SegIA> segIAList = repository.findObjectsByCriteria (criteria);
+if (segIAList.isEmpty()) {
+
+return;
+
+}
+
+for (SegIA segIA segIAList) {
+
+LOGGER.info("SEG IA Notice Sent MA:" + segIA.getMasterAgreement().getId());
+
+}
+
+MailService mailService applicationContext.getBean (MailService.class);
+
+List<String> toList = repository.getToMailIdListForAdmLocAndMailTrigger (ALL, MailServiceImpl.MAIL_TRIGGER_SEG_IA_NOTIFICATION);
+Date noticeSentDate=null;
+
+//for(SegIA segIA segIAList){
+
+if (IsegIAList.isEmpty()) {
+
+String subject ="Seg IA Election Notification
+
+automatic changes";
+
+StringBuilder body new StringBuilder();
+
+body.append("Dear All,\n\n");
+
+body.append("The Seg IA Election has been automatically turned to No on ")
+
+append(DateFormatUtils.format(Calendar.getInstance(), "MM/dd/yyyy")+" for the following:\n\n");
+
+for (SegIA segIA: segIAList) {
+
+noticeSentDate= segIA.getNoticeSentDate();
+
+segIA.setElection (SegIA. Election.NO);
+
+repository.save(segIA);body.append(" MA" + segIA.getMaster Agreement().getId()+" - Entity Name
+
++ segIA.getMasterAgreement().getCounterpartyEntity().getLeiorCrdsNameForMail() + "
+
+(").append(segIA.getMasterAgreement().getCounterpartyEntity().getCrdsCodesWithLEIForMails()).append(") and all its offices covered.\n\n");
+
+}
+
+body.append("Their Seg IA Notice was sent on ").append(DateFormatUtils.format
+
+(noticeSentDate, "MM/dd/yyyy")).append(".\n\n");
+
+body.append("Regards, \nBeagle Support");
+
+mailService.sendSegIANotificationMail (tolist, Collections.<String>emptyList(),
+
+}
+
+subject, body.toString(), Collections.<String>emptyList(), ALL);
+
+LOGGER.info("Completed Job execution for - Seg IA
+
+Election Notification automatic changes on "+ node);
+}
+}
+private Map<String, Object> buildcontext(String relation, List<Relation> relations) {
+
+Map<String, Object> map = new HashMap<String, Object>();
+
+map.put(relation, relations);
+
+return map;
+
+}
+
+@Override
+
+public void autoLinkExecutionAgreements (MasterAgreement masterAgreement) {
+
+final boolean isCDEAEuropean ExecutionAgreement= AgreementType.CDEA_EUROPEAN_EXECUTION_AGREEMENT. equalsIgnoreCase (masterAgreement.getAgreementType().getId().getId());
+
+final boolean isDRVGermanExecutionAgreement= AgreementType.DRV_GERMAN_EXECUTION_AGREEMENT. equalsIgnoreCase (masterAgreement.getAgreementType().getId().getId());
+
+final boolean isFBFF FrenchExecutionAgreement= AgreementType.FBF_FRENCH_EXECUTION_AGREEMENT. equalsIgnoreCase (masterAgreement.getAgreementType().getId().getId());
+
+final boolean isEuropeanExecutionAgreement= AgreementType.EUROPEAN_EXECUTION_AGREEMENT. equalsIgnoreCase (masterAgreement.getAgreementType().getId().getId());
