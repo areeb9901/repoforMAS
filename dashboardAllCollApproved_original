@@ -1,0 +1,378 @@
+This is the original dashboardAllCollApproved.vm file 
+This is the vm file dashboardAllCollApproved.vm
+
+#set($agreements = $action.getCollateralStatusDisplay())
+
+#set($queryURL="${request.requestURI}?$!{request.queryString.replaceAll('&pageIndex=[0-9]+', '').replaceAll('&', '&amp;')}")
+
+<input type="hidden" id="YourActiveNegotiationsSize" name="totalYourActiveNegotiationsList" value="$agreements.size()">
+
+<img src="$request.contextPath/images/open.gif" alt="Open" onclick="showElements('CollateralApproved')" align="left" id="plusImage_CollateralApproved" style="display:none;"/>
+
+<img src="$request.contextPath/images/close.gif" alt="Close" onclick="hideElements('CollateralApproved')" align="left" id="minusImage_CollateralApproved" style="display:none"/>
+
+#set($n = 1)
+
+<div class="card card-bnp-home card-low-shadow">
+
+<div class="card-header card-header-portlets card-border card-header-md-bnp">
+
+<a href="#" data-toggle="collapse">
+
+<div class="card-title">
+
+<span class="a-link-bnp"><i class="material-icons">event</i>Approved Requests</span>
+
+</div>
+
+</a>
+
+</div>
+
+<div id="CollateralApproved" class="card-body card-body-low-padding">
+
+<table class="table table-bnp table-responsive" id="CollateralApproved_$n">
+
+<tr>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Agreement</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Group</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Collateral Segment Id</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Agreement Type</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Standard </th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Document Category </th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> CRDS Code</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> LEI Number</th>
+
+<th class="table-th-portlets-collateral table-header-bg-nocolor"> Counterparty</th>
+
+<td>$!agreement.collateralDocumentClass &nbsp; </td>
+
+<td>$!agreement.collateralDocumentCategoryForAgreement &nbsp; </td>
+
+<td>$!agreement.counterpartyEntityMarketPlayerCode &nbsp; </td>
+
+<td>$agreement.cpLeiVal</td>
+
+<td>$!agreement.entity &nbsp;</td>
+
+<td>$!agreement.validationDate &nbsp;</td>
+
+<td>$!agreement.submissionDateForAgreement &nbsp;</td>
+
+<td>$!agreement.cmoUserForAgreement &nbsp;</td>
+
+<td>$!agreement.cmoLocationForAgreement &nbsp; </td>
+
+<td class="approvedmore" >$!agreement.docComments </td>
+
+</tr>
+
+#end
+
+#set($n=$n+1)
+
+#end
+
+</table>
+
+<hr>
+
+<table width="100%">
+
+<tr>
+
+<td style="text-align:left;" width="100%">
+
+#set($previousPage = ${pageIndex} - 1)
+
+#set($nextPage = ${pageIndex} + 1)
+
+<ul class="pagination">
+
+#if( $hasPreviousPage )
+
+<li class="paginate_button page-item fw-400">
+
+<a class="page-link" href="${queryURL}&amp;pageIndex=$previousPage">Previous</a>
+
+</li> &nbsp;
+
+#end
+
+<li class="paginate_button page-item fw-400 m-t-4">
+
+Page
+
+<select id="pageIndex" name="pageIndex" class="select" onChange="javascript:refreshSearchResults('${queryURL}')">
+
+#foreach ($page in [1 ..$pagesCount])
+
+<option value="$page"#if($page == $pageIndex)selected#end>$page</option>
+
+#end
+
+</select>
+
+of ${pagesCount} ($totalElementsCount results)
+
+</li> &nbsp;
+
+#if( $hasNextPage )
+
+<li class="paginate_button page-item fw-400">
+
+<a class="page-link" href="${queryURL}&amp;pageIndex=$nextPage">Next</a></li>
+
+#end
+
+</ul>
+
+</td>
+
+</tr>
+
+<tr><td>&nbsp;</td></tr>
+
+</table>
+
+</div>
+
+</div>
+
+<div id="excelExportPopup" class="modal fade" role="dialog">
+
+<div class="modal-dialog modal-md">
+
+<div class="modal-content">
+
+<!-- Modal Header -->
+
+<div class="modal-header modal-header-home">
+
+<h4 class="modal-title font-weight-bold"><i class="material-icons md-24 icon-white">open_in_browser</i> Excel Export</h4>
+
+<a title="Close" data-dismiss="modal">
+
+<i class="material-icons icon-white">close</i>
+
+</a>
+
+</div>
+
+<!-- Modal body -->
+
+<div class="modal-body">
+
+<form id="excelExport" name="excelExport" action="${request.requestURI.replaceAll(".action", ".ajax")}" method="post">
+
+<input type='hidden' name='view' value='excel'/>
+
+#foreach($param in $parameterNames)
+
+#foreach($paramValue in ${action.getParameterValues($param)})
+
+<input type='hidden' name='${param}' value='$paramValue'/>
+
+#end
+
+#end
+
+<table width='100%'>
+
+<tr>
+
+#exportColumn("approved_agreementId" "Agreement Number")
+
+#exportColumn("approved_group" "Group Number")
+
+#exportColumn("approved_agreementType" "Agreement Type")
+
+#exportColumn("approved_standard" "Standard")
+
+#exportColumn("approved_category" "Document Category")
+
+</tr>
+
+<tr>
+
+#exportColumn("approved_crdsCode" "CRDS Code")
+
+#exportColumn("approved_cpEntity" "Counterparty Entity")
+
+#exportColumn("approved_validationDate" "Approval Date")
+
+#exportColumn("approved_cmoUser" "CMO User")
+
+#exportColumn("approved_cmoLocation" "CMO Location")
+
+</tr>
+
+<tr>
+
+#exportColumn("approved_segmentId" "Collateral Segment Id")
+
+#exportColumn ("approved_comments" "Comments")
+
+#exportColumn ("approved_submissionDate" "Submission Date")
+
+#exportColumn("approved_bnpLei" "BNP PARIBAS LEI")
+
+#exportColumn("approved_cpLei" "Counterparty LEI")
+
+</tr>
+
+</table>
+
+</form>
+
+</div>
+
+<!-- Modal footer -->
+
+<div class="modal-footer">
+
+<button id="export" type="button" class="button-bnp button-bnp-raised button-bnp-info button-bnp-xs" data-dismiss="modal">
+
+<i class="fas fa-download"></i> Export To Excel
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="switch-version-home">
+
+<a href="javascript:modalWindowForExcelExport('excelExportPopup','Excel Export')" title="Export data" data-toggle="tooltip">
+
+<span class="switch-to-home"><i class="fas fa-2x fa-download"></i>Excel<br>&nbsp;Export</span><br>&nbsp;
+
+</a>
+
+</div>
+
+<script language="javascript" type="text/javascript">
+
+var j = jQuery;
+
+jQuery.noConflict();
+
+</script>
+
+<script type="text/javascript">
+
+function refreshSearchResults(queryURL) {
+
+var page = document.getElementById('pageIndex').value;
+
+document.location = queryURL + '&pageIndex=' + page;
+
+}
+
+function sortResults(queryURL, sortParameter,sortingOrder) {
+
+if(!(sortParameter==null || sortParameter==''))
+
+{
+
+var page = document.getElementById('pageIndex').value;
+
+queryURL = queryURL.sub("([&]*sortAgreementCriteria=[a-zA-Z_0-9]+)", "", 1).sub("([&]*sortingOrderDesc=[a-zA-Z_0-9]+)", "", 1);
+
+queryURL = queryURL + "&pageIndex=" + page + "&sortAgreementCriteria=" + sortParameter + "&sortingOrderDesc=" + !sortingOrder;
+
+document.location = queryURL;
+
+}
+
+}
+
+</script>
+
+<script type="text/javascript">
+
+j(function(){
+
+j("#export").click(function () {
+
+jquery_block_ui();
+
+var request = new XMLHttpRequest();
+
+var url = '$request.contextPath/secure/CollateralApprovedRequest.ajax?'+j("#excelExport").serialize()+'&'+ j('#filterform').serialize();
+
+request.open('POST', url, true);
+
+request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+
+request.responseType = 'blob';
+
+request.onload = function (e) {
+
+if (this.status === 200) {
+
+var filename = "";
+
+var disposition = request.getResponseHeader('Content-Disposition');
+
+if (disposition && disposition.indexOf('attachment') !== -1) {
+
+var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+
+var matches = filenameRegex.exec(disposition);
+
+if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+
+}
+
+var blob = this.response;
+
+if (window.navigator.msSaveOrOpenBlob) {
+
+window.navigator.msSaveOrOpenBlob(blob,filename);
+
+}
+
+else {
+
+var downloadLink = window.document.createElement('a');
+
+var contentTypeHeader = request.getResponseHeader("Content-Type");
+
+downloadLink.href = window.URL.createObjectURL(new Blob([blob], {type: contentTypeHeader}));
+
+downloadLink.download = filename;
+
+document.body.appendChild(downloadLink);
+
+downloadLink.click();
+
+document.body.removeChild(downloadLink);
+
+}
+
+}
+
+j.unblockUI();
+
+};
+
+request.send();
+
+});
+
+});
+
+</script>
