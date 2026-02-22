@@ -2539,10 +2539,7 @@ return masterAgreement;
 
 public void updateEmailForNoRelation() {
 
-//if (!checkIfJobIsExeOnAnyNode(NO_REL_MA_JOB_ID)) {
-
-makeJobExecutionEntry(node, NO_REL_MA_JOB_ID, NO_REL_MA_JOB_NAME, NO_REL_MA_JOB_DESC);
-
+if (!checkIfJobIsExeOnAnyNode(NO_REL_MA_JOB_ID)) {
 makeJobExecutionEntry(node, NO_REL_MA_JOB_ID, NO_REL_MA_JOB_NAME, NO_REL_MA_JOB_DESC);
 
 LOGGER.info("Started Job execution for - Mail for No Relation on Master agreements on " + node);
@@ -2553,7 +2550,7 @@ LOGGER.info("Completed Job execution for - Mail for No Relation on Master agreem
 
 }
 
-// }
+}
 
 @Override
 
