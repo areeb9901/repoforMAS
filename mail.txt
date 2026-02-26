@@ -8,3 +8,11 @@ Additionally, we would like to check whether there is a separate Refog URL speci
 Looking forward to your guidance.
 Best regards,
 Areeb
+
+p1.add(Projections.property("responseFile"));
+p1.add(Projections.property("errorFile"));
+p1.add(Projections.property("dataFileId"));
+
+if (UploadIsdaPRDRAudit.class.equals(className)) {
+    p1.add(Projections.property("dataFile"));
+}
