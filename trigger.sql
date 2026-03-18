@@ -1,0 +1,361 @@
+CREATE OR REPLACE TRIGGER Aud_NEGO_TB_ROW_Trig
+FOR UPDATE OR INSERT OR DELETE
+ON Nego_Tb_Row_EXEC_DOC
+COMPOUND TRIGGER
+
+    TYPE T_ExecutedDocument_Changes IS TABLE OF ExecutedDocument_Audit%ROWTYPE
+        INDEX BY SIMPLE_INTEGER;
+
+    v_executedDocument_changes  T_ExecutedDocument_Changes;
+
+    V_Executeddocumentindex     INTEGER := 0;
+    V_Threshhold                CONSTANT INTEGER := 1000; -- maximum number of rows to write in one go.
+
+    V_Date                      DATE;
+    V_User                      VARCHAR2(32);
+    V_Userhisto                 VARCHAR2(32);
+    V_Maid                      NUMBER;
+    V_Modifhisto                VARCHAR2(10);
+
+    V_Row_Id                    VARCHAR2(25)  := 'Document Row Id';
+    V_Rowtype                   VARCHAR2(25)  := 'Document type';
+    V_Negotiator                VARCHAR2(25)  := 'Negotiator';
+    V_Row_Upld_Date             VARCHAR2(25)  := 'Document Upload date';
+    V_Row_Usr_Upld_Log          VARCHAR2(25)  := 'Uploader Details';
+    V_Row_Doc_File_Name         VARCHAR2(25)  := 'Document File Name';
+    V_Row_Desc                  VARCHAR2(25)  := 'Summary';
+    V_Row_Comm                  VARCHAR2(25)  := 'Details';
+    V_Row_Doc_Taille            VARCHAR2(25)  := 'Document Size';
+    V_Rowcatgory                VARCHAR2(25)  := 'Document Category';
+    V_Row_Is_Standard           VARCHAR2(30)  := 'Collateral Document Class';
+    V_Row_Doc_Comments          VARCHAR2(25)  := 'Comments';
+    V_DOC_GRP_ID                VARCHAR2(25)  := 'Document Group Id';
+    V_AMENDMENT_NUMBER          VARCHAR2(25)  := 'Amendment Number';
+    v_ma_id                     VARCHAR2(25)  := 'Master Agreement ID';
+    V_SUMMARY_ID                VARCHAR2(50)  := 'SUMMARY';
+    V_DOC_STORE_ID              VARCHAR2(100) := 'Doc Store Id';
+
+    V_agr_upload_dt_scope       VARCHAR2(1) := 'N';
+    v_agreement_upload_date     DATE;
+    V_ontrack_ma                NUMBER;
+    V_maos_count                NUMBER;
+
+    PROCEDURE flushExecutedDocumentRecords
+    IS
+        v_updates CONSTANT SIMPLE_INTEGER := v_executedDocument_changes.COUNT();
+    BEGIN
+        FORALL v_count IN 1 .. v_updates
+            INSERT INTO ExecutedDocument_Audit
+            VALUES v_executedDocument_changes(v_count);
+
+        v_executedDocument_changes.DELETE();
+        V_Executeddocumentindex := 0; -- resetting threshold for next bulk-insert.
+    END flushExecutedDocumentRecords;
+
+    PROCEDURE InsertExecutedDocumentRow(
+        V_Field     VARCHAR2,
+        V_Oldvalue  VARCHAR2,
+        V_Newvalue  VARCHAR2,
+        V_Comment   VARCHAR2 DEFAULT NULL
+    )
+    IS
+    BEGIN
+        IF (V_Modifhisto = 'Create') THEN
+            IF (V_Newvalue IS NULL) THEN
+                RETURN;
+            END IF;
+        ELSIF (V_Modifhisto = 'Delete') THEN
+            IF (V_Oldvalue IS NULL) THEN
+                RETURN;
+            END IF;
+        ELSIF (V_Modifhisto = 'Update') THEN
+            IF NVL(V_Oldvalue, '$') = NVL(V_Newvalue, '$') THEN
+                RETURN;
+            END IF;
+        END IF;
+
+        V_Executeddocumentindex := V_Executeddocumentindex + 1;
+
+        v_executedDocument_changes(V_Executeddocumentindex).Date_Histo    := V_Date;
+        v_executedDocument_changes(V_Executeddocumentindex).MA_ID         := V_Maid;
+        v_executedDocument_changes(V_Executeddocumentindex).Modif_Histo   := V_Modifhisto;
+        v_executedDocument_changes(V_Executeddocumentindex).User_Histo    := getusername(V_User);
+        v_executedDocument_changes(V_Executeddocumentindex).Field         := V_Field;
+        v_executedDocument_changes(V_Executeddocumentindex).Old_Value     := V_Oldvalue;
+        v_executedDocument_changes(V_Executeddocumentindex).New_Value     := V_Newvalue;
+        v_executedDocument_changes(V_Executeddocumentindex).Comment_Histo := V_Comment;
+        v_executedDocument_changes(V_Executeddocumentindex).Table_Name    := 'NEGO_TB_ROW_EXEC_DOC';
+    END InsertExecutedDocumentRow;
+
+    FUNCTION getDocSummary(docSumId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_docSum VARCHAR2(100);
+    BEGIN
+        IF (docSumId IS NOT NULL) THEN
+            SELECT summary
+              INTO V_docSum
+              FROM document_summary_tbl
+             WHERE id = docSumId;
+
+            IF (V_docSum IS NOT NULL) THEN
+                RETURN V_docSum;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END;
+
+    FUNCTION GetDisplayValue(V_Field IN VARCHAR2, V_Value IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_Displayvalue VARCHAR2(2000);
+    BEGIN
+        IF (V_Field = V_Negotiator) THEN
+            IF (V_Value IS NOT NULL) THEN
+                SELECT Negotiator_Frst_Name || ' ' || Negotiator_Lst_Name
+                  INTO V_Displayvalue
+                  FROM Nego_Tb_Negotiator
+                 WHERE Negotiator_Id = V_Value;
+            END IF;
+
+        ELSIF (V_Field = V_Row_Usr_Upld_Log) THEN
+            IF (V_Value IS NOT NULL) THEN
+                BEGIN
+                    SELECT Firstname || ' ' || Lastname
+                      INTO V_Displayvalue
+                      FROM Users
+                     WHERE User_Id = V_Value;
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        V_Displayvalue := V_Value;
+                END;
+
+                IF (V_Displayvalue IS NULL) THEN
+                    V_Displayvalue := V_Value;
+                END IF;
+            END IF;
+
+        ELSIF (V_Field = V_Rowtype) THEN
+            IF (V_Value IS NOT NULL) THEN
+                BEGIN
+                    SELECT typ_desc
+                      INTO V_Displayvalue
+                      FROM NEGO_TB_ROWTYPE
+                     WHERE RowType_Id = V_Value;
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        V_Displayvalue := V_Value;
+                END;
+            END IF;
+
+        ELSIF (V_Field = V_Rowcatgory) THEN
+            IF (V_Value IS NOT NULL) THEN
+                BEGIN
+                    SELECT category_desc
+                      INTO V_Displayvalue
+                      FROM category_types
+                     WHERE category_id = V_Value;
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        V_Displayvalue := V_Value;
+                END;
+            END IF;
+
+        ELSIF (V_Field = V_Row_Is_Standard) THEN
+            IF (V_Value IS NOT NULL AND V_Value = 'Y') THEN
+                V_Displayvalue := 'Standard';
+            ELSIF (V_Value IS NOT NULL AND V_Value = 'N') THEN
+                V_Displayvalue := 'Non Standard';
+            END IF;
+        END IF;
+
+        RETURN V_Displayvalue;
+    END GetDisplayValue;
+
+    BEFORE STATEMENT
+    IS
+    BEGIN
+        SELECT SYSDATE INTO V_Date FROM Dual;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW
+    IS
+    BEGIN
+        IF INSERTING THEN
+
+            SELECT NVL(NVL(:NEW.User_Modif, :NEW.User_Creat), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            SELECT NVL(SYS_CONTEXT('USERENV', 'OS_USER'), NVL(:NEW.User_Modif, :NEW.User_Creat))
+              INTO V_UserHisto
+              FROM Dual;
+
+            V_Maid := :NEW.Ma_Id;
+            V_Modifhisto := 'Create';
+
+            InsertExecutedDocumentRow(V_Row_Id, NULL, TO_CHAR(:NEW.Row_Id));
+            InsertExecutedDocumentRow(V_Rowtype, NULL, GetDisplayValue(V_Rowtype, :NEW.Rowtype_Id));
+            InsertExecutedDocumentRow(V_Negotiator, NULL, GetDisplayValue(V_Negotiator, :NEW.Negotiator_Id));
+            InsertExecutedDocumentRow(V_Row_Upld_Date, NULL, TO_CHAR(:NEW.Row_Upld_Date));
+            InsertExecutedDocumentRow(V_Row_Usr_Upld_Log, NULL, GetDisplayValue(V_Row_Usr_Upld_Log, :NEW.Row_Usr_Upld_Log));
+            InsertExecutedDocumentRow(V_Row_Doc_File_Name, NULL, :NEW.Row_Doc_File_Name);
+            InsertExecutedDocumentRow(V_Row_Desc, NULL, :NEW.Row_Desc);
+            InsertExecutedDocumentRow(V_Row_Comm, NULL, :NEW.Row_Comm);
+            InsertExecutedDocumentRow(V_Row_Doc_Taille, NULL, TO_CHAR(:NEW.Row_Doc_Taille));
+            InsertExecutedDocumentRow(V_Rowcatgory, NULL, GetDisplayValue(V_Rowcatgory, :NEW.Rowcatgory_Id));
+            InsertExecutedDocumentRow(V_Row_Doc_Comments, NULL, :NEW.Row_Doc_Comments);
+            InsertExecutedDocumentRow(V_DOC_GRP_ID, NULL, TO_CHAR(:NEW.DOC_GRP_ID));
+            InsertExecutedDocumentRow(V_AMENDMENT_NUMBER, NULL, TO_CHAR(:NEW.AMD_ID));
+            InsertExecutedDocumentRow(v_ma_id, NULL, TO_CHAR(:NEW.MA_ID));
+            InsertExecutedDocumentRow(V_SUMMARY_ID, NULL, getDocSummary(:NEW.SUMMARY_ID));
+
+            InsertExecutedDocumentRow(
+                V_DOC_STORE_ID,
+                NULL,
+                :NEW.DOC_STORE_ID,
+                'This corresponds to document row id: ' || TO_CHAR(:NEW.ROW_ID)
+            );
+
+            IF (:NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30) THEN
+                SELECT COUNT(*)
+                  INTO V_maos_count
+                  FROM linked_maos_id
+                 WHERE ma_id = :NEW.ma_id;
+
+                IF (V_maos_count > 0) THEN
+                    V_agr_upload_dt_scope := 'Y';
+                END IF;
+            END IF;
+
+        ELSIF UPDATING THEN
+
+            SELECT NVL(NVL(:NEW.user_modif, :NEW.user_creat), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            V_Maid := :NEW.Ma_Id;
+            V_Modifhisto := 'Update';
+
+            InsertExecutedDocumentRow(V_Row_Id, TO_CHAR(:OLD.Row_Id), TO_CHAR(:NEW.Row_Id));
+            InsertExecutedDocumentRow(V_Rowtype, GetDisplayValue(V_Rowtype, :OLD.Rowtype_Id), GetDisplayValue(V_Rowtype, :NEW.Rowtype_Id));
+            InsertExecutedDocumentRow(V_Negotiator, GetDisplayValue(V_Negotiator, :OLD.Negotiator_Id), GetDisplayValue(V_Negotiator, :NEW.Negotiator_Id));
+            InsertExecutedDocumentRow(V_Row_Upld_Date, TO_CHAR(:OLD.Row_Upld_Date), TO_CHAR(:NEW.Row_Upld_Date));
+            InsertExecutedDocumentRow(V_Row_Usr_Upld_Log, GetDisplayValue(V_Row_Usr_Upld_Log, :OLD.Row_Usr_Upld_Log), GetDisplayValue(V_Row_Usr_Upld_Log, :NEW.Row_Usr_Upld_Log));
+            InsertExecutedDocumentRow(V_Row_Doc_File_Name, :OLD.Row_Doc_File_Name, :NEW.Row_Doc_File_Name);
+            InsertExecutedDocumentRow(V_Row_Desc, :OLD.Row_Desc, :NEW.Row_Desc);
+            InsertExecutedDocumentRow(V_Row_Comm, :OLD.Row_Comm, :NEW.Row_Comm);
+            InsertExecutedDocumentRow(V_Row_Doc_Taille, TO_CHAR(:OLD.Row_Doc_Taille), TO_CHAR(:NEW.Row_Doc_Taille));
+            InsertExecutedDocumentRow(V_Rowcatgory, GetDisplayValue(V_Rowcatgory, :OLD.Rowcatgory_Id), GetDisplayValue(V_Rowcatgory, :NEW.Rowcatgory_Id));
+            InsertExecutedDocumentRow(V_Row_Doc_Comments, :OLD.Row_Doc_Comments, :NEW.Row_Doc_Comments);
+            InsertExecutedDocumentRow(V_DOC_GRP_ID, TO_CHAR(:OLD.DOC_GRP_ID), TO_CHAR(:NEW.DOC_GRP_ID));
+            InsertExecutedDocumentRow(V_AMENDMENT_NUMBER, TO_CHAR(:OLD.AMD_ID), TO_CHAR(:NEW.AMD_ID));
+            InsertExecutedDocumentRow(v_ma_id, TO_CHAR(:OLD.MA_ID), TO_CHAR(:NEW.MA_ID));
+            InsertExecutedDocumentRow(V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), getDocSummary(:NEW.SUMMARY_ID));
+
+            InsertExecutedDocumentRow(
+                V_DOC_STORE_ID,
+                :OLD.doc_store_id,
+                :NEW.doc_store_id,
+                'This corresponds to document row id: ' || TO_CHAR(:NEW.ROW_ID)
+            );
+
+            IF ((:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30
+                 OR :NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30)
+                AND RTF_UTIL.is_dirty(:OLD.RowType_Id, :NEW.RowType_Id) = 'Y') THEN
+
+                SELECT COUNT(*)
+                  INTO V_maos_count
+                  FROM linked_maos_id
+                 WHERE ma_id = :OLD.ma_id;
+
+                IF (V_maos_count > 0) THEN
+                    V_agr_upload_dt_scope := 'Y';
+                END IF;
+            END IF;
+
+        ELSIF DELETING THEN
+
+            SELECT NVL(NVL(:OLD.user_modif, :OLD.user_creat), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            V_Maid := :OLD.Ma_Id;
+            V_Modifhisto := 'Delete';
+
+            InsertExecutedDocumentRow(V_Row_Id, TO_CHAR(:OLD.Row_Id), NULL);
+            InsertExecutedDocumentRow(V_Rowtype, GetDisplayValue(V_Rowtype, :OLD.Rowtype_Id), NULL);
+            InsertExecutedDocumentRow(V_Negotiator, GetDisplayValue(V_Negotiator, :OLD.Negotiator_Id), NULL);
+            InsertExecutedDocumentRow(V_Row_Upld_Date, TO_CHAR(:OLD.Row_Upld_Date), NULL);
+            InsertExecutedDocumentRow(V_Row_Usr_Upld_Log, GetDisplayValue(V_Row_Usr_Upld_Log, :OLD.Row_Usr_Upld_Log), NULL);
+            InsertExecutedDocumentRow(V_Row_Doc_File_Name, :OLD.Row_Doc_File_Name, NULL);
+            InsertExecutedDocumentRow(V_Row_Desc, :OLD.Row_Desc, NULL);
+            InsertExecutedDocumentRow(V_Row_Comm, :OLD.Row_Comm, NULL);
+            InsertExecutedDocumentRow(V_Row_Doc_Taille, TO_CHAR(:OLD.Row_Doc_Taille), NULL);
+            InsertExecutedDocumentRow(V_Rowcatgory, GetDisplayValue(V_Rowcatgory, :OLD.Rowcatgory_Id), NULL);
+            InsertExecutedDocumentRow(V_Row_Doc_Comments, :OLD.Row_Doc_Comments, NULL);
+            InsertExecutedDocumentRow(V_DOC_GRP_ID, TO_CHAR(:OLD.DOC_GRP_ID), NULL);
+            InsertExecutedDocumentRow(V_AMENDMENT_NUMBER, TO_CHAR(:OLD.AMD_ID), NULL);
+            InsertExecutedDocumentRow(v_ma_id, TO_CHAR(:OLD.MA_ID), NULL);
+            InsertExecutedDocumentRow(V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), NULL);
+
+            InsertExecutedDocumentRow(
+                V_DOC_STORE_ID,
+                :OLD.doc_store_id,
+                NULL,
+                'This corresponds to document row id: ' || TO_CHAR(:OLD.ROW_ID)
+            );
+
+            IF (:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30) THEN
+                SELECT COUNT(*)
+                  INTO V_maos_count
+                  FROM linked_maos_id
+                 WHERE ma_id = :OLD.ma_id;
+
+                IF (V_maos_count > 0) THEN
+                    V_agr_upload_dt_scope := 'Y';
+                END IF;
+            END IF;
+
+        END IF;
+
+        IF V_Executeddocumentindex >= V_Threshhold THEN
+            flushExecutedDocumentRecords();
+        END IF;
+
+    END AFTER EACH ROW;
+
+    AFTER STATEMENT
+    IS
+    BEGIN
+        flushExecutedDocumentRecords();
+
+        IF (V_agr_upload_dt_scope = 'Y') THEN
+            SELECT check_agreement_upload_date(v_maid)
+              INTO v_agreement_upload_date
+              FROM dual;
+
+            SELECT COUNT(*)
+              INTO V_ontrack_ma
+              FROM ontrack_ma_agr_upload_date
+             WHERE ma_id = v_maId;
+
+            IF (v_ontrack_ma = 0) THEN
+                INSERT INTO ontrack_ma_agr_upload_date
+                    (ma_id, agreement_upload_date, user_creat, date_creat)
+                VALUES
+                    (v_maId, v_agreement_upload_date, V_User, V_Date);
+            ELSE
+                UPDATE ontrack_ma_agr_upload_date
+                   SET agreement_upload_date = v_agreement_upload_date,
+                       user_modif          = v_user,
+                       date_modif          = v_date
+                 WHERE ma_id = v_maid;
+            END IF;
+        END IF;
+
+    END AFTER STATEMENT;
+
+END Aud_NEGO_TB_ROW_Trig;
+/
