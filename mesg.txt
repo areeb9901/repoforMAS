@@ -1,0 +1,10 @@
+Subject: Audit Display Enhancement for Doc Store ID Mapping
+Hi [BA Name],
+As discussed, we analyzed the possibility of restructuring the audit sequence to align each Doc Store ID directly with its corresponding Document Row ID.
+However, implementing this change would require significant modifications to the existing audit mechanism and involve considerable effort, as the current design captures these entries in separate stages.
+As an alternative, we have implemented an enhancement wherein, for every Doc Store ID entry in the audit, the Comment column will explicitly mention:
+“This corresponds to document row id: <ROW_ID>”
+This approach will be applied for both newly uploaded documents as well as existing (legacy) records. With this, there will be no ambiguity in identifying which Doc Store ID is associated with which Document Row ID.
+Please let me know if this approach works for you.
+Best regards,
+Areeb Faiz
