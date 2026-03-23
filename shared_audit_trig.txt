@@ -62,15 +62,15 @@ COMPOUND TRIGGER
     )
     IS
     BEGIN
-        IF (V_Modifhisto = 'Create') THEN
+        IF (V_ModifHisto = 'Create') THEN
             IF (V_Newvalue IS NULL) THEN
                 RETURN;
             END IF;
-        ELSIF (V_Modifhisto = 'Delete') THEN
+        ELSIF (V_ModifHisto = 'Delete') THEN
             IF (V_Oldvalue IS NULL) THEN
                 RETURN;
             END IF;
-        ELSIF (V_Modifhisto = 'Update') THEN
+        ELSIF (V_ModifHisto = 'Update') THEN
             IF NVL(V_Oldvalue, '$') = NVL(V_Newvalue, '$') THEN
                 RETURN;
             END IF;
@@ -83,7 +83,7 @@ COMPOUND TRIGGER
         v_shared_document_changes(V_Index).AMD_ID           := V_AMD_ID;
         v_shared_document_changes(V_Index).DOC_ID           := V_ROW_ID;
         v_shared_document_changes(V_Index).Date_Histo       := v_date;
-        v_shared_document_changes(V_Index).Modif_Histo      := V_Modifhisto;
+        v_shared_document_changes(V_Index).Modif_Histo      := V_ModifHisto;
         v_shared_document_changes(V_Index).User_Histo       := Getusername(V_User);
         v_shared_document_changes(V_Index).Field            := V_Field;
         v_shared_document_changes(V_Index).Old_Value        := V_Oldvalue;
@@ -116,30 +116,55 @@ COMPOUND TRIGGER
         p_new_doc_store  VARCHAR2
     )
     IS
+        v_found BOOLEAN := FALSE;
     BEGIN
-        UPDATE SHARED_DOCUMENT_AUDIT sda
-           SET sda.Old_Value     = p_old_doc_store,
-               sda.New_Value     = p_new_doc_store,
-               sda.Comment_Histo = NULL
-         WHERE sda.ROWID = (
-                SELECT rid
-                  FROM (
-                        SELECT ROWID rid
-                          FROM SHARED_DOCUMENT_AUDIT
-                         WHERE SHARED_MA_ID = V_SHARED_MA_ID
-                           AND NVL(SHARED_GROUP_ID, -1) = NVL(V_SHARED_GROUP_ID, -1)
-                           AND AMD_ID = V_AMD_ID
-                           AND DOC_ID = p_row_id
-                           AND FIELD = V_DOC_STORE_ID
-                           AND COMMENT_HISTO = c_doc_store_marker_prefix || p_row_id
-                           AND NEW_VALUE IS NULL
-                         ORDER BY DATE_HISTO DESC
-                       )
-                 WHERE ROWNUM = 1
-               );
+        -- 1. Resolve in-memory placeholder first
+        IF v_shared_document_changes.COUNT > 0 THEN
+            FOR i IN REVERSE 1 .. v_shared_document_changes.COUNT LOOP
+                IF v_shared_document_changes.EXISTS(i)
+                   AND v_shared_document_changes(i).SHARED_MA_ID = V_SHARED_MA_ID
+                   AND NVL(v_shared_document_changes(i).SHARED_GROUP_ID, -1) = NVL(V_SHARED_GROUP_ID, -1)
+                   AND v_shared_document_changes(i).AMD_ID = V_AMD_ID
+                   AND v_shared_document_changes(i).DOC_ID = p_row_id
+                   AND v_shared_document_changes(i).Field = V_DOC_STORE_ID
+                   AND v_shared_document_changes(i).Comment_Histo = c_doc_store_marker_prefix || p_row_id
+                   AND v_shared_document_changes(i).New_Value IS NULL THEN
 
-        IF SQL%ROWCOUNT = 0 THEN
-            Insert_Row('Update', V_DOC_STORE_ID, p_old_doc_store, p_new_doc_store);
+                    v_shared_document_changes(i).Old_Value     := p_old_doc_store;
+                    v_shared_document_changes(i).New_Value     := p_new_doc_store;
+                    v_shared_document_changes(i).Comment_Histo := NULL;
+                    v_found := TRUE;
+                    EXIT;
+                END IF;
+            END LOOP;
+        END IF;
+
+        -- 2. If not found in memory, resolve persisted placeholder
+        IF NOT v_found THEN
+            UPDATE SHARED_DOCUMENT_AUDIT sda
+               SET sda.Old_Value     = p_old_doc_store,
+                   sda.New_Value     = p_new_doc_store,
+                   sda.Comment_Histo = NULL
+             WHERE sda.ROWID = (
+                    SELECT rid
+                      FROM (
+                            SELECT ROWID rid
+                              FROM SHARED_DOCUMENT_AUDIT
+                             WHERE SHARED_MA_ID = V_SHARED_MA_ID
+                               AND NVL(SHARED_GROUP_ID, -1) = NVL(V_SHARED_GROUP_ID, -1)
+                               AND AMD_ID = V_AMD_ID
+                               AND DOC_ID = p_row_id
+                               AND FIELD = V_DOC_STORE_ID
+                               AND COMMENT_HISTO = c_doc_store_marker_prefix || p_row_id
+                               AND NEW_VALUE IS NULL
+                             ORDER BY DATE_HISTO DESC
+                           )
+                     WHERE ROWNUM = 1
+                   );
+
+            IF SQL%ROWCOUNT = 0 THEN
+                Insert_Row('Update', V_DOC_STORE_ID, p_old_doc_store, p_new_doc_store);
+            END IF;
         END IF;
     END Resolve_Doc_Store_Placeholder;
 
@@ -343,7 +368,7 @@ COMPOUND TRIGGER
             Insert_Row('Update', V_ROW_UPLD_DATE, TO_CHAR(:OLD.ROW_UPLD_DATE), TO_CHAR(:NEW.ROW_UPLD_DATE));
             Insert_Row('Update', V_ROWCATGORY_ID, getDocumentCategory(:OLD.ROWCATGORY_ID), getDocumentCategory(:NEW.ROWCATGORY_ID));
             Insert_Row('Update', V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), getDocSummary(:NEW.SUMMARY_ID));
-            Insert_Row('Update', V_COMMENT, :OLD.ROW_DOC_COMMENTS, :NEW.ROW_DOC_COMMENTS));
+            Insert_Row('Update', V_COMMENT, :OLD.ROW_DOC_COMMENTS, :NEW.ROW_DOC_COMMENTS);
 
             IF NVL(:OLD.DOC_STORE_ID, '$') <> NVL(:NEW.DOC_STORE_ID, '$') THEN
                 Resolve_Doc_Store_Placeholder(
