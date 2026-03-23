@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE TRIGGER AUD_SHARED_DOCUMENT_TRIG
 FOR INSERT OR UPDATE OR DELETE
 ON ldm_tb_shared_documents
@@ -41,6 +40,8 @@ COMPOUND TRIGGER
     v_agreement_upload_date DATE;
     V_ontrack_ma            NUMBER;
 
+    c_doc_store_marker_prefix CONSTANT VARCHAR2(30) := '__DOCSTORE_ROWID__:';
+
     PROCEDURE flush_logs
     IS
         v_updates CONSTANT SIMPLE_INTEGER := v_shared_document_changes.COUNT();
@@ -77,26 +78,70 @@ COMPOUND TRIGGER
 
         V_Index := V_Index + 1;
 
-        v_shared_document_changes(V_Index).SHARED_MA_ID    := V_SHARED_MA_ID;
-        v_shared_document_changes(V_Index).SHARED_GROUP_ID := V_SHARED_GROUP_ID;
-        v_shared_document_changes(V_Index).AMD_ID          := V_AMD_ID;
-        v_shared_document_changes(V_Index).DOC_ID          := V_ROW_ID;
-        v_shared_document_changes(V_Index).Date_Histo      := V_Date;
-        v_shared_document_changes(V_Index).Modif_Histo     := V_Modifhisto;
-        v_shared_document_changes(V_Index).User_Histo      := Getusername(V_User);
-        v_shared_document_changes(V_Index).Field           := V_Field;
-        v_shared_document_changes(V_Index).Old_Value       := V_Oldvalue;
-        v_shared_document_changes(V_Index).New_Value       := V_Newvalue;
-        v_shared_document_changes(V_Index).Table_Name      := 'ldm_tb_shared_documents';
+        v_shared_document_changes(V_Index).SHARED_MA_ID     := V_SHARED_MA_ID;
+        v_shared_document_changes(V_Index).SHARED_GROUP_ID  := V_SHARED_GROUP_ID;
+        v_shared_document_changes(V_Index).AMD_ID           := V_AMD_ID;
+        v_shared_document_changes(V_Index).DOC_ID           := V_ROW_ID;
+        v_shared_document_changes(V_Index).Date_Histo       := v_date;
+        v_shared_document_changes(V_Index).Modif_Histo      := V_Modifhisto;
+        v_shared_document_changes(V_Index).User_Histo       := Getusername(V_User);
+        v_shared_document_changes(V_Index).Field            := V_Field;
+        v_shared_document_changes(V_Index).Old_Value        := V_Oldvalue;
+        v_shared_document_changes(V_Index).New_Value        := V_Newvalue;
+        v_shared_document_changes(V_Index).Table_Name       := 'ldm_tb_shared_documents';
     END Insert_Row;
 
-    PROCEDURE Add_Doc_Store_Comment(p_row_id VARCHAR2)
+    PROCEDURE Insert_Doc_Store_Placeholder(p_row_id VARCHAR2)
     IS
     BEGIN
-        IF v_shared_document_changes.EXISTS(v_index) THEN
-            v_shared_document_changes(v_index).COMMENT_HISTO := 'Doc Row Id: ' || p_row_id;
+        V_Index := V_Index + 1;
+
+        v_shared_document_changes(V_Index).SHARED_MA_ID     := V_SHARED_MA_ID;
+        v_shared_document_changes(V_Index).SHARED_GROUP_ID  := V_SHARED_GROUP_ID;
+        v_shared_document_changes(V_Index).AMD_ID           := V_AMD_ID;
+        v_shared_document_changes(V_Index).DOC_ID           := V_ROW_ID;
+        v_shared_document_changes(V_Index).Date_Histo       := v_date;
+        v_shared_document_changes(V_Index).Modif_Histo      := 'Update';
+        v_shared_document_changes(V_Index).User_Histo       := Getusername(V_User);
+        v_shared_document_changes(V_Index).Field            := V_DOC_STORE_ID;
+        v_shared_document_changes(V_Index).Old_Value        := NULL;
+        v_shared_document_changes(V_Index).New_Value        := NULL;
+        v_shared_document_changes(V_Index).Comment_Histo    := c_doc_store_marker_prefix || p_row_id;
+        v_shared_document_changes(V_Index).Table_Name       := 'ldm_tb_shared_documents';
+    END Insert_Doc_Store_Placeholder;
+
+    PROCEDURE Resolve_Doc_Store_Placeholder(
+        p_row_id         VARCHAR2,
+        p_old_doc_store  VARCHAR2,
+        p_new_doc_store  VARCHAR2
+    )
+    IS
+    BEGIN
+        UPDATE SHARED_DOCUMENT_AUDIT sda
+           SET sda.Old_Value     = p_old_doc_store,
+               sda.New_Value     = p_new_doc_store,
+               sda.Comment_Histo = NULL
+         WHERE sda.ROWID = (
+                SELECT rid
+                  FROM (
+                        SELECT ROWID rid
+                          FROM SHARED_DOCUMENT_AUDIT
+                         WHERE SHARED_MA_ID = V_SHARED_MA_ID
+                           AND NVL(SHARED_GROUP_ID, -1) = NVL(V_SHARED_GROUP_ID, -1)
+                           AND AMD_ID = V_AMD_ID
+                           AND DOC_ID = p_row_id
+                           AND FIELD = V_DOC_STORE_ID
+                           AND COMMENT_HISTO = c_doc_store_marker_prefix || p_row_id
+                           AND NEW_VALUE IS NULL
+                         ORDER BY DATE_HISTO DESC
+                       )
+                 WHERE ROWNUM = 1
+               );
+
+        IF SQL%ROWCOUNT = 0 THEN
+            Insert_Row('Update', V_DOC_STORE_ID, p_old_doc_store, p_new_doc_store);
         END IF;
-    END Add_Doc_Store_Comment;
+    END Resolve_Doc_Store_Placeholder;
 
     FUNCTION getNegotiator(negoId IN VARCHAR2) RETURN VARCHAR2
     IS
@@ -242,12 +287,12 @@ COMPOUND TRIGGER
     BEGIN
         IF INSERTING THEN
 
-            V_ROW_ID := :NEW.ROW_ID;
+            V_ROW_ID := TO_CHAR(:NEW.ROW_ID);
             V_SHARED_MA_ID := :NEW.SHARED_MA_ID;
             V_SHARED_GROUP_ID := :NEW.SHARED_GROUP_ID;
             V_AMD_ID := :NEW.AMD_ID;
 
-            SELECT NVL(NVL(:NEW.USER_MODIFY, :NEW.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+            SELECT NVL(NVL(:NEW.USER_MODIFY,:NEW.USER_CREATE),SYS_CONTEXT('USERENV','OS_USER'))
               INTO V_User
               FROM Dual;
 
@@ -267,11 +312,7 @@ COMPOUND TRIGGER
             Insert_Row('Create', V_SUMMARY_ID, NULL, getDocSummary(:NEW.SUMMARY_ID));
             Insert_Row('Create', V_COMMENT, NULL, :NEW.ROW_DOC_COMMENTS);
 
-            Insert_Row('Create', V_DOC_STORE_ID, NULL, :NEW.DOC_STORE_ID);
-            IF v_shared_document_changes.EXISTS(v_index)
-               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
-                Add_Doc_Store_Comment(TO_CHAR(:NEW.ROW_ID));
-            END IF;
+            Insert_Doc_Store_Placeholder(TO_CHAR(:NEW.ROW_ID));
 
             IF (:NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30) THEN
                 V_agr_upload_dt_scope := 'Y';
@@ -279,12 +320,12 @@ COMPOUND TRIGGER
 
         ELSIF UPDATING THEN
 
-            V_ROW_ID := :NEW.ROW_ID;
+            V_ROW_ID := TO_CHAR(:NEW.ROW_ID);
             V_SHARED_MA_ID := :NEW.SHARED_MA_ID;
             V_SHARED_GROUP_ID := :NEW.SHARED_GROUP_ID;
             V_AMD_ID := :NEW.AMD_ID;
 
-            SELECT NVL(NVL(:NEW.USER_MODIFY, :NEW.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+            SELECT NVL(NVL(:NEW.USER_MODIFY,:NEW.USER_CREATE),SYS_CONTEXT('USERENV','OS_USER'))
               INTO V_User
               FROM Dual;
 
@@ -302,28 +343,30 @@ COMPOUND TRIGGER
             Insert_Row('Update', V_ROW_UPLD_DATE, TO_CHAR(:OLD.ROW_UPLD_DATE), TO_CHAR(:NEW.ROW_UPLD_DATE));
             Insert_Row('Update', V_ROWCATGORY_ID, getDocumentCategory(:OLD.ROWCATGORY_ID), getDocumentCategory(:NEW.ROWCATGORY_ID));
             Insert_Row('Update', V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), getDocSummary(:NEW.SUMMARY_ID));
-            Insert_Row('Update', V_COMMENT, :OLD.ROW_DOC_COMMENTS, :NEW.ROW_DOC_COMMENTS);
+            Insert_Row('Update', V_COMMENT, :OLD.ROW_DOC_COMMENTS, :NEW.ROW_DOC_COMMENTS));
 
-            Insert_Row('Update', V_DOC_STORE_ID, :OLD.DOC_STORE_ID, :NEW.DOC_STORE_ID);
-            IF v_shared_document_changes.EXISTS(v_index)
-               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
-                Add_Doc_Store_Comment(TO_CHAR(:NEW.ROW_ID));
+            IF NVL(:OLD.DOC_STORE_ID, '$') <> NVL(:NEW.DOC_STORE_ID, '$') THEN
+                Resolve_Doc_Store_Placeholder(
+                    TO_CHAR(:NEW.ROW_ID),
+                    :OLD.DOC_STORE_ID,
+                    :NEW.DOC_STORE_ID
+                );
             END IF;
 
             IF ((:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30
                  OR :NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30)
-                AND RTF_UTIL.is_dirty(:OLD.RowType_Id, :NEW.RowType_Id) = 'Y') THEN
+                AND RTF_UTIL.is_dirty(:OLD.RowType_Id,:NEW.RowType_Id) = 'Y') THEN
                 V_agr_upload_dt_scope := 'Y';
             END IF;
 
         ELSIF DELETING THEN
 
-            V_ROW_ID := :OLD.ROW_ID;
+            V_ROW_ID := TO_CHAR(:OLD.ROW_ID);
             V_SHARED_MA_ID := :OLD.SHARED_MA_ID;
             V_SHARED_GROUP_ID := :OLD.SHARED_GROUP_ID;
             V_AMD_ID := :OLD.AMD_ID;
 
-            SELECT NVL(NVL(:OLD.USER_MODIFY, :OLD.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+            SELECT NVL(NVL(:OLD.USER_MODIFY,:OLD.USER_CREATE),SYS_CONTEXT('USERENV','OS_USER'))
               INTO V_User
               FROM Dual;
 
@@ -343,10 +386,8 @@ COMPOUND TRIGGER
             Insert_Row('Delete', V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), NULL);
             Insert_Row('Delete', V_COMMENT, :OLD.ROW_DOC_COMMENTS, NULL);
 
-            Insert_Row('Delete', V_DOC_STORE_ID, :OLD.DOC_STORE_ID, NULL);
-            IF v_shared_document_changes.EXISTS(v_index)
-               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
-                Add_Doc_Store_Comment(TO_CHAR(:OLD.ROW_ID));
+            IF NVL(:OLD.DOC_STORE_ID, '$') IS NOT NULL THEN
+                Insert_Row('Delete', V_DOC_STORE_ID, :OLD.DOC_STORE_ID, NULL);
             END IF;
 
             IF (:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30) THEN
@@ -388,7 +429,7 @@ COMPOUND TRIGGER
                         INSERT INTO ontrack_ma_agr_upload_date
                             (ma_id, agreement_upload_date, user_creat, date_creat)
                         VALUES
-                            (ma_id.ma_id, v_agreement_upload_date, V_User, V_Date);
+                            (ma_id.ma_id, v_agreement_upload_date, V_User, v_date);
                     ELSE
                         UPDATE ontrack_ma_agr_upload_date
                            SET agreement_upload_date = v_agreement_upload_date,
@@ -418,7 +459,7 @@ COMPOUND TRIGGER
                         INSERT INTO ontrack_ma_agr_upload_date
                             (ma_id, agreement_upload_date, user_creat, date_creat)
                         VALUES
-                            (V_SHARED_MA_ID, v_agreement_upload_date, V_User, V_Date);
+                            (V_SHARED_MA_ID, v_agreement_upload_date, V_User, v_date);
                     ELSE
                         UPDATE ontrack_ma_agr_upload_date
                            SET agreement_upload_date = v_agreement_upload_date,
