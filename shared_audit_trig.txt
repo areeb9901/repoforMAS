@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE TRIGGER AUD_SHARED_DOCUMENT_TRIG
 FOR INSERT OR UPDATE OR DELETE
 ON ldm_tb_shared_documents
@@ -27,4 +28,409 @@ COMPOUND TRIGGER
     V_ROW_COMM             VARCHAR2(4000) := 'DOCUMENT DETAILS';
     V_ROW_USR_UPLD_LOG     VARCHAR2(32)   := 'UPLOADED BY';
     V_ROW_UPLD_DATE        VARCHAR2(32)   := 'UPLOADED DATE';
-    V_ROWCATG
+    V_ROWCATGORY_ID        VARCHAR2(50)   := 'DOCUMENT CATEGORY';
+    V_SUMMARY_ID           VARCHAR2(50)   := 'SUMMARY ID';
+    V_DOC_ID               VARCHAR2(50)   := 'DOCUMENT ROW ID';
+    V_DOC_FILE_NAME        VARCHAR2(50)   := 'DOCUMENT FILE NAME';
+    V_DOC_SIZE             VARCHAR2(50)   := 'DOCUMENT SIZE';
+    V_COMMENT              VARCHAR2(50)   := 'COMMENTS';
+    V_AMENDMENT_NUMBER     VARCHAR2(50)   := 'AMENDMENT NUMBER';
+    V_DOC_STORE_ID         VARCHAR2(50)   := 'DOC STORE ID';
+
+    V_agr_upload_dt_scope   VARCHAR2(1) := 'N';
+    v_agreement_upload_date DATE;
+    V_ontrack_ma            NUMBER;
+
+    PROCEDURE flush_logs
+    IS
+        v_updates CONSTANT SIMPLE_INTEGER := v_shared_document_changes.COUNT();
+    BEGIN
+        FORALL v_count IN 1 .. v_updates
+            INSERT INTO SHARED_DOCUMENT_AUDIT
+            VALUES v_shared_document_changes(v_count);
+
+        v_shared_document_changes.DELETE();
+        v_index := 0;
+    END flush_logs;
+
+    PROCEDURE Insert_Row(
+        V_ModifHisto VARCHAR2,
+        V_Field      VARCHAR2,
+        V_Oldvalue   VARCHAR2,
+        V_Newvalue   VARCHAR2
+    )
+    IS
+    BEGIN
+        IF (V_Modifhisto = 'Create') THEN
+            IF (V_Newvalue IS NULL) THEN
+                RETURN;
+            END IF;
+        ELSIF (V_Modifhisto = 'Delete') THEN
+            IF (V_Oldvalue IS NULL) THEN
+                RETURN;
+            END IF;
+        ELSIF (V_Modifhisto = 'Update') THEN
+            IF NVL(V_Oldvalue, '$') = NVL(V_Newvalue, '$') THEN
+                RETURN;
+            END IF;
+        END IF;
+
+        V_Index := V_Index + 1;
+
+        v_shared_document_changes(V_Index).SHARED_MA_ID    := V_SHARED_MA_ID;
+        v_shared_document_changes(V_Index).SHARED_GROUP_ID := V_SHARED_GROUP_ID;
+        v_shared_document_changes(V_Index).AMD_ID          := V_AMD_ID;
+        v_shared_document_changes(V_Index).DOC_ID          := V_ROW_ID;
+        v_shared_document_changes(V_Index).Date_Histo      := V_Date;
+        v_shared_document_changes(V_Index).Modif_Histo     := V_Modifhisto;
+        v_shared_document_changes(V_Index).User_Histo      := Getusername(V_User);
+        v_shared_document_changes(V_Index).Field           := V_Field;
+        v_shared_document_changes(V_Index).Old_Value       := V_Oldvalue;
+        v_shared_document_changes(V_Index).New_Value       := V_Newvalue;
+        v_shared_document_changes(V_Index).Table_Name      := 'ldm_tb_shared_documents';
+    END Insert_Row;
+
+    PROCEDURE Add_Doc_Store_Comment(p_row_id VARCHAR2)
+    IS
+    BEGIN
+        IF v_shared_document_changes.EXISTS(v_index) THEN
+            v_shared_document_changes(v_index).COMMENT_HISTO := 'Doc Row Id: ' || p_row_id;
+        END IF;
+    END Add_Doc_Store_Comment;
+
+    FUNCTION getNegotiator(negoId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_nego VARCHAR2(50);
+    BEGIN
+        IF (negoId IS NOT NULL) THEN
+            SELECT negotiator_frst_name || ' ' || negotiator_lst_name
+              INTO v_nego
+              FROM nego_tb_negotiator
+             WHERE negotiator_id = negoId;
+
+            IF (v_nego IS NOT NULL) THEN
+                RETURN v_nego;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END;
+
+    FUNCTION getDocumentCategory(docCatId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_docCat VARCHAR2(50);
+    BEGIN
+        IF (docCatId IS NOT NULL) THEN
+            SELECT c.category_desc
+              INTO V_docCat
+              FROM category_types c
+             WHERE c.category_id = docCatId;
+
+            IF (V_docCat IS NOT NULL) THEN
+                RETURN V_docCat;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END;
+
+    FUNCTION getDocSummary(docSumId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_docSum VARCHAR2(100);
+    BEGIN
+        IF (docSumId IS NOT NULL) THEN
+            SELECT summary
+              INTO V_docSum
+              FROM document_summary_tbl
+             WHERE id = docSumId;
+
+            IF (V_docSum IS NOT NULL) THEN
+                RETURN V_docSum;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END;
+
+    FUNCTION getDocumentType(docTypeId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_docType VARCHAR2(50);
+    BEGIN
+        IF (docTypeId IS NOT NULL) THEN
+            SELECT TYP_DESC
+              INTO V_docType
+              FROM NEGO_TB_ROWTYPE
+             WHERE ROWTYPE_ID = docTypeId;
+
+            IF (V_docType IS NOT NULL) THEN
+                RETURN V_docType;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    END;
+
+    FUNCTION getDocumentFileName(docId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_DOC_FILE_NAME VARCHAR2(500);
+    BEGIN
+        IF (docId IS NOT NULL) THEN
+            SELECT ROW_DOC_FILE_NAME
+              INTO V_DOC_FILE_NAME
+              FROM NEGO_TB_ROW_EXEC_DOC
+             WHERE ROW_ID = docId;
+
+            IF (V_DOC_FILE_NAME IS NOT NULL) THEN
+                RETURN V_DOC_FILE_NAME;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+    END;
+
+    FUNCTION getDocumentSize(docId IN VARCHAR2) RETURN VARCHAR2
+    IS
+        V_DOC_SIZE VARCHAR2(100);
+    BEGIN
+        IF (docId IS NOT NULL) THEN
+            IF (:NEW.SHARED_MA_ID IS NOT NULL) THEN
+                SELECT ROW_DOC_TAILLE
+                  INTO V_DOC_SIZE
+                  FROM NEGO_TB_ROW_EXEC_DOC
+                 WHERE ROW_ID = docId;
+            ELSE
+                SELECT ROW_DOC_TAILLE
+                  INTO V_DOC_SIZE
+                  FROM NEGO_TB_ROW_EXEC_DOC_FOR_GRP
+                 WHERE ROW_ID = docId;
+            END IF;
+
+            IF (V_DOC_SIZE IS NOT NULL) THEN
+                RETURN V_DOC_SIZE;
+            ELSE
+                RETURN NULL;
+            END IF;
+        ELSE
+            RETURN NULL;
+        END IF;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+    END;
+
+    BEFORE STATEMENT
+    IS
+    BEGIN
+        SELECT SYSDATE INTO v_date FROM Dual;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW
+    IS
+    BEGIN
+        IF INSERTING THEN
+
+            V_ROW_ID := :NEW.ROW_ID;
+            V_SHARED_MA_ID := :NEW.SHARED_MA_ID;
+            V_SHARED_GROUP_ID := :NEW.SHARED_GROUP_ID;
+            V_AMD_ID := :NEW.AMD_ID;
+
+            SELECT NVL(NVL(:NEW.USER_MODIFY, :NEW.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            Insert_Row('Create', V_ORIGINAL_MA_ID, NULL, TO_CHAR(:NEW.ORIGINAL_MA_ID));
+            Insert_Row('Create', V_ORIGINAL_GROUP_ID, NULL, TO_CHAR(:NEW.ORIGINAL_GROUP_ID));
+            Insert_Row('Create', V_AMENDMENT_NUMBER, NULL, TO_CHAR(:NEW.AMD_ID));
+            Insert_Row('Create', V_DOC_ID, NULL, TO_CHAR(:NEW.ROW_ID));
+            Insert_Row('Create', V_NEGOTIATOR, NULL, getNegotiator(:NEW.NEGOTIATOR));
+            Insert_Row('Create', V_ROWTYPE_ID, NULL, getDocumentType(:NEW.ROWTYPE_ID));
+            Insert_Row('Create', V_ROW_DESC, NULL, :NEW.ROW_DESC);
+            Insert_Row('Create', V_ROW_COMM, NULL, :NEW.ROW_COMM);
+            Insert_Row('Create', V_DOC_SIZE, NULL, TO_CHAR(:NEW.ROW_DOC_TAILLE));
+            Insert_Row('Create', V_ROW_USR_UPLD_LOG, NULL, :NEW.ROW_USR_UPLD_LOG);
+            Insert_Row('Create', V_DOC_FILE_NAME, NULL, :NEW.ROW_DOC_FILE_NAME);
+            Insert_Row('Create', V_ROW_UPLD_DATE, NULL, TO_CHAR(:NEW.ROW_UPLD_DATE));
+            Insert_Row('Create', V_ROWCATGORY_ID, NULL, getDocumentCategory(:NEW.ROWCATGORY_ID));
+            Insert_Row('Create', V_SUMMARY_ID, NULL, getDocSummary(:NEW.SUMMARY_ID));
+            Insert_Row('Create', V_COMMENT, NULL, :NEW.ROW_DOC_COMMENTS);
+
+            Insert_Row('Create', V_DOC_STORE_ID, NULL, :NEW.DOC_STORE_ID);
+            IF v_shared_document_changes.EXISTS(v_index)
+               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
+                Add_Doc_Store_Comment(TO_CHAR(:NEW.ROW_ID));
+            END IF;
+
+            IF (:NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30) THEN
+                V_agr_upload_dt_scope := 'Y';
+            END IF;
+
+        ELSIF UPDATING THEN
+
+            V_ROW_ID := :NEW.ROW_ID;
+            V_SHARED_MA_ID := :NEW.SHARED_MA_ID;
+            V_SHARED_GROUP_ID := :NEW.SHARED_GROUP_ID;
+            V_AMD_ID := :NEW.AMD_ID;
+
+            SELECT NVL(NVL(:NEW.USER_MODIFY, :NEW.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            Insert_Row('Update', V_ORIGINAL_MA_ID, TO_CHAR(:OLD.ORIGINAL_MA_ID), TO_CHAR(:NEW.ORIGINAL_MA_ID));
+            Insert_Row('Update', V_ORIGINAL_GROUP_ID, TO_CHAR(:OLD.ORIGINAL_GROUP_ID), TO_CHAR(:NEW.ORIGINAL_GROUP_ID));
+            Insert_Row('Update', V_AMENDMENT_NUMBER, TO_CHAR(:OLD.AMD_ID), TO_CHAR(:NEW.AMD_ID));
+            Insert_Row('Update', V_DOC_ID, TO_CHAR(:OLD.ROW_ID), TO_CHAR(:NEW.ROW_ID));
+            Insert_Row('Update', V_NEGOTIATOR, getNegotiator(:OLD.NEGOTIATOR), getNegotiator(:NEW.NEGOTIATOR));
+            Insert_Row('Update', V_ROWTYPE_ID, getDocumentType(:OLD.ROWTYPE_ID), getDocumentType(:NEW.ROWTYPE_ID));
+            Insert_Row('Update', V_ROW_DESC, :OLD.ROW_DESC, :NEW.ROW_DESC);
+            Insert_Row('Update', V_ROW_COMM, :OLD.ROW_COMM, :NEW.ROW_COMM);
+            Insert_Row('Update', V_DOC_SIZE, TO_CHAR(:OLD.ROW_DOC_TAILLE), TO_CHAR(:NEW.ROW_DOC_TAILLE));
+            Insert_Row('Update', V_ROW_USR_UPLD_LOG, :OLD.ROW_USR_UPLD_LOG, :NEW.ROW_USR_UPLD_LOG);
+            Insert_Row('Update', V_DOC_FILE_NAME, :OLD.ROW_DOC_FILE_NAME, :NEW.ROW_DOC_FILE_NAME);
+            Insert_Row('Update', V_ROW_UPLD_DATE, TO_CHAR(:OLD.ROW_UPLD_DATE), TO_CHAR(:NEW.ROW_UPLD_DATE));
+            Insert_Row('Update', V_ROWCATGORY_ID, getDocumentCategory(:OLD.ROWCATGORY_ID), getDocumentCategory(:NEW.ROWCATGORY_ID));
+            Insert_Row('Update', V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), getDocSummary(:NEW.SUMMARY_ID));
+            Insert_Row('Update', V_COMMENT, :OLD.ROW_DOC_COMMENTS, :NEW.ROW_DOC_COMMENTS);
+
+            Insert_Row('Update', V_DOC_STORE_ID, :OLD.DOC_STORE_ID, :NEW.DOC_STORE_ID);
+            IF v_shared_document_changes.EXISTS(v_index)
+               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
+                Add_Doc_Store_Comment(TO_CHAR(:NEW.ROW_ID));
+            END IF;
+
+            IF ((:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30
+                 OR :NEW.Rowtype_Id = 6 OR :NEW.RowType_Id = 7 OR :NEW.RowType_Id = 30)
+                AND RTF_UTIL.is_dirty(:OLD.RowType_Id, :NEW.RowType_Id) = 'Y') THEN
+                V_agr_upload_dt_scope := 'Y';
+            END IF;
+
+        ELSIF DELETING THEN
+
+            V_ROW_ID := :OLD.ROW_ID;
+            V_SHARED_MA_ID := :OLD.SHARED_MA_ID;
+            V_SHARED_GROUP_ID := :OLD.SHARED_GROUP_ID;
+            V_AMD_ID := :OLD.AMD_ID;
+
+            SELECT NVL(NVL(:OLD.USER_MODIFY, :OLD.USER_CREATE), SYS_CONTEXT('USERENV', 'OS_USER'))
+              INTO V_User
+              FROM Dual;
+
+            Insert_Row('Delete', V_ORIGINAL_MA_ID, TO_CHAR(:OLD.ORIGINAL_MA_ID), NULL);
+            Insert_Row('Delete', V_ORIGINAL_GROUP_ID, TO_CHAR(:OLD.ORIGINAL_GROUP_ID), NULL);
+            Insert_Row('Delete', V_AMENDMENT_NUMBER, TO_CHAR(:OLD.AMD_ID), NULL);
+            Insert_Row('Delete', V_DOC_ID, TO_CHAR(:OLD.ROW_ID), NULL);
+            Insert_Row('Delete', V_NEGOTIATOR, getNegotiator(:OLD.NEGOTIATOR), NULL);
+            Insert_Row('Delete', V_ROWTYPE_ID, getDocumentType(:OLD.ROWTYPE_ID), NULL);
+            Insert_Row('Delete', V_ROW_DESC, :OLD.ROW_DESC, NULL);
+            Insert_Row('Delete', V_ROW_COMM, :OLD.ROW_COMM, NULL);
+            Insert_Row('Delete', V_DOC_SIZE, TO_CHAR(:OLD.ROW_DOC_TAILLE), NULL);
+            Insert_Row('Delete', V_ROW_USR_UPLD_LOG, :OLD.ROW_USR_UPLD_LOG, NULL);
+            Insert_Row('Delete', V_DOC_FILE_NAME, :OLD.ROW_DOC_FILE_NAME, NULL);
+            Insert_Row('Delete', V_ROW_UPLD_DATE, TO_CHAR(:OLD.ROW_UPLD_DATE), NULL);
+            Insert_Row('Delete', V_ROWCATGORY_ID, getDocumentCategory(:OLD.ROWCATGORY_ID), NULL);
+            Insert_Row('Delete', V_SUMMARY_ID, getDocSummary(:OLD.SUMMARY_ID), NULL);
+            Insert_Row('Delete', V_COMMENT, :OLD.ROW_DOC_COMMENTS, NULL);
+
+            Insert_Row('Delete', V_DOC_STORE_ID, :OLD.DOC_STORE_ID, NULL);
+            IF v_shared_document_changes.EXISTS(v_index)
+               AND v_shared_document_changes(v_index).FIELD = V_DOC_STORE_ID THEN
+                Add_Doc_Store_Comment(TO_CHAR(:OLD.ROW_ID));
+            END IF;
+
+            IF (:OLD.Rowtype_Id = 6 OR :OLD.RowType_Id = 7 OR :OLD.RowType_Id = 30) THEN
+                V_agr_upload_dt_scope := 'Y';
+            END IF;
+
+        END IF;
+
+        IF v_index >= v_threshhold THEN
+            flush_logs();
+        END IF;
+
+    END AFTER EACH ROW;
+
+    AFTER STATEMENT
+    IS
+    BEGIN
+        flush_logs();
+
+        IF (V_agr_upload_dt_scope = 'Y') THEN
+            IF (V_SHARED_MA_ID IS NULL) THEN
+                FOR ma_id IN (
+                    SELECT DISTINCT ma.ma_id
+                      FROM ldm_tb_ma ma
+                      JOIN linked_maos_id maos
+                        ON maos.ma_id = ma.ma_id
+                     WHERE ma.grp_id = V_SHARED_GROUP_ID
+                ) LOOP
+                    SELECT check_agreement_upload_date(ma_id.ma_id)
+                      INTO v_agreement_upload_date
+                      FROM dual;
+
+                    SELECT COUNT(*)
+                      INTO V_ontrack_ma
+                      FROM ontrack_ma_agr_upload_date
+                     WHERE ma_id = ma_id.ma_id;
+
+                    IF (v_ontrack_ma = 0) THEN
+                        INSERT INTO ontrack_ma_agr_upload_date
+                            (ma_id, agreement_upload_date, user_creat, date_creat)
+                        VALUES
+                            (ma_id.ma_id, v_agreement_upload_date, V_User, V_Date);
+                    ELSE
+                        UPDATE ontrack_ma_agr_upload_date
+                           SET agreement_upload_date = v_agreement_upload_date,
+                               user_modif = v_user,
+                               date_modif = v_date
+                         WHERE ma_id = ma_id.ma_id;
+                    END IF;
+                END LOOP;
+            ELSE
+                FOR ma_id IN (
+                    SELECT DISTINCT ma.ma_id
+                      FROM ldm_tb_ma ma
+                      JOIN linked_maos_id maos
+                        ON maos.ma_id = ma.ma_id
+                     WHERE ma.ma_id = V_SHARED_MA_ID
+                ) LOOP
+                    SELECT check_agreement_upload_date(V_SHARED_MA_ID)
+                      INTO v_agreement_upload_date
+                      FROM dual;
+
+                    SELECT COUNT(*)
+                      INTO V_ontrack_ma
+                      FROM ontrack_ma_agr_upload_date
+                     WHERE ma_id = V_SHARED_MA_ID;
+
+                    IF (v_ontrack_ma = 0) THEN
+                        INSERT INTO ontrack_ma_agr_upload_date
+                            (ma_id, agreement_upload_date, user_creat, date_creat)
+                        VALUES
+                            (V_SHARED_MA_ID, v_agreement_upload_date, V_User, V_Date);
+                    ELSE
+                        UPDATE ontrack_ma_agr_upload_date
+                           SET agreement_upload_date = v_agreement_upload_date,
+                               user_modif = v_user,
+                               date_modif = v_date
+                         WHERE ma_id = V_SHARED_MA_ID;
+                    END IF;
+                END LOOP;
+            END IF;
+        END IF;
+
+    END AFTER STATEMENT;
+
+END AUD_SHARED_DOCUMENT_TRIG;
+/
