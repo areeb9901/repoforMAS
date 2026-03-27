@@ -1,0 +1,23 @@
+Hi Team,
+
+Following a detailed analysis and discussion with Rajesh and Ahmed, we have identified the root cause of the PBMNA / MSFTA report generation issue on PROD.
+
+Root Cause:
+
+- When the server is restarted via Jenkins by the APS team, the process runs under the user account OPS2AUXBEAGLEP.
+- As a result, the Tomcat working directory resolves to "/home/OPS2AUXBEAGLEP", where the Beagle service account does not have write permissions, causing the report generation to fail.
+- However, when the server is restarted manually, the application runs under the correct service account and the reports are generated successfully.
+
+Conclusion:
+
+- The issue is related to the Jenkins configuration, where the user context differs from the expected runtime user.
+
+Next Steps:
+
+- APS team will investigate and correct the Jenkins configuration.
+- In the interim, we request that the server be restarted manually to ensure the reports are generated successfully until the issue is permanently resolved.
+
+Please let us know if you have any concerns.
+
+Best regards,
+Areeb Faiz
