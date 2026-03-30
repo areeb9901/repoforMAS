@@ -1,0 +1,441 @@
+create or replace TRIGGER AUD_NEGO_TB_ROWGRP_TRIG FOR UPDATE OR
+
+insert or
+
+Delete On NEGO_TB_ROW_EXEC_DOC_FOR_GRP Compound Trigger  
+
+Type T_ExecutedDocument_Changes Is Table Of ExecutedDocument_Group_Audit%Rowtype Index By Simple_Integer;  
+
+v_executedDocument_changes t_executedDocument_changes;
+
+V_Executeddocumentindex   Integer          :=0;
+
+V_Threshhold              Constant Integer := 1000; --maximum number of rows to write in one go.
+
+V_Date                    Date;
+
+V_User                    Varchar2(32);
+
+V_USERHISTO               varchar2(32);
+
+V_GrpId                    Number;
+
+V_Modifhisto              Varchar2(10);
+
+V_Row_Id                  Varchar2(25) := 'Document Row Id';V_Rowtype                 Varchar2(25) := 'Document type';
+
+V_Negotiator              Varchar2(25) := 'Negotiator';
+
+V_Row_Upld_Date           Varchar2(25) := 'Document Upload date';
+
+V_Row_Usr_Upld_Log        Varchar2(25) := 'Uploader Details';
+
+V_Row_Doc_File_Name       Varchar2(25) := 'Document File Name';
+
+V_Row_Desc                Varchar2(25) := 'Summary';
+
+V_Row_Comm                Varchar2(25) := 'Details';
+
+V_Row_Doc_Taille          Varchar2(25) := 'Document Size';  
+
+V_Rowcatgory              Varchar2(25) := 'Document Category';
+
+V_Row_Is_Standard         Varchar2(30) := 'Collateral Document Class';
+
+V_Row_Doc_Comments        Varchar2(25) := 'Comments';
+
+V_DOC_GRP_ID              varchar2(25) := 'Document Group Id';
+
+V_AMENDMENT_NUMBER        varchar2(25) := 'Amendment Number';
+
+v_GRP_ID                  varchar2(25) := 'Group Id';
+
+V_SELECTED_MA_ID          varchar2(25) := 'Selected MA ID';
+
+V_DOC_STORE_ID            varchar2(100) := 'Doc Store Id';
+
+V_agr_upload_dt_scope varchar2(1) := 'N';
+
+SELECTED_MAID Number;
+
+v_agreement_upload_date date;
+
+V_ontrack_ma Number;
+
+PROCEDURE flushExecutedDocumentRecords
+
+IS
+
+v_updates  CONSTANT SIMPLE_INTEGER := v_executedDocument_changes.count();
+
+BEGIN
+
+FORALL v_count IN 1..v_updates
+
+INSERT INTO ExecutedDocument_Group_Audit
+
+VALUES v_executedDocument_changes(v_count);
+
+v_executedDocument_changes.delete();
+
+V_Executeddocumentindex := 0; --resetting threshold for next bulk-insert.
+
+End Flushexecuteddocumentrecords;
+
+Procedure InsertExecutedDocumentRow(V_Field Varchar2,V_Oldvalue Varchar2,V_Newvalue Varchar2)
+
+Is
+
+BeginIf (V_Modifhisto  = 'Create') Then
+
+If (V_Newvalue Is Null ) Then Return ; End If;
+
+Elsif (V_Modifhisto = 'Delete') Then
+
+If(V_Oldvalue Is Null) Then Return ; End If ;
+
+Elsif (V_Modifhisto = 'Update') Then
+
+If Nvl(V_Oldvalue,'$') = Nvl(V_Newvalue , '$') Then Return ; End If;
+
+END IF;
+
+V_Executeddocumentindex := V_Executeddocumentindex +1;
+
+V_EXECUTEDDOCUMENT_CHANGES(V_EXECUTEDDOCUMENTINDEX).DATE_HISTO   := V_DATE;
+
+V_EXECUTEDDOCUMENT_CHANGES(V_EXECUTEDDOCUMENTINDEX).GRP_ID        := V_GrpId;     
+
+v_executedDocument_changes(V_Executeddocumentindex).Modif_Histo  := V_Modifhisto;
+
+v_executedDocument_changes(V_Executeddocumentindex).User_Histo   := getusername(v_user);
+
+v_executedDocument_changes(V_Executeddocumentindex).Field        := V_Field;
+
+v_executedDocument_changes(V_Executeddocumentindex).Old_Value    := V_Oldvalue;
+
+V_EXECUTEDDOCUMENT_CHANGES(V_EXECUTEDDOCUMENTINDEX).NEW_VALUE    := V_NEWVALUE;v_executedDocument_changes(V_Executeddocumentindex).Table_Name   := 'NEGO_TB_ROW_EXEC_DOC_FOR_GRP';
+
+End InsertExecutedDocumentRow;
+
+Function GetDisplayValue(V_Field in Varchar2, V_Value in Varchar2) return varchar2
+
+Is
+
+V_Displayvalue Varchar2(2000);
+
+Begin
+
+If (V_Field = V_Negotiator) Then      
+
+If(V_Value Is Not Null) Then
+
+Select Negotiator_Frst_Name || ' ' || Negotiator_Lst_Name  Into V_Displayvalue From Nego_Tb_Negotiator Where Negotiator_Id = V_Value;
+
+End If; 
+
+Elsif(V_Field = V_Row_Usr_Upld_Log) Then      
+
+If(V_Value Is Not Null) Then
+
+BEGIN
+
+Select Firstname || ' ' || Lastname  Into V_Displayvalue From Users Where User_Id = V_Value;
+
+Exception
+
+When No_Data_Found Then
+
+V_Displayvalue := V_Value;
+
+End;
+
+If(V_Displayvalue is null) Then
+
+V_Displayvalue := V_Value;
+
+End If;          
+
+End If;
+
+Elsif(V_Field = V_Rowtype) Then      
+
+If(V_Value Is Not Null) Then
+
+BEGINSelect typ_desc Into V_Displayvalue From NEGO_TB_ROWTYPE Where RowType_Id = V_Value;
+
+Exception
+
+When No_Data_Found Then
+
+V_Displayvalue := V_Value;
+
+End;
+
+End If;
+
+Elsif((V_Field = V_Rowcatgory)) Then      
+
+If(V_Value Is Not Null) Then
+
+BEGIN
+
+select category_desc Into V_Displayvalue from category_types where category_id = V_Value;
+
+Exception
+
+When No_Data_Found Then
+
+V_Displayvalue := V_Value;
+
+End;
+
+End If;
+
+Elsif(V_Field = V_Row_Is_Standard) Then 
+
+If(V_Value Is Not Null AND V_Value='Y') Then
+
+V_Displayvalue := 'Standard';
+
+ELSIF(V_Value Is Not Null AND V_Value = 'N') Then
+
+V_Displayvalue := 'Non Standard';
+
+End If;
+
+End If;
+
+Return V_Displayvalue;    
+
+End Getdisplayvalue;
+
+Before Statement
+
+Is
+
+BEGIN
+
+Select Sysdate Into V_Date From Dual;
+
+End Before Statement;
+
+After Each Row
+
+Is
+
+BEGIN
+
+If Inserting Then
+
+Select Nvl(Nvl(:New.User_Modif,:New.User_Creat),Sys_Context('USERENV','OS_USER')) Into V_User From Dual;
+
+select NVL(SYS_CONTEXT('USERENV','OS_USER'),NVL(:new.USER_MODIF,:new.USER_CREAT)) into V_USERHISTO from DUAL;
+
+V_GrpId  := :New.GRP_ID; 
+
+V_Modifhisto := 'Create';
+
+InsertExecutedDocumentRow(V_Row_Id,Null,:New.Row_Id);
+
+InsertExecutedDocumentRow(V_Rowtype,Null,Getdisplayvalue(V_Rowtype,:New.Rowtype_Id));
+
+InsertExecutedDocumentRow(V_Negotiator,Null,Getdisplayvalue(V_Negotiator,:New.Negotiator_Id));
+
+InsertExecutedDocumentRow(V_Row_Upld_Date,Null,:New.Row_Upld_Date);
+
+InsertExecutedDocumentRow(V_Row_Usr_Upld_Log,Null,Getdisplayvalue(V_Row_Usr_Upld_Log,:New.Row_Usr_Upld_Log));
+
+InsertExecutedDocumentRow(V_Row_Doc_File_Name,Null,:New.Row_Doc_File_Name);
+
+InsertExecutedDocumentRow(V_Row_Desc,Null,:New.Row_Desc);
+
+InsertExecutedDocumentRow(V_Row_Comm,Null,:New.Row_Comm);
+
+InsertExecutedDocumentRow(V_Row_Doc_Taille,Null,:New.Row_Doc_Taille);          
+
+InsertExecutedDocumentRow(V_Rowcatgory,Null,Getdisplayvalue(V_Rowcatgory,:New.Rowcatgory_Id));          
+
+InsertExecutedDocumentRow(V_Row_Doc_Comments,Null,:New.Row_Doc_Comments);
+
+INSERTEXECUTEDDOCUMENTROW(V_DOC_GRP_ID,null,:new.DOC_GRP_ID);
+
+Insertexecuteddocumentrow(V_GRP_ID, null,:new.GRP_ID);
+
+Insertexecuteddocumentrow(V_AMENDMENT_NUMBER, null,:new.AMD_ID);
+
+Insertexecuteddocumentrow(V_SELECTED_MA_ID, null,:new.SELECTED_MA_ID);
+
+Insertexecuteddocumentrow(V_DOC_STORE_ID, null,:new.DOC_STORE_ID);
+
+if(:new.Rowtype_Id = 6 or :new.RowType_Id = 7 or :new.RowType_Id = 30) then 
+
+SELECTED_MAID := :new.SELECTED_MA_ID;
+
+V_agr_upload_dt_scope := 'Y';
+
+end if;
+
+Elsif Updating Then
+
+select NVL(NVL(:new.USER_MODIF,:new.USER_CREAT),SYS_CONTEXT('USERENV','OS_USER')) into V_USER from DUAL;
+
+V_GrpId := :New.GRP_ID; 
+
+V_Modifhisto := 'Update';
+
+InsertExecutedDocumentRow(V_Row_Id,:Old.Row_Id,:New.Row_Id);
+
+InsertExecutedDocumentRow(V_Rowtype,Getdisplayvalue(V_Rowtype,:Old.Rowtype_Id),Getdisplayvalue(V_Rowtype,:New.Rowtype_Id));
+
+InsertExecutedDocumentRow(V_Negotiator,Getdisplayvalue(V_Negotiator,:Old.Negotiator_Id),Getdisplayvalue(V_Negotiator,:New.Negotiator_Id));
+
+InsertExecutedDocumentRow(V_Row_Upld_Date,:Old.Row_Upld_Date,:New.Row_Upld_Date);
+
+InsertExecutedDocumentRow(V_Row_Usr_Upld_Log,Getdisplayvalue(V_Row_Usr_Upld_Log,:Old.Row_Usr_Upld_Log),Getdisplayvalue(V_Row_Usr_Upld_Log,:New.Row_Usr_Upld_Log));
+
+InsertExecutedDocumentRow(V_Row_Doc_File_Name,:Old.Row_Doc_File_Name,:New.Row_Doc_File_Name);
+
+InsertExecutedDocumentRow(V_Row_Desc,:Old.Row_Desc,:New.Row_Desc);
+
+InsertExecutedDocumentRow(V_Row_Comm,:Old.Row_Comm,:New.Row_Comm);
+
+InsertExecutedDocumentRow(V_Row_Doc_Taille,:Old.Row_Doc_Taille,:New.Row_Doc_Taille);          
+
+InsertExecutedDocumentRow(V_Rowcatgory,Getdisplayvalue(V_Rowcatgory,:Old.Rowcatgory_Id),Getdisplayvalue(V_Rowcatgory,:New.Rowcatgory_Id));
+
+InsertExecutedDocumentRow(V_Row_Doc_Comments,:Old.Row_Doc_Comments,:New.Row_Doc_Comments);
+
+INSERTEXECUTEDDOCUMENTROW(V_DOC_GRP_ID,:old.DOC_GRP_ID,:new.DOC_GRP_ID);Insertexecuteddocumentrow(V_GRP_ID, :old.GRP_ID,:new.GRP_ID);
+
+Insertexecuteddocumentrow(V_AMENDMENT_NUMBER, :old.amd_id,:new.AMD_ID);
+
+Insertexecuteddocumentrow(V_SELECTED_MA_ID, :old.SELECTED_MA_ID,:new.SELECTED_MA_ID);
+
+Insertexecuteddocumentrow(V_DOC_STORE_ID, :old.DOC_STORE_ID,:new.DOC_STORE_ID);
+
+if((:old.Rowtype_Id = 6 or :old.RowType_Id = 7 or :old.RowType_Id = 30 or :new.Rowtype_Id = 6 or :new.RowType_Id = 7 or :new.RowType_Id = 30) and RTF_UTIL.is_dirty(:old.RowType_Id,:new.RowType_Id) = 'Y') then 
+
+SELECTED_MAID := :new.SELECTED_MA_ID;
+
+V_agr_upload_dt_scope := 'Y';
+
+end if;
+
+Elsif Deleting Then
+
+select NVL(NVL(:old.USER_MODIF,:old.USER_CREAT),SYS_CONTEXT('USERENV','OS_USER')) into V_USER from DUAL;
+
+V_GrpId := :Old.GRP_ID; 
+
+V_Modifhisto := 'Delete';
+
+Insertexecuteddocumentrow(V_Row_Id,:Old.Row_Id,Null);
+
+Insertexecuteddocumentrow(V_Rowtype,Getdisplayvalue(V_Rowtype,:Old.Rowtype_Id),Null);
+
+Insertexecuteddocumentrow(V_Negotiator,Getdisplayvalue(V_Negotiator,:Old.Negotiator_Id),Null);
+
+Insertexecuteddocumentrow(V_Row_Upld_Date,:Old.Row_Upld_Date,Null);
+
+Insertexecuteddocumentrow(V_Row_Usr_Upld_Log,Getdisplayvalue(V_Row_Usr_Upld_Log,:Old.Row_Usr_Upld_Log),Null);
+
+Insertexecuteddocumentrow(V_Row_Doc_File_Name,:Old.Row_Doc_File_Name,Null);
+
+Insertexecuteddocumentrow(V_Row_Desc,:Old.Row_Desc,Null);
+
+Insertexecuteddocumentrow(V_Row_Comm,:Old.Row_Comm,Null);
+
+Insertexecuteddocumentrow(V_Row_Doc_Taille,:Old.Row_Doc_Taille,Null);          
+
+Insertexecuteddocumentrow(V_Rowcatgory,Getdisplayvalue(V_Rowcatgory,:Old.Rowcatgory_Id),Null);
+
+Insertexecuteddocumentrow(V_Row_Doc_Comments,:Old.Row_Doc_Comments,Null);
+
+INSERTEXECUTEDDOCUMENTROW(V_DOC_GRP_ID,:old.DOC_GRP_ID,null);
+
+Insertexecuteddocumentrow(V_GRP_ID, :old.GRP_ID,null);
+
+Insertexecuteddocumentrow(V_AMENDMENT_NUMBER, :old.amd_id,null);
+
+Insertexecuteddocumentrow(V_SELECTED_MA_ID, :old.SELECTED_MA_ID,null);
+
+Insertexecuteddocumentrow(V_DOC_STORE_ID, :old.DOC_STORE_ID,null);
+
+if(:old.Rowtype_Id = 6 or :old.RowType_Id = 7 or :old.RowType_Id = 30) then 
+
+SELECTED_MAID := :old.SELECTED_MA_ID;
+
+V_agr_upload_dt_scope := 'Y';
+
+end if;
+
+End If;
+
+IF V_Executeddocumentindex >= V_Threshhold Then
+
+Flushexecuteddocumentrecords();
+
+End If;
+
+End After Each Row;
+
+-- AFTER STATEMENT Section:
+
+After Statement
+
+Is
+
+BEGIN
+
+Flushexecuteddocumentrecords();
+
+if(V_agr_upload_dt_scope = 'Y') then
+
+if(SELECTED_MAID is null) then 
+
+for ma_id in (select ma.ma_id from ldm_tb_ma ma join linked_maos_id maos on maos.ma_id = ma.ma_id where ma.grp_id = v_grpid) loop 
+
+select check_agreement_upload_date(ma_id.ma_id) into v_agreement_upload_date from dual;
+
+select count(*) into V_ontrack_ma from ontrack_ma_agr_upload_date where ma_id = ma_id.ma_id;
+
+if(v_ontrack_ma = 0) then 
+
+insert into ontrack_ma_agr_upload_date(ma_id,agreement_upload_date,user_creat,date_creat) values(ma_id.ma_id,v_agreement_upload_date,V_User,V_Date);
+
+else 
+
+update ontrack_ma_agr_upload_date set agreement_upload_date = v_agreement_upload_date,user_modif = v_user,date_modif = v_date where ma_id = ma_id.ma_id;
+
+end if;
+
+end loop;
+
+elsif (SELECTED_MAID is not null) then
+
+for ma_id in (select ma.ma_id from LDM_TB_SELECTED_MA_GRP ma join linked_maos_id maos on maos.ma_id = ma.ma_id where ma.selected_ma_id = SELECTED_MAID) loop 
+
+select check_agreement_upload_date(ma_id.ma_id) into v_agreement_upload_date from dual;
+
+select count(*) into V_ontrack_ma from ontrack_ma_agr_upload_date where ma_id = ma_id.ma_id;
+
+if(v_ontrack_ma = 0) then 
+
+insert into ontrack_ma_agr_upload_date(ma_id,agreement_upload_date,user_creat,date_creat) values(ma_id.ma_id,v_agreement_upload_date,V_User,V_Date);
+
+else 
+
+update ontrack_ma_agr_upload_date set agreement_upload_date = v_agreement_upload_date,user_modif = v_user,date_modif = v_date where ma_id = ma_id.ma_id;
+
+end if;
+
+end loop;
+
+end if;
+
+end if;
+
+end after STATEMENT;
+
+end AUD_NEGO_TB_ROWGRP_TRIG;
