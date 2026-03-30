@@ -1,0 +1,54 @@
+-- Safer legacy update for EXECUTEDDOCUMENT_AUDIT
+UPDATE EXECUTEDDOCUMENT_AUDIT eda
+   SET eda.COMMENT_HISTO =
+       'Doc Row Id:' ||
+       (
+           SELECT TO_CHAR(nred.ROW_ID)
+             FROM NEGO_TB_ROW_EXEC_DOC nred
+            WHERE nred.DOC_STORE_ID = eda.NEW_VALUE
+       )
+ WHERE eda.FIELD = 'Doc Store Id'
+   AND eda.NEW_VALUE IS NOT NULL
+   AND NVL(TRIM(eda.COMMENT_HISTO), 'X') = 'X'
+   AND EXISTS
+       (
+           SELECT 1
+             FROM NEGO_TB_ROW_EXEC_DOC nred
+            WHERE nred.DOC_STORE_ID = eda.NEW_VALUE
+       );
+
+-- Safer legacy update for SHARED_DOCUMENT_AUDIT
+UPDATE SHARED_DOCUMENT_AUDIT sda
+   SET sda.COMMENT_HISTO =
+       'Doc Row Id:' ||
+       (
+           SELECT TO_CHAR(lsd.ROW_ID)
+             FROM LDM_TB_SHARED_DOCUMENTS lsd
+            WHERE lsd.DOC_STORE_ID = sda.NEW_VALUE
+       )
+ WHERE sda.FIELD = 'DOC STORE ID'
+   AND sda.NEW_VALUE IS NOT NULL
+   AND NVL(TRIM(sda.COMMENT_HISTO), 'X') = 'X'
+   AND EXISTS
+       (
+           SELECT 1
+             FROM LDM_TB_SHARED_DOCUMENTS lsd
+            WHERE lsd.DOC_STORE_ID = sda.NEW_VALUE
+       );
+
+COMMIT;
+
+
+
+
+UPDATE EXECUTEDDOCUMENT_AUDIT
+   SET COMMENT_HISTO = NULL
+ WHERE FIELD = 'Doc Store Id'
+   AND COMMENT_HISTO LIKE 'Doc Row Id:%';
+
+UPDATE SHARED_DOCUMENT_AUDIT
+   SET COMMENT_HISTO = NULL
+ WHERE FIELD = 'DOC STORE ID'
+   AND COMMENT_HISTO LIKE 'Doc Row Id:%';
+
+COMMIT;
