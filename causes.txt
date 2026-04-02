@@ -8,3 +8,16 @@ public SentMail getSavedEmailWithMaIdAndSentTime(Long maId, Date sentDateTime) {
         .setString("dormTrigger", "MA Dormanted")
         .uniqueResult();
 }
+
+
+
+
+
+
+@Override
+public SentMail getSavedEmailById(Long id) {
+    return (SentMail) getSession()
+        .createQuery("from SentMail where id = :id")
+        .setLong("id", id)
+        .uniqueResult();
+}
