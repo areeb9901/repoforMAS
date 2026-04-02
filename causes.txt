@@ -1,6 +1,10 @@
-Root cause (2–3 lines)
-ROW_DOC_COMMENTS DB column (NEGO_TB_ROW_EXEC_DOC) has a 255 char limit. In Add Executed Documents flow, the comment was being HTML-escaped (e.g., < → &lt;, > → &gt;) before persisting, increasing the stored length (e.g., 250 → 256) and causing ORA-12899, leading to an endless loading state.
-Technical impact (very short)
-Unescaped HTML entities for documentComment in the Add Executed Documents save path before persisting NegotiationDocumentForExecDoc, preventing ROW_DOC_COMMENTS length overflow and ORA-12899.
-Functional impact (1–2 lines)
-Users can now successfully save Executed Documents even when comments contain email IDs/angle brackets (e.g., <user@bnpparibas.com>), and the Save action no longer hangs.
+@Override
+public SentMail getSavedEmailWithMaIdAndSentTime(Long maId, Date sentDateTime) {
+    return (SentMail) getSession()
+        .createQuery("from SentMail where maOrGrpId = :ids and sentTime = :sentTime and (mailTrigger = :termTrigger or mailTrigger = :dormTrigger)")
+        .setLong("ids", maId)
+        .setTimestamp("sentTime", sentDateTime)
+        .setString("termTrigger", "MA Terminated")
+        .setString("dormTrigger", "MA Dormanted")
+        .uniqueResult();
+}
