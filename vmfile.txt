@@ -1,0 +1,7 @@
+function fnGetArchving(row) {
+    if (isITUser) {
+        return "<a href='javascript:void(0);' onclick=\"j.alert('Your Beagle profile does not allow access to the document'); return false;\"><font class='a-link-table-bnp'>" + row.archivingId + "</font></a>";
+    }
+
+    return "<a href='$request.contextPath/secure/" + row.searchURL + "'><font class='a-link-table-bnp'>" + row.archivingId + "</font></a>";
+}
