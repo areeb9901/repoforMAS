@@ -1,0 +1,15 @@
+User user = null;
+if (request != null && request.getSession() != null
+        && request.getSession().getAttribute("LOGGED_IN_USER_KEY") != null) {
+    user = (User) request.getSession().getAttribute("LOGGED_IN_USER_KEY");
+}
+
+if (user != null && user.getRole() != null
+        && UserRole.IT.getId().equals(user.getRole().getId())) {
+    response.setContentType("text/plain");
+    PrintWriter writer = response.getWriter();
+    writer.write("Your Beagle profile does not allow access to the document");
+    writer.flush();
+    writer.close();
+    return;
+}
