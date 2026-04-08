@@ -1,7 +1,8 @@
-function fnGetArchving(row) {
-    if (isITUser) {
-        return "<a href='javascript:void(0);' onclick=\"j.alert('Your Beagle profile does not allow access to the document'); return false;\"><font class='a-link-table-bnp'>" + row.archivingId + "</font></a>";
-    }
-
-    return "<a href='$request.contextPath/secure/" + row.searchURL + "'><font class='a-link-table-bnp'>" + row.archivingId + "</font></a>";
-}
+Subject: Clarification Required – Audit Entry Scenario
+Hi <BA Name>,
+We have received an issue raised by a user regarding an incorrect entry being captured in the audit after performing certain actions.
+To help us analyze and identify the root cause, could you please help us with the exact sequence of functional steps/actions performed that led to this audit entry being generated? This will allow us to try to replicate the scenario on our end and investigate further.
+Your assistance in outlining the series of actions from a functional perspective would be very helpful.
+Please let us know if any additional information is required from our side.
+Best regards,
+Areeb Faiz
