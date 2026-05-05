@@ -1,719 +1,229 @@
-This is my task:
-On the Beagle Monitor Page - System Status Checks, please could we add a line for
+This is FileSystemAccess.java
 
-Checking Docassemble API key validity: OK (Green) or No longer valid - please create a new key (Alert icon in Red)
-
-Steps to check if an api key is valid
-
-1. Get using the API key from the table LDM_TB_DOCASSEMBLE_APIKEY
-
-2. result = https://docassemble.group.echonet/api/list?key=API key
-
-3. if the result = "[]" then the key is valid, otherwise it is invalid.
-
-
-How to do this?
-
-This is the .vm page of it:
-#macro(printResult $text $result)
-
-<tr>
-
-<th class="w-25">$text</th>
-
-<td class="alert" style="background-color: ${result.background}">
-
-#if(${result.status)=="OK")
-
-<i class='material-icons md-21 text-color-green'>check_circle</i>
-
-#else
-
-<i class="material-icons md-21 icon-red">warning</i>
-
-#end
-
-&nbsp; ${result.status) </td>
-
-</tr>
-
-#end
-
-<div class="card">
-
-<div class="card-header card-header-admin card-header-icon">
-
-<div class="card-icon">
-
-<i class="material-icons icon-white">desktop_mac</i>
-
-</div>
-
-<h4 class="card-title"><b>Beagle Monitor Page</b></h4>
-
-I
-
-</div>
-
-<div class="card-body">
-
-<div class="container-fluid">
-
-<div class="row">
-
-<div class="col-md-12">
-
-<div class="card card-low-shadow w-90">
-
-<div class="card-header card-header-bnp">
-
-<div class="card-title">System Status Checks</div>
-
-</div>
-
-<div class="card-body">
-
-<div class="card card-low-shadow">
-
-<table class="table table-borderless table-responsive-sm w-100">
-
-#printResult("Checking connection to Beagle database" $connectionToCoreOK)
-
-$connectionToDocumentsOK) #printResult("Checking connection to Negotiation Document Server"
-
-#printResult( "Checking connection to LDAP Server" $connectionToUserServiceOK)
-
-#printResult("Checking connection to Feed "$connectionToCrds FeedOK)
-
-#printResult( "Checking Indexes" $indexInSyncOK)
-
-<tr>
-
-<td></td>
-
-<td>
-
-<table class="table table-striped table-bordered">
-
-<tr>
-
-<th>Index</th>
-
-<th>Document Count</th>
-
-<th>Database Count</th>
-
-</tr>
-
-#foreach($temp in $action.getIndexes())
-
-<tr>
-
-<td>$temp.getIndex().getName()</td>
-
-<td>$temp.getDocumentCount()</td>
-
-<td>$temp.getDbCount()</td>
-
-</tr>
-
-#end
-
-</table>
-
-</td>
-
-</tr>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-<br><br>
-
-<div class="card card-low-shadow w-90">
-
-<div class="card-header card-header-bnp">
-
-<div class="card-title">Summary</div>
-
-</div>
-
-<div class="card-body">
-
-<div class="card card-low-shadow">
-
-<table class="table table-borderless table-responsive-sm w-100">
-
-<tr>
-
-<th class="w-25">Last Increment Index Date</th>
-
-<td>$lastIncrementalIndexDate</td>
-
-</tr>
-
-#set ($overallResult = $everythingOK)
-
-<tr>
-
-<th>"Overall Result"</th>
-
-<td style="background-color: ${overallResult.background}">
-
-#if($(overallResult.status)=="OK")
-
-<i class='material-icons md-21 text-color-green'>check_circle</i>&nbsp; Status: Normal
-
-#else
-
-<i class="material-icons md-21 icon-red">warning</i>&nbsp; Status: Critical
-
-#end
-
-</td>
-
-</tr>
-
-</table>
-
-I</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-This is the .java file :
-
-package com.bnpparibas.beagle.kernel.actions;
-
-import java.util.Map;
-
-import java.util.Set;
-
-import org.apache.struts2.interceptor.SessionAware;
-
-import com.bnpparibas.beagle.indexing. IndexInfo;
-
-import com.bnpparibas.beagle.indexing. IndexNotInSync;
-
-import com.bnpparibas.beagle.indexing. Indexing Service;
-
-import com.bnpparibas.beagle.kernel.feed.FeedService;
-
-import com.bnpparibas.beagle.kernel.ldap.AuthenticationFailureException;
-
-import com.bnpparibas.beagle.kernel.ldap. InvalidSearchException;
-
-import com.bnpparibas.beagle.kernel.ldap. UserNotFoundException;
-
-import com.bnpparibas.beagle.kernel.policy. AuthorisationPolicy;
-
-import com.bnpparibas.beagle.kernel.policy. BeagleFeatures;
-
-import com.bnpparibas.beagle.kernel.policy.Policy;
-
-import com.bnpparibas.beagle.kernel.security. UserNotAuthorised Exception;
-
-import com.bnpparibas.beagle.kernel.security. UserStillPendingException;
-
-import com.bnpparibas.beagle.kernel.services.FileSystemAccess;
-
-import com.bnpparibas.beagle.ma.model.MasterAgreement;
-
-import com.bnpparibas.beagle.staticdata.model.User;
-
-public class Monitor extends BeagleGuestActionSupport implements SessionAware {
-
-private static final Result OK = new Result(true);
-
-private static final Result FAILED = new Result(false);
-
-private FileSystemAccess fileSystemAccess;
-
-private IndexingService indexingService;
-
-private FeedService feedService;
-
-private Result connectionToCoreOK;
-
-private Result connectionToDocumentsOK;
-
-private Result connectionToUserServiceOK;
-
-private Result connectionToCrdsFeed0K;
-
-private Result connectionToDocassembleAPIkey;
-
-private Result indexInSync;
-
-private Set<IndexInfo> indexes;
-
-private static final Long MASTER_AGREEMENT_ID = (long) 3061;
-
-private Map session;
-
-private Policy policy;
-
-private boolean debug = false;
-
-@Override
-
-public String execute() {
-
-setPolicy();
-
-}
-
-checkDatabase();
-
-checkDocuments();
-
-checkUserService();
-
-checkCrdsFeed();
-
-checkIndexInSync();
-
-return SUCCESS;
-
-}
-private void checkUserService() {
-
-try {
-
-userService.authenticate("whatever", "nonblankpassword");
-
-connectionToUserServiceOK = FAILED;
-
-} catch (AuthenticationFailureException e) {
-
-connectionToUserServiceOK = OK;
-
-} catch (UserNotFoundException e) {
-
-connectionToUserServiceOK = OK;
-
-} catch (InvalidSearchException e) {
-
-connectionToUserServiceOK = OK;
-
-} catch (UserNotAuthorisedException e) {
-
-connectionToUserServiceOK = OK;
-
-} catch (UserStillPendingException e) {
-
-connectionToUserServiceOK = OK;
-
-} catch (Exception t) {
-
-connectionToUserServiceOK = FAILED;
-
-}
-
-}
-
-I
-
-private void checkDocuments() {
-
-try {
-
-connectionToDocumentsOK = new Result(fileSystemAccess.checkFullAccess());
-
-} catch (Exception t) {
-
-connectionToDocumentsOK = FAILED;
-
-}
-
-}
-
-private void checkDatabase() {
-
-try {
-
-MasterAgreement.get(repository, MASTER_AGREEMENT_ID);
-
-connectionToCoreOK = OK;
-
-} catch (Exception t) {
-
-connectionToCoreOK =FAILED;
-}
-}
-private void checkDatabase() {
-
-try {
-
-MasterAgreement.get(repository, MASTER_AGREEMENT_ID);
-
-connectionToCoreOK = OK;
-
-} catch (Exception t) {
-
-}
-
-}
-
-connectionToCoreOK FAILED;
-
-private void check IndexInSync() {
-
-try {
-
-indexingService.checkIndexesAreInSync();
-
-} catch (IndexNotInSync indexStatus) {
-
-this.indexInSync = new Result(indexStatus.getMessage());
-
-indexes indexStatus.getIndexes();
-
-if(indexStatus.is Indexes AreInSync()) {
-this.indexInSync = OK;
-}
-
-}
-
-}
-private void checkCrdsFeed() {
-
-} connectionToCrdsFeedOK = new Result (feedService != null && feedService.isActive());
-
-public Result getIndexInSyncOK() { } return indexInSync;
-
-public Result getConnectionToCoreOK() { } return connectionToCoreOK;
-
-public Result getConnectionToDocumentsOK() { } return connection ToDocumentsOK;
-
-public Result getConnectionToUserServiceOK() { return connectionToUserServiceOK;
-
-}
-
-public Result getConnectionToCrdsFeedOK() { return connectionToCrdsFeedOK;
-
-}
-public Result getEverythingOK() {
-
-}
-
-return new Result(connectionStatus ToCoreAndDocumentsIsOk() && connectionToUserServiceOK.isok() && connectionStatusToUserServiceAndCrds FeedIsOK());
-
-public boolean connectionStatus ToCoreAndDocumentsIsOk(){
-
-return connectionToCoreOK.isok() && connection ToDocumentsOK.isok();
-
-}
-
-public boolean connectionStatusToUserServiceAndCrdsFeedIsOK(){
-
-}
-
-return connectionToCrdsFeedOK.isok() && indexInSync.isok();
-
-public void setFileSystemAccess (FileSystemAccess fileSystemAccess) {
-
-this.fileSystemAccess = fileSystemAccess;
-
-}
-
-public Set<IndexInfo> getIndexes() {
-
-}
-
-return indexes;
-
-public void setIndexingService (IndexingService indexingService) {
-
-}
-
-this.indexingService = indexingService;
-
-public void setFeedService(FeedService feedService) {
-
-}
-
-this.feedService = feedService;
-
-I
-
-@Override
-
-public void setSession(Map session){
-this.session=session;
-}
-public User getUser() { } return User.getUser(this.session);
-
-public Policy getPolicy() { } return this.policy;
-
-private Policy getBasePolicy() { } return new BeagleFeatures();
-
-private void setPolicy() { Policy p = getBasePolicy(); User user = getUser(); policy = new AuthorisationPolicy (user, p,repository);
-
-}
-
-public void setDebug (boolean debug) {
-
-}
-
-this.debug = debug; this.indexingService.setDebug(debug);
-
-public static class Result {
-
-private static final String RED = "#FFCCCC"; private static final String GREEN = "#CCFFCC";
-
-private String comment;
-
-private String background = RED;
-public Result (boolean status) { this(status? "OK": "FAILED"); this.background = status? GREEN: RED; }
-
-public Result(String comment) { this.comment = comment;
-
-}
-
-public String getStatus() { return comment; }
-
-public boolean isok() { return "OK".equals(comment); }
-
-public String getBackground() { return background;
-
-}
-
-}
-
-
-
-}
-
-
-
-If you need info of other page, please tell me i will provide you with the code of other required pages as well.
-
-
-I also have one big file BeagleRepositoryImpl.java in which there is this function:
-@Override
-
-public String getDocAssembleApiKey() {
-
-SQLQuery query = getSession().createSQLQuery("SELECT API_KEY FROM LDM_TB_DOCASSEMBLE_APIKEY");
-
-Object apiKey = query.uniqueResult();
-
-if (null! apiKey) {
-
-return apikey.toString();
-
-}
-
-return "";
-
-}
-
-
-I also have one file DocAssembleAPIService.java and its code is:
-
-package com.bnpparibas.beagle.docassemble.services;
-
-import com.bnpparibas.beagle.kernel.restclient. RestResponseErrorHandler;
-
-import com.bnpparibas.beagle.kernel.restclient.RestTemplateBuilder;
-
-import org.codehaus.jackson.map.ObjectMapper;
-
-import org.codehaus.jackson.map.DeserializationConfig;
-
-import org.springframework.http.HttpEntity;
-
-import org.springframework.http.HttpMethod;
-
-import org.springframework.http. ResponseEntity;
-
-import org.springframework.web.client. Response ErrorHandler;
-
-import org.springframework.web.client.RestTemplate;
-
-import org.springframework.web.util.UriComponents;
-
-import org.springframework.web.util.UriComponentsBuilder;
-
-import org.springframework.http.HttpHeaders;
-
-import org.springframework.http.MediaType;
-
-import com.bnpparibas.beagle.parameters Assembler.constants. Basic Parameters;
+package com.bnpparibas.beagle.kernel.services;
 
 import java.io.*;
 
-public class DocAssembleAPIService {
-private String docAssembleApiUrl;
+import java.nio.file.Path;
 
-private RestTemplateBuilder restTemplateBuilder;
+import java.util.Arrays;
 
-private String docAssembleInterviewUrl;
+import java.util.List;
 
-private String filePath;
+import java.util.Optional;
 
-public <T> T getInterviewDetails (String apikey, String sessionID, Class<T> targetType, String templateUrl) throws IOException {
+import com.bnpparibas.beagle.documents.actions.DocumentsAction;
 
-}
+import com.bnpparibas.beagle.kernel.logging.BeagleLogger;
 
-ObjectMapper objectMapper = new ObjectMapper();
+import com.bnpparibas.beagle.kernel.util.ZLibUtils;
 
-RestTemplate restTemplate restTemplateBuilder
+public class FileSystemAccess {
 
-.init()
+private static final BeagleLogger LOGGER = BeagleLogger.getLogger(FileSystemAccess.class);
 
-.setErrorHandler(getErrorHandler())
+private ZLibUtils zLibUtils = new ZLibUtils();
 
-.getRestTemplate();
+private DataDirectoryProvider directoryProvider;
 
-HttpEntity<String> entity = getDocAssembleAPIKey (apiKey);
+public void setDataDirectoryProvider(DataDirectoryProvider directoryProvider) {
 
-String url = docAssembleApiUrl + BasicParameters.DOCASSEMBLE_INTERVIEW_DET_URL;
-
-UriComponents builder UriComponentsBuilder.fromHttpUrl(url)
-
-.queryParam(BasicParameters. TEMPLATE_URL_LABEL, templateUrl)
-
-.queryParam(BasicParameters.SESSION_LABEL, sessionID)
-
-.build();
-
-ResponseEntity<String> response = restTemplate.exchange (builder.toString(),
-
-HttpMethod.GET, entity, String.class);
-
-objectMapper.configure (DeserializationConfig. Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-objectMapper.enable (DeserializationConfig. Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
-
-return targetType.cast(objectMapper.readValue(response.getBody(), targetType));
-}
-private HttpEntity<String> getDocAssembleAPIKey (String docAssembleApiKey) {
-
-HttpHeaders httpHeaders = new HttpHeaders();
-
-httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-httpHeaders.set(BasicParameters.DOCASSEMBLE_API_KEY, docAssembleApiKey);
-
-return new HttpEntity<>(httpHeaders);
+this.directoryProvider = directoryProvider;
 
 }
 
-public File retriveStoredFiles (String apikey, int docNum, String interviewTemp, String sessionID, String docName) throws IOException {
+public void load(String filename, OutputStream stream) throws IOException {
 
-FileOutputStream os = null;
+zLibUtils.decompressAndDecrypt(getFile(filename), stream);
 
-RestTemplate restTemplate restTemplateBuilder
+}
 
-.init()
+public File getFile(String filename) {
 
-.setErrorHandler(getErrorHandler())
+return new File(directoryProvider.getRootDirectoryForAttachments(), filename);
 
-.getRestTemplate();
+}
 
-HttpEntity<String> entity = getDocAssembleAPIKey(apiKey);
+public boolean exists(String filename) throws IOException {
 
-String url = docAssembleApiUrl + BasicParameters.DOCASSEMBLE_GET_DOC_URL + docNum;
+return getFile(filename).exists();
 
-UriComponents builder UriComponentsBuilder.fromHttpUrl(url)
+}
 
-.queryParam(BasicParameters.TEMPLATE_URL_LABEL, interviewTemp)
+public boolean checkFullAccess() throws IOException {
 
-.queryParam(BasicParameters.SESSION_LABEL, sessionID)
+File directory = directoryProvider.getRootDirectoryForAttachments();
 
-.build();
+return directory.canWrite() && directory.canRead();
 
-ResponseEntity<byte[]> response = restTemplate.exchange(builder.toString(),
+}
 
-HttpMethod.GET, entity, byte[].class);
+public void save(String filename, File content) throws IOException {
 
-File file = new File(filePath + docName);
+File targetFile = getFile(filename);
 
-try {
+zLibUtils.encryptAndCompress(content, targetFile);
 
-os = new FileOutputStream(file);
+}
 
-os.write(response.getBody());
+public void saveImportLog(String filename, File content) throws IOException {
 
-} finally {
+File targetFile = getImportLogFile(filename);
 
-if(null != os) {
+zLibUtils.compress(content, new FileOutputStream(targetFile));// Need to Check
 
-os.close();
+}
+
+public File getFileForExecutedDocument(String filename){
+
+return new File(directoryProvider.getExecutedDocuments(), separatorsToSystem(filename));
+
+}
+
+public File getFileForExecutedDocumentForESA(String filename){
+
+return new File(directoryProvider.getExecutedDocumentsForESA(), separatorsToSystem(filename));
+
+}
+
+public File getImportLogFile(String filename) {if (filename.contains("icei")) {
+
+return new File(directoryProvider.getRootDirectoryForIsdaCdeaImport(), filename);
+
+} else if (filename.contains("aagei")) {
+
+return new File(directoryProvider.getRootDirectoryForDataImport(), filename);
+
+}  else if(filename.contains("bp2sei"))  {
+
+return new File(directoryProvider.getRootDirectoryForBp2sImport(), filename);
+
+}else if(filename.contains("isdaRspei")){
+
+return new File(directoryProvider.getRootDirectoryForBp2sImport(), filename);
+
+}else if(filename.contains("isdaJmpei")){
+
+return new File(directoryProvider.getRootDirectoryForBp2sImport(), filename);
+
+}else if(filename.contains("isdaBmrei")){
+
+return new File(directoryProvider.getRootDirectoryForIsdaBmrImport(), filename);
+
+}else if(filename.contains("isdaBailInArticle")) {
+
+return new File(directoryProvider.getRootDirectoryForIsdaBailInArticleImport(), filename);
+
+}else if(filename.contains("AldopGroups")){return new File(directoryProvider.getRootDirectoryForAldopGroupsImport(), filename);
+
+}else if(filename.contains("Generic_Upload")){
+
+return new File(directoryProvider.getRootDirectoryForGenericUpload(), filename);
+
+}else if(filename.contains("ExecutedDocumentUpload")){
+
+return new File(directoryProvider.getRootDirectoryForExecutedDocUpload(), filename);
+
+}else if(filename.contains("IsdaRspBrrd2")) {
+
+return new File(directoryProvider.getRootDirectoryForIsdaRspBrrd2Import(),filename);
+
+}else if(filename.contains("isdaPRDRei")){
+
+return new File(directoryProvider.getRootDirectoryForBp2sImport(), filename);
+
+}else if(filename.contains("Ccp")){
+
+return new File(directoryProvider.getRootDirectoryForCcpExcel(),filename);
+
+}
+
+return null;
+
+}
+
+public void delete(String filename) {
+
+boolean isDeleted = getFile(filename).delete();
+
+if( !isDeleted ) {
+
+LOGGER.error("Unable to delete file "+filename);
 
 }
 
 }
+
+public BeagleFile getFile(String fileNameOnDisk, String realFileName) {
+
+BeagleFile file = new BeagleFile(directoryProvider.getRootDirectoryForAttachments(), fileNameOnDisk);
+
+file.setFileNameAsUploaded(realFileName);
 
 return file;
 
 }
 
-private Response ErrorHandler getErrorHandler() {
+public DataDirectoryProvider getDirectoryProvider() {
 
-return new RestResponseErrorHandler();
-
-}
-
-public String getDocAssembleApiUrl() {
+return directoryProvider;
 
 }
 
-return docAssembleApiUrl;
+public void loadImportLogs(String filename, OutputStream outputStream) throws IOException {
 
-public void setDocAssembleApiUrl (String docAssembleApiUrl) { this.docAssembleApiUrl = docAssembleApiUrl;
-
-}
-
-public RestTemplateBuilder getRestTemplateBuilder() {
-
-return restTemplateBuilder;
-}
-
-public void setRestTemplateBuilder(RestTemplateBuilder restTemplateBuilder) {
-
-this.restTemplateBuilder = restTemplateBuilder;
+zLibUtils.decompress(getImportLogFile(filename), outputStream);
 
 }
 
-public String getDocAssembleInterviewUrl() {
+public boolean copyFile(String srcFileName, String newFileName) throws IOException {
 
-return docAssembleInterviewUrl;
+File srcFile = getFile(srcFileName);
+
+if( srcFile.exists() ) {
+
+try(FileInputStream fis  = new FileInputStream(srcFile);
+
+FileOutputStream fos = new FileOutputStream(getFile(newFileName))) {
+
+byte[] buf = new byte[1024];
+
+int i = 0;
+
+while ((i = fis.read(buf)) != -1) {
+
+fos.write(buf, 0, i);
 
 }
 
-I
+} catch (Exception e) {
 
-public void setDocAssembleInterviewUrl(String docAssemble InterviewUrl) { this.docAssembleInterviewUrl = docAssembleInterviewUrl;
+LOGGER.error("Unable to create copy of file "+srcFileName);
 
-}
-
-public void setFilePath(String filePath) {
-
-this.filePath = filePath;
+throw e;
 
 }
 
+return true;
+
 }
 
+return false;
 
-Now please figure out what needs to be done and where and if you need more code files then let me know.
+}
+
+private String separatorsToSystem(String res) {
+
+if (res==null) return null;
+
+if (File.separatorChar=='\\') {
+
+// From Windows to Linux/Mac
+
+return res.replace('/', File.separatorChar);
+
+} else {
+
+// From Linux/Mac to Windows
+
+return res.replace('\\', File.separatorChar);}}}
