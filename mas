@@ -1,10 +1,10 @@
-Hi [BA Name],
+Hi,
 
-I noticed that the meeting invitation was declined.
+I would like to inform you that the NAS migration/decommissioning activity to IV2 has been successfully completed for both the DEV and UAT environments.
 
-Could you please reconsider and accept the meeting request? While reviewing Jira 11639, I found that some of the requirements are not clearly defined and there appear to be a few inconsistencies in the expected behavior. A quick discussion would help clarify the requirements, align our understanding, and ensure the implementation is carried out correctly.
+The data has been migrated to the new IV2 storage location, and the required configuration changes have been completed. Post-migration verification has also been performed, and the environments are functioning as expected.
 
-Please let me know a suitable time if the proposed slot does not work for you.
+Please let me know if you would like any additional validation or testing to be carried out.
 
-Thanks and regards,
-Areeb
+Best regards,
+Areeb Faiz
