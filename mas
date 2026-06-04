@@ -1,10 +1,12 @@
-Hi,
+Hi [BA Name],
 
-I would like to inform you that the NAS migration/decommissioning activity to IV2 has been successfully completed for both the DEV and UAT environments.
+We identified that the issue was related to the encoding of the generated XML file. The file has now been converted to UTF-8 encoding.
 
-The data has been migrated to the new IV2 storage location, and the required configuration changes have been completed. Post-migration verification has also been performed, and the environments are functioning as expected.
+Could you please verify the updated file and proceed with your testing?
 
-Please let me know if you would like any additional validation or testing to be carried out.
+As a side note, due to an issue on the server, the XML file was generated from a Windows environment connected to the UAT database. Therefore, it would be useful to confirm whether the same encoding issue occurs when the XML is generated from the Unix server. If the issue is reproducible on Unix as well, we will need to investigate the root cause further and implement a permanent fix.
 
-Best regards,
-Areeb Faiz
+Please let us know the outcome of your testing.
+
+Thanks and regards,
+Areeb
