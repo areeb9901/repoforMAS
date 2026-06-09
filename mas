@@ -1,12 +1,1 @@
-Hi [BA Name],
-
-We identified that the issue was related to the encoding of the generated XML file. The file has now been converted to UTF-8 encoding.
-
-Could you please verify the updated file and proceed with your testing?
-
-As a side note, due to an issue on the server, the XML file was generated from a Windows environment connected to the UAT database. Therefore, it would be useful to confirm whether the same encoding issue occurs when the XML is generated from the Unix server. If the issue is reproducible on Unix as well, we will need to investigate the root cause further and implement a permanent fix.
-
-Please let us know the outcome of your testing.
-
-Thanks and regards,
-Areeb
+One thing I would recommend before sending this: quickly verify in the code that the search is indeed using Lucene's default relevance sort and not applying a secondary sort later in the flow. The explanation about "not sorted by creation/execution date" is likely correct, but it's worth confirming since this is the key business question the BA asked.
