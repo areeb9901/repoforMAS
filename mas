@@ -1,1 +1,3 @@
-One thing I would recommend before sending this: quickly verify in the code that the search is indeed using Lucene's default relevance sort and not applying a secondary sort later in the flow. The explanation about "not sorted by creation/execution date" is likely correct, but it's worth confirming since this is the key business question the BA asked.
+Could you please let me know what issue you are currently observing with the file?
+As far as I understand, the previously reported special character/encoding issue has already been addressed and the file was converted to UTF-8 encoding. Could you please recheck and confirm if you are still facing any issues?
+Generating a new file will take a considerable amount of time, so it would be helpful to understand the exact problem before proceeding with a regeneration.
