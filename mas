@@ -1,3 +1,2 @@
-Could you please let me know what issue you are currently observing with the file?
-As far as I understand, the previously reported special character/encoding issue has already been addressed and the file was converted to UTF-8 encoding. Could you please recheck and confirm if you are still facing any issues?
-Generating a new file will take a considerable amount of time, so it would be helpful to understand the exact problem before proceeding with a regeneration.
+Regarding this issue, it was previously agreed that we would not proceed with enabling/running the job because it was generating a significant volume of log entries due to its inability to connect to the Refog URL.
+An incident/ticket was raised for the connectivity issue. However, the ticket was eventually closed without a resolution being implemented. The ticket was also reopened for further investigation, but no remedial action was ultimately carried out before its closure.
