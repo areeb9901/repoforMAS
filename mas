@@ -1,2 +1,3 @@
-Regarding this issue, it was previously agreed that we would not proceed with enabling/running the job because it was generating a significant volume of log entries due to its inability to connect to the Refog URL.
-An incident/ticket was raised for the connectivity issue. However, the ticket was eventually closed without a resolution being implemented. The ticket was also reopened for further investigation, but no remedial action was ultimately carried out before its closure.
+Over the past couple of weeks, I've noticed a significant degradation in the performance of Roo-Qwen. Even with very simple and concise prompts (around 3–4 lines), the current chat often becomes unresponsive or fails to proceed, forcing me to start a new chat session.
+Is anyone else experiencing similar issues? If so, have you observed any specific pattern or identified a workaround?
+Could this be related to increased load or any recent changes on the platform?
