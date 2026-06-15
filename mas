@@ -1,3 +1,7 @@
-Over the past couple of weeks, I've noticed a significant degradation in the performance of Roo-Qwen. Even with very simple and concise prompts (around 3–4 lines), the current chat often becomes unresponsive or fails to proceed, forcing me to start a new chat session.
-Is anyone else experiencing similar issues? If so, have you observed any specific pattern or identified a workaround?
-Could this be related to increased load or any recent changes on the platform?
+MOM – BEADEV-11639
+
+1. Point 1 was discussed and the requirement is clear. This point is considered closed.
+
+2. For Point 2, the expected result is not clear from the Jira description. Yoan will provide test cases to clarify the expected behavior.
+
+3. In the meantime, I will review the amendment sorting procedure in the application and share my findings.
