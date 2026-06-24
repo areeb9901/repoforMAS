@@ -1,7 +1,69 @@
-MOM – BEADEV-11639
+Hi Dimitri,
 
-1. Point 1 was discussed and the requirement is clear. This point is considered closed.
+I have started reviewing the UR for BEADEV-12171 and have a few queries before proceeding with the technical analysis.
 
-2. For Point 2, the expected result is not clear from the Jira description. Yoan will provide test cases to clarify the expected behavior.
+For the new EMIR tab, please confirm that an MA should be added to the perimeter only when both below values are No or Not Set:
 
-3. In the meantime, I will review the amendment sorting procedure in the application and share my findings.
+EMIR: PR/DR CLAUSE IN MA
+
+EMIR: PR/DR PROTOCOL ADHERENT
+
+Once an MA enters the new table, the UR mentions that it should never leave the perimeter, even if one of the EMIR values is later updated to Yes. Please confirm if this understanding is correct.
+
+The UR says this functionality should not be displayed for users outside the Sara team. Could you please confirm how Sara team users should be identified?
+
+Existing Beagle role/group?
+
+New permission?
+
+User list to be maintained somewhere?
+
+For users outside the Sara team, should the new tab be completely hidden, or should it be visible in read-only mode?
+
+The UR mentions that “a parameter tab will be created to enable user to add/remove MA types outside a release.” Could you please clarify:
+
+Should this be a new admin/parameter screen in Beagle?
+
+Who should have access to update this list?
+
+Should changes to this parameter list also be audited?
+
+For new MAs matching the criteria, should they be added to the new table live, or is a scheduled batch acceptable? If batch is acceptable, please confirm the expected frequency.
+
+For the Action field, users can move freely between Open, In Progress and Closed. Please confirm there is no restriction on the workflow transition.
+
+For the Comment field, should every comment update overwrite the previous visible comment while keeping all previous comments in audit?
+
+Please confirm the maximum allowed length for the Comment field.
+
+For audit details, please confirm the required columns:
+
+Change Date
+
+User
+
+Change
+
+Field
+
+Previous Value
+
+New Value
+
+Information/Comment, if required
+
+For default sorting, please confirm the expected order:
+
+In Progress first
+
+Open second
+
+Closed last
+
+Within each group, sort by last audit change date descending
+
+For Open records without audit date, sort by MA number
+
+Should Excel export include only the current filtered/searched result visible on the GUI, or the full result set matching the filters?
+
+Regards,
