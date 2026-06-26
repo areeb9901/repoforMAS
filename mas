@@ -1,69 +1,43 @@
-Hi Dimitri,
+Mid-Year Review
 
-I have started reviewing the UR for BEADEV-12171 and have a few queries before proceeding with the technical analysis.
+Achievements
 
-For the new EMIR tab, please confirm that an MA should be added to the perimeter only when both below values are No or Not Set:
+- Developed and implemented shell scripts for the automatic restart of all Beagle, Beagle Support, and Beagle API non-production servers. This eliminated the need for manual server restarts after the weekly Monday patching activity and ensured environment availability even when Monday was a holiday in India.
 
-EMIR: PR/DR CLAUSE IN MA
+- Successfully completed the IV2 migration from IV1 independently, including planning, execution, validation, and coordination with relevant teams.
 
-EMIR: PR/DR PROTOCOL ADHERENT
+- Provided knowledge transfer (KT) sessions to the new intern, Rahim, covering the Beagle application, support activities, and technical topics within my area of expertise.
 
-Once an MA enters the new table, the UR mentions that it should never leave the perimeter, even if one of the EMIR values is later updated to Yes. Please confirm if this understanding is correct.
+- Delivered all assigned Jira stories and production support tasks within the expected timelines while maintaining quality.
 
-The UR says this functionality should not be displayed for users outside the Sara team. Could you please confirm how Sara team users should be identified?
+- Worked on a critical production issue related to downstream email delivery and collaborated with the APS team to identify the actual root cause, contributing to the resolution of the issue.
 
-Existing Beagle role/group?
+- Participated in the CSR tree plantation initiative organized by the company.
 
-New permission?
+- Created and maintained an internal team holiday calendar to improve visibility of holidays and resource availability, addressing a gap that previously existed.
 
-User list to be maintained somewhere?
+- Actively supported production incidents, environment-related activities, deployments, and release management whenever required.
 
-For users outside the Sara team, should the new tab be completely hidden, or should it be visible in read-only mode?
+Learnings
 
-The UR mentions that “a parameter tab will be created to enable user to add/remove MA types outside a release.” Could you please clarify:
+- Started learning Angular 18 as part of the Beagle migration initiative and developed a few application screens to gain hands-on experience with the framework.
 
-Should this be a new admin/parameter screen in Beagle?
+- Through production issue investigations and the IV2 migration, gained experience in working closely with onshore teams, which improved my confidence in independently handling complex technical tasks.
 
-Who should have access to update this list?
+- Improved my understanding of the Beagle application architecture, deployment processes, server administration, and production support activities.
 
-Should changes to this parameter list also be audited?
+Areas for Improvement
 
-For new MAs matching the criteria, should they be added to the new table live, or is a scheduled batch acceptable? If batch is acceptable, please confirm the expected frequency.
+- Continue enhancing my Angular development skills to contribute more effectively to the Beagle migration project.
 
-For the Action field, users can move freely between Open, In Progress and Closed. Please confirm there is no restriction on the workflow transition.
+- Learn Spring Boot and actively contribute to backend development as part of the Beagle modernization initiative.
 
-For the Comment field, should every comment update overwrite the previous visible comment while keeping all previous comments in audit?
+- Deepen my understanding of system design and application architecture to independently handle larger and more complex features.
 
-Please confirm the maximum allowed length for the Comment field.
+Expectations
 
-For audit details, please confirm the required columns:
+- I am interested in taking up more analytical and problem-solving responsibilities, particularly roles involving AI-assisted development, automation, and technical analysis.
 
-Change Date
+- I would like to gain greater exposure to the functional aspects of the Beagle application to better understand business requirements and deliver more effective technical solutions.
 
-User
-
-Change
-
-Field
-
-Previous Value
-
-New Value
-
-Information/Comment, if required
-
-For default sorting, please confirm the expected order:
-
-In Progress first
-
-Open second
-
-Closed last
-
-Within each group, sort by last audit change date descending
-
-For Open records without audit date, sort by MA number
-
-Should Excel export include only the current filtered/searched result visible on the GUI, or the full result set matching the filters?
-
-Regards,
+- I look forward to working on more end-to-end features and challenging assignments that help me grow both technically and functionally.
