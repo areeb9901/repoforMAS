@@ -1,0 +1,15 @@
+SELECT
+
+ic.index_name,
+
+ic.column_position,
+
+ic.column_name
+
+FROM all ind_columns ic
+
+WHERE ic.index_owner = 'LDM'
+
+AND ic.index_name = 'LDM_TB_AMD_IDX03'
+
+ORDER BY ic.column_position;
