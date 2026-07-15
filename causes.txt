@@ -1,23 +1,463 @@
-@Override
-public SentMail getSavedEmailWithMaIdAndSentTime(Long maId, Date sentDateTime) {
-    return (SentMail) getSession()
-        .createQuery("from SentMail where maOrGrpId = :ids and sentTime = :sentTime and (mailTrigger = :termTrigger or mailTrigger = :dormTrigger)")
-        .setLong("ids", maId)
-        .setTimestamp("sentTime", sentDateTime)
-        .setString("termTrigger", "MA Terminated")
-        .setString("dormTrigger", "MA Dormanted")
-        .uniqueResult();
-}
+CREATE OR REPLACE PROCEDURE SORT_AMENDMENTS_GROUP
+(
+    grpId NUMBER,
+    Cuser VARCHAR2
+)
+AS
+    To_Amd_Id NUMBER;
 
+    ---------------------------------------------------------------------------
+    -- Group amendment-date reference collection
+    ---------------------------------------------------------------------------
+    TYPE Rec_Ref_Table IS RECORD
+    (
+        IDX_NO    NUMBER,
+        Exec_Date DATE
+    );
 
+    TYPE Typ_Ref_Table IS TABLE OF Rec_Ref_Table
+        INDEX BY PLS_INTEGER;
 
+    V_Rec_Ref_Table Typ_Ref_Table;
 
+    v_indx_ref PLS_INTEGER := 1;
 
+    ---------------------------------------------------------------------------
+    -- Amendment ROWID -> final AMD_ID mapping
+    ---------------------------------------------------------------------------
+    TYPE Rec_Amd_Map IS RECORD
+    (
+        Rowid_Amd  ROWID,
+        Old_Amd_Id NUMBER,
+        New_Amd_Id NUMBER
+    );
 
-@Override
-public SentMail getSavedEmailById(Long id) {
-    return (SentMail) getSession()
-        .createQuery("from SentMail where id = :id")
-        .setLong("id", id)
-        .uniqueResult();
-}
+    TYPE Typ_Amd_Map IS TABLE OF Rec_Amd_Map
+        INDEX BY PLS_INTEGER;
+
+    V_Amd_Map Typ_Amd_Map;
+
+    v_map_index PLS_INTEGER;
+    v_temp_base NUMBER;
+
+BEGIN
+    SAVEPOINT before_sort_amendments_group;
+
+    ---------------------------------------------------------------------------
+    -- Clear possible stale reference data
+    ---------------------------------------------------------------------------
+    DELETE FROM AMD_REF_TABLE;
+    DELETE FROM EXEC_DOC_REF_TABLE;
+    DELETE FROM AMD_VALDN_REF_TABLE;
+    DELETE FROM EXEC_DOC_GRP_REF_TABLE;
+
+    ---------------------------------------------------------------------------
+    -- Build the complete ordered amendment-date reference for the group.
+    --
+    -- occurrence_no preserves cases where an MA has multiple amendment rows
+    -- with the same amendment date.
+    --
+    -- Example:
+    -- 26-APR-2017 occurrence 1
+    -- 26-APR-2017 occurrence 2
+    -- 18-MAY-2017 occurrence 1
+    -- 01-JUN-2017 occurrence 1
+    ---------------------------------------------------------------------------
+    FOR Eachrow IN
+    (
+        SELECT amd_d_sign,
+               occurrence_no
+        FROM
+        (
+            SELECT amd.ma_id,
+                   amd.amd_d_sign,
+                   ROW_NUMBER() OVER
+                   (
+                       PARTITION BY amd.ma_id,
+                                    amd.amd_d_sign
+                       ORDER BY amd.date_creat,
+                                amd.ROWID
+                   ) AS occurrence_no
+            FROM LDM_TB_AMD amd
+            JOIN LDM_TB_MA ma
+              ON ma.ma_id = amd.ma_id
+            WHERE ma.grp_id = grpId
+              AND ma.in_nego_flg = 'N'
+
+              -- Terminated agreements must not be sorted.
+              AND NVL(ma.status_id, -1) <> 8
+
+              AND amd.amd_id > 0
+              AND amd.amd_d_sign IS NOT NULL
+              AND amd.amd_d_term IS NULL
+        )
+        GROUP BY amd_d_sign,
+                 occurrence_no
+        ORDER BY amd_d_sign,
+                 occurrence_no
+    )
+    LOOP
+        V_Rec_Ref_Table(v_indx_ref).IDX_NO :=
+            v_indx_ref;
+
+        V_Rec_Ref_Table(v_indx_ref).Exec_Date :=
+            Eachrow.amd_d_sign;
+
+        v_indx_ref := v_indx_ref + 1;
+    END LOOP;
+
+    ---------------------------------------------------------------------------
+    -- Populate AMD_REF_TABLE
+    ---------------------------------------------------------------------------
+    IF V_Rec_Ref_Table.COUNT > 0 THEN
+        FORALL v_count IN
+            V_Rec_Ref_Table.FIRST .. V_Rec_Ref_Table.LAST
+
+            INSERT INTO AMD_REF_TABLE
+            (
+                IDX_NO,
+                EXEC_DATE
+            )
+            VALUES
+            (
+                V_Rec_Ref_Table(v_count).IDX_NO,
+                V_Rec_Ref_Table(v_count).Exec_Date
+            );
+    END IF;
+
+    V_Rec_Ref_Table.DELETE;
+
+    ---------------------------------------------------------------------------
+    -- Save group execution-document references before changing amendment IDs
+    ---------------------------------------------------------------------------
+    INSERT INTO EXEC_DOC_GRP_REF_TABLE
+    (
+        ROW_ID,
+        EXEC_DATE,
+        ROWID_AMD
+    )
+    SELECT row_id,
+           exec_date,
+           rowid_amd
+    FROM
+    (
+        SELECT negoGrp.row_id AS row_id,
+               amd.amd_d_sign AS exec_date,
+               amd.ROWID AS rowid_amd,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY negoGrp.row_id
+                   ORDER BY amd.amd_id DESC,
+                            amd.date_creat,
+                            amd.ROWID
+               ) AS rn
+        FROM LDM_TB_AMD amd
+        JOIN LDM_TB_MA ma
+          ON ma.ma_id = amd.ma_id
+        JOIN NEGO_TB_ROW_EXEC_DOC_FOR_GRP negoGrp
+          ON negoGrp.grp_id = grpId
+         AND negoGrp.amd_id = amd.amd_id
+        WHERE ma.grp_id = grpId
+          AND NVL(ma.status_id, -1) <> 8
+          AND amd.amd_id > 0
+          AND amd.amd_d_sign IS NOT NULL
+          AND amd.amd_d_term IS NULL
+    )
+    WHERE rn = 1;
+
+    ---------------------------------------------------------------------------
+    -- Process every non-terminated, non-negotiation MA in the group
+    ---------------------------------------------------------------------------
+    FOR Eachma IN
+    (
+        SELECT ma_id
+        FROM LDM_TB_MA
+        WHERE grp_id = grpId
+          AND in_nego_flg = 'N'
+          AND NVL(status_id, -1) <> 8
+        ORDER BY ma_id
+    )
+    LOOP
+        -----------------------------------------------------------------------
+        -- Clear per-MA reference data
+        -----------------------------------------------------------------------
+        DELETE FROM EXEC_DOC_REF_TABLE;
+        DELETE FROM AMD_VALDN_REF_TABLE;
+
+        -----------------------------------------------------------------------
+        -- Preserve execution-document references using amendment ROWID
+        -----------------------------------------------------------------------
+        INSERT INTO EXEC_DOC_REF_TABLE
+        (
+            ROW_ID,
+            EXEC_DATE,
+            ROWID_AMD
+        )
+        SELECT nego.row_id,
+               amd.amd_d_sign,
+               amd.ROWID
+        FROM NEGO_TB_ROW_EXEC_DOC nego
+        JOIN LDM_TB_AMD amd
+          ON amd.ma_id = nego.ma_id
+         AND amd.amd_id = nego.amd_id
+        WHERE amd.ma_id = Eachma.ma_id
+          AND amd.amd_id > 0
+          AND amd.amd_d_term IS NULL;
+
+        -----------------------------------------------------------------------
+        -- Preserve amendment-validation references using amendment ROWID
+        -----------------------------------------------------------------------
+        INSERT INTO AMD_VALDN_REF_TABLE
+        (
+            AMD_ID,
+            ROWID_VALDN,
+            ROWID_AMD
+        )
+        SELECT valdn.amendment_id,
+               valdn.ROWID,
+               amd.ROWID
+        FROM AMENDMENT_VALIDATIONS valdn
+        JOIN LDM_TB_AMD amd
+          ON amd.ma_id = valdn.agreement_id
+         AND amd.amd_id = valdn.amendment_id
+        WHERE amd.ma_id = Eachma.ma_id
+          AND amd.amd_id > 0
+          AND amd.amd_d_term IS NULL
+          AND valdn.validator IS NOT NULL;
+
+        -----------------------------------------------------------------------
+        -- Build the final amendment-ID mapping for the current MA
+        -----------------------------------------------------------------------
+        V_Amd_Map.DELETE;
+        v_map_index := 0;
+
+        FOR Maprow IN
+        (
+            SELECT amdt.rowid_amd,
+                   amdt.old_amd_id,
+                   reft.idx_no AS new_amd_id
+            FROM
+            (
+                SELECT amd.ROWID AS rowid_amd,
+                       amd.amd_id AS old_amd_id,
+                       amd.amd_d_sign,
+                       ROW_NUMBER() OVER
+                       (
+                           PARTITION BY amd.amd_d_sign
+                           ORDER BY amd.date_creat,
+                                    amd.ROWID
+                       ) AS rn_amd
+                FROM LDM_TB_AMD amd
+                WHERE amd.ma_id = Eachma.ma_id
+                  AND amd.amd_id > 0
+                  AND amd.amd_d_sign IS NOT NULL
+                  AND amd.amd_d_term IS NULL
+            ) amdt
+            JOIN
+            (
+                SELECT idx_no,
+                       exec_date,
+                       ROW_NUMBER() OVER
+                       (
+                           PARTITION BY exec_date
+                           ORDER BY idx_no
+                       ) AS rn_ref
+                FROM AMD_REF_TABLE
+            ) reft
+              ON reft.exec_date = amdt.amd_d_sign
+             AND reft.rn_ref = amdt.rn_amd
+            ORDER BY reft.idx_no,
+                     amdt.rowid_amd
+        )
+        LOOP
+            v_map_index := v_map_index + 1;
+
+            V_Amd_Map(v_map_index).Rowid_Amd :=
+                Maprow.rowid_amd;
+
+            V_Amd_Map(v_map_index).Old_Amd_Id :=
+                Maprow.old_amd_id;
+
+            V_Amd_Map(v_map_index).New_Amd_Id :=
+                Maprow.new_amd_id;
+        END LOOP;
+
+        -----------------------------------------------------------------------
+        -- Assign temporary AMD_ID values.
+        --
+        -- This prevents ORA-00001 when IDs need to be swapped, for example:
+        --
+        -- AMD_ID 1 -> 2
+        -- AMD_ID 2 -> 1
+        -----------------------------------------------------------------------
+        IF V_Amd_Map.COUNT > 0 THEN
+
+            SELECT NVL(MAX(ABS(amd_id)), 0) + 1000
+            INTO v_temp_base
+            FROM LDM_TB_AMD
+            WHERE ma_id = Eachma.ma_id;
+
+            FOR i IN V_Amd_Map.FIRST .. V_Amd_Map.LAST
+            LOOP
+                UPDATE LDM_TB_AMD
+                SET amd_id     = v_temp_base + i,
+                    date_modif = SYSDATE,
+                    user_modif = Cuser
+                WHERE ROWID = V_Amd_Map(i).Rowid_Amd;
+            END LOOP;
+
+            -------------------------------------------------------------------
+            -- Assign final sorted amendment IDs
+            -------------------------------------------------------------------
+            FOR i IN V_Amd_Map.FIRST .. V_Amd_Map.LAST
+            LOOP
+                UPDATE LDM_TB_AMD
+                SET amd_id     = V_Amd_Map(i).New_Amd_Id,
+                    date_modif = SYSDATE,
+                    user_modif = Cuser
+                WHERE ROWID = V_Amd_Map(i).Rowid_Amd;
+            END LOOP;
+
+        END IF;
+
+        -----------------------------------------------------------------------
+        -- Update execution-document amendment IDs using saved ROWIDs
+        -----------------------------------------------------------------------
+        MERGE INTO NEGO_TB_ROW_EXEC_DOC exec_doc
+        USING
+        (
+            SELECT amd.amd_id AS new_id,
+                   reft.row_id AS ref_row_id
+            FROM EXEC_DOC_REF_TABLE reft
+            JOIN LDM_TB_AMD amd
+              ON amd.ROWID = reft.rowid_amd
+            WHERE amd.ma_id = Eachma.ma_id
+              AND amd.amd_d_term IS NULL
+        ) data_t
+        ON
+        (
+            exec_doc.row_id = data_t.ref_row_id
+            AND exec_doc.ma_id = Eachma.ma_id
+        )
+        WHEN MATCHED THEN
+            UPDATE SET
+                exec_doc.amd_id     = data_t.new_id,
+                exec_doc.user_modif = Cuser,
+                exec_doc.date_modif = SYSDATE;
+
+        -----------------------------------------------------------------------
+        -- Update amendment validations using saved validation/amendment ROWIDs
+        -----------------------------------------------------------------------
+        FOR Eachamdref IN
+        (
+            SELECT *
+            FROM AMD_VALDN_REF_TABLE
+            ORDER BY rowid_valdn
+        )
+        LOOP
+            SELECT amd_id
+            INTO To_Amd_Id
+            FROM LDM_TB_AMD
+            WHERE ROWID = Eachamdref.rowid_amd;
+
+            IF To_Amd_Id <> Eachamdref.amd_id THEN
+
+                ---------------------------------------------------------------
+                -- Temporarily move another validation occupying the target ID.
+                --
+                -- This retains the previous swap behaviour but prevents the
+                -- target row from being accidentally overwritten.
+                ---------------------------------------------------------------
+                UPDATE AMENDMENT_VALIDATIONS
+                SET amendment_id =
+                    (
+                        SELECT NVL(MAX(ABS(amendment_id)), 0) + 1000
+                        FROM AMENDMENT_VALIDATIONS
+                        WHERE agreement_id = Eachma.ma_id
+                    )
+                WHERE agreement_id = Eachma.ma_id
+                  AND amendment_id = To_Amd_Id
+                  AND ROWID <> Eachamdref.rowid_valdn;
+
+                ---------------------------------------------------------------
+                -- Update the exact validation row linked to the amendment ROWID
+                ---------------------------------------------------------------
+                UPDATE AMENDMENT_VALIDATIONS
+                SET amendment_id = To_Amd_Id
+                WHERE ROWID = Eachamdref.rowid_valdn;
+
+            END IF;
+        END LOOP;
+
+        -----------------------------------------------------------------------
+        -- Clear current MA references
+        -----------------------------------------------------------------------
+        DELETE FROM EXEC_DOC_REF_TABLE;
+        DELETE FROM AMD_VALDN_REF_TABLE;
+
+        V_Amd_Map.DELETE;
+    END LOOP;
+
+    ---------------------------------------------------------------------------
+    -- Update group execution-document amendment IDs
+    ---------------------------------------------------------------------------
+    MERGE INTO NEGO_TB_ROW_EXEC_DOC_FOR_GRP exec_doc_grp
+    USING
+    (
+        SELECT new_id,
+               ref_row_id
+        FROM
+        (
+            SELECT amd.amd_id AS new_id,
+                   reft.row_id AS ref_row_id,
+                   ROW_NUMBER() OVER
+                   (
+                       PARTITION BY reft.row_id
+                       ORDER BY amd.amd_id DESC,
+                                amd.ROWID
+                   ) AS rn
+            FROM EXEC_DOC_GRP_REF_TABLE reft
+            JOIN LDM_TB_AMD amd
+              ON amd.ROWID = reft.rowid_amd
+            WHERE amd.amd_d_term IS NULL
+        )
+        WHERE rn = 1
+    ) data_t
+    ON
+    (
+        exec_doc_grp.row_id = data_t.ref_row_id
+        AND exec_doc_grp.grp_id = grpId
+    )
+    WHEN MATCHED THEN
+        UPDATE SET
+            exec_doc_grp.amd_id     = data_t.new_id,
+            exec_doc_grp.user_modif = Cuser,
+            exec_doc_grp.date_modif = SYSDATE;
+
+    ---------------------------------------------------------------------------
+    -- Final cleanup
+    ---------------------------------------------------------------------------
+    DELETE FROM AMD_REF_TABLE;
+    DELETE FROM EXEC_DOC_REF_TABLE;
+    DELETE FROM AMD_VALDN_REF_TABLE;
+    DELETE FROM EXEC_DOC_GRP_REF_TABLE;
+
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK TO before_sort_amendments_group;
+
+        BEGIN
+            DELETE FROM AMD_REF_TABLE;
+            DELETE FROM EXEC_DOC_REF_TABLE;
+            DELETE FROM AMD_VALDN_REF_TABLE;
+            DELETE FROM EXEC_DOC_GRP_REF_TABLE;
+        EXCEPTION
+            WHEN OTHERS THEN
+                NULL;
+        END;
+
+        RAISE;
+END SORT_AMENDMENTS_GROUP;
+/
