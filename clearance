@@ -1,24 +1,15 @@
-collateralDocStatusDetails.setChasedUser(getUser().getFullname());
-collateralDocStatusDetails.setChasedDate(BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
+Hi,
 
-try {
-    repository.saveOrupdate(collateralDocStatusDetails);
-    System.out.println("Chase persisted for segment: " + collateralDocStatusDetails.getCollateralSegmentId());
-} catch (Exception e) {
-    e.printStackTrace();
-}
+We investigated the issue and identified the root cause.
 
+The issue is related to the recent migration from IV1 to IV2 for the Beagle UAT platforms. During the migration, the new Beagle Support application was not included, which has resulted in the Support application's Tomcat service being unavailable.
 
+Action taken:
 
+- An RITM has been raised to mount the new NAS on the new Support application servers.
+- Once the mounting activity is completed, we will validate the application and update you accordingly.
 
+We will keep you informed of the progress.
 
-
-
-
-
-
-
-String chaseNote = "Chased by " + user.getFullname() + " on " +
-        BeagleDateFormat.format(new Date(), BeagleDateFormat.FORMAT);
-    collateralDocAudit.setComments(chaseNote);
-}
+Regards,
+Areeb
