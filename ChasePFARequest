@@ -1,138 +1,381 @@
-package com.bnpparibas.beagle.documents;
+CREATE OR REPLACE PROCEDURE SORT_AMENDMENTS_GROUP
+(
+    grpId NUMBER,
+    Cuser VARCHAR2
+)
+AS
+    ---------------------------------------------------------------------------
+    -- Amendment mapping collections
+    ---------------------------------------------------------------------------
+    TYPE Typ_Rowid_Table IS TABLE OF UROWID;
+    TYPE Typ_Number_Table IS TABLE OF NUMBER;
 
-import com.bnpparibas.beagle.kernel.util.BeagleDateFormat;
-import com.bnpparibas.beagle.ma.model.CollateralDocStatusDetails;
-import com.bnpparibas.beagle.ma.model.NegotiationDocument;
-import org.apache.struts2.ServletActionContext;
-import org.json.JSONObject;
+    V_Amd_Rowids  Typ_Rowid_Table;
+    V_Old_Amd_Ids Typ_Number_Table;
+    V_New_Amd_Ids Typ_Number_Table;
 
-import javax.servlet.http.HttpServletResponse;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+    ---------------------------------------------------------------------------
+    -- Validation mapping collections
+    ---------------------------------------------------------------------------
+    V_Validation_Rowids Typ_Rowid_Table;
+    V_Validation_Ids    Typ_Number_Table;
 
-public class ChasePFARequest extends PendingCollateralRequestAction {
+    ---------------------------------------------------------------------------
+    -- Temporary ID ranges
+    ---------------------------------------------------------------------------
+    v_temp_base            NUMBER;
+    v_validation_temp_base NUMBER;
 
-    Long documentId;
+BEGIN
+    SAVEPOINT before_sort_amendments_group;
 
-    public Long getDocumentId() {
-        return documentId;
-    }
+    ---------------------------------------------------------------------------
+    -- Clear any reference data remaining in the current transaction
+    ---------------------------------------------------------------------------
+    DELETE FROM AMD_REF_TABLE;
+    DELETE FROM EXEC_DOC_REF_TABLE;
+    DELETE FROM AMD_VALDN_REF_TABLE;
+    DELETE FROM EXEC_DOC_GRP_REF_TABLE;
 
-    public void setDocumentId(Long documentId) {
-        this.documentId = documentId;
-    }
+    ---------------------------------------------------------------------------
+    -- Save group-level executed-document references before amendment IDs
+    -- are changed.
+    --
+    -- The amendment ROWID is retained so that the amendment's final AMD_ID
+    -- can be retrieved after sorting.
+    ---------------------------------------------------------------------------
+    INSERT INTO EXEC_DOC_GRP_REF_TABLE
+    (
+        ROW_ID,
+        EXEC_DATE,
+        ROWID_AMD
+    )
+    SELECT row_id,
+           exec_date,
+           rowid_amd
+    FROM
+    (
+        SELECT negoGrp.row_id AS row_id,
+               amd.amd_d_sign AS exec_date,
+               amd.ROWID AS rowid_amd,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY negoGrp.row_id
+                   ORDER BY amd.date_creat,
+                            amd.ROWID
+               ) AS rn
+        FROM NEGO_TB_ROW_EXEC_DOC_FOR_GRP negoGrp
+        JOIN LDM_TB_MA ma
+          ON ma.grp_id = negoGrp.grp_id
+        JOIN LDM_TB_AMD amd
+          ON amd.ma_id = ma.ma_id
+         AND amd.amd_id = negoGrp.amd_id
+        WHERE negoGrp.grp_id = grpId
+          AND NVL(ma.status_id, -1) <> 8
+          AND amd.amd_id > 0
+          AND amd.amd_d_sign IS NOT NULL
+          AND amd.amd_d_term IS NULL
+    )
+    WHERE rn = 1;
 
-    @Override
-    public String doExecute() {
-        super.doExecute();
-        chaseRequest();
+    ---------------------------------------------------------------------------
+    -- Process each eligible Master Agreement within the group.
+    --
+    -- STATUS_ID = 8 represents a terminated Master Agreement.
+    ---------------------------------------------------------------------------
+    FOR Eachma IN
+    (
+        SELECT ma.ma_id
+        FROM LDM_TB_MA ma
+        WHERE ma.grp_id = grpId
+          AND ma.in_nego_flg = 'N'
+          AND NVL(ma.status_id, -1) <> 8
+        ORDER BY ma.ma_id
+    )
+    LOOP
+        -----------------------------------------------------------------------
+        -- Clear reference data belonging to the previously processed MA
+        -----------------------------------------------------------------------
+        DELETE FROM EXEC_DOC_REF_TABLE;
+        DELETE FROM AMD_VALDN_REF_TABLE;
 
-        String viewParam = ServletActionContext.getRequest().getParameter("view");
-        String uri = ServletActionContext.getRequest().getRequestURI();
+        V_Amd_Rowids.DELETE;
+        V_Old_Amd_Ids.DELETE;
+        V_New_Amd_Ids.DELETE;
 
-        // For AJAX / JSON clients (.ajax or ?view=json)
-        if ((viewParam != null && viewParam.equalsIgnoreCase("json")) || uri.endsWith(".ajax")) {
-            writeJsonResponse();
-            return null;
-        }
+        V_Validation_Rowids.DELETE;
+        V_Validation_Ids.DELETE;
 
-        return SUCCESS;
-    }
+        -----------------------------------------------------------------------
+        -- Build the amendment ID mapping for the current MA.
+        --
+        -- Amendments are ordered by:
+        --   1. Amendment execution date
+        --   2. Creation date
+        --   3. ROWID
+        --
+        -- Only amendments whose current ID differs from the calculated ID
+        -- are loaded. This avoids updating rows that are already sorted.
+        -----------------------------------------------------------------------
+        SELECT rowid_amd,
+               old_amd_id,
+               new_amd_id
+        BULK COLLECT INTO
+               V_Amd_Rowids,
+               V_Old_Amd_Ids,
+               V_New_Amd_Ids
+        FROM
+        (
+            SELECT rowid_amd,
+                   old_amd_id,
+                   new_amd_id
+            FROM
+            (
+                SELECT amd.ROWID AS rowid_amd,
+                       amd.amd_id AS old_amd_id,
+                       ROW_NUMBER() OVER
+                       (
+                           ORDER BY amd.amd_d_sign,
+                                    amd.date_creat,
+                                    amd.ROWID
+                       ) AS new_amd_id
+                FROM LDM_TB_AMD amd
+                WHERE amd.ma_id = Eachma.ma_id
+                  AND amd.amd_id > 0
+                  AND amd.amd_d_sign IS NOT NULL
+                  AND amd.amd_d_term IS NULL
+            )
+            WHERE old_amd_id <> new_amd_id
+        )
+        ORDER BY new_amd_id;
 
-    @Override
-    protected String executeMasterAgreementAction() {
-        return SUCCESS;
-    }
+        -----------------------------------------------------------------------
+        -- If the MA is already correctly sorted, skip all remaining processing
+        -- for that MA.
+        -----------------------------------------------------------------------
+        IF V_Amd_Rowids.COUNT > 0 THEN
 
-    private void chaseRequest() {
-        // Get status details for this segment + document
-        CollateralDocStatusDetails collateralDocStatusDetails =
-                getCollateralDocStatusDetails(collateralSegmentId, documentId);
+            -------------------------------------------------------------------
+            -- Save individual executed-document references before changing
+            -- amendment IDs.
+            -------------------------------------------------------------------
+            INSERT INTO EXEC_DOC_REF_TABLE
+            (
+                ROW_ID,
+                EXEC_DATE,
+                ROWID_AMD
+            )
+            SELECT nego.row_id,
+                   amd.amd_d_sign,
+                   amd.ROWID
+            FROM NEGO_TB_ROW_EXEC_DOC nego
+            JOIN LDM_TB_AMD amd
+              ON amd.ma_id = nego.ma_id
+             AND amd.amd_id = nego.amd_id
+            WHERE amd.ma_id = Eachma.ma_id
+              AND amd.amd_id > 0
+              AND amd.amd_d_term IS NULL;
 
-        // Ensure collateralSegmentId is set so audit log gets COLLATERAL_SEGMENT_ID
-        if (collateralDocStatusDetails != null &&
-            (collateralDocStatusDetails.getCollateralSegmentId() == null
-             || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty())) {
-            collateralDocStatusDetails.setCollateralSegmentId(collateralSegmentId);
-        }
+            -------------------------------------------------------------------
+            -- Save amendment-validation references before changing IDs.
+            -------------------------------------------------------------------
+            INSERT INTO AMD_VALDN_REF_TABLE
+            (
+                AMD_ID,
+                ROWID_VALDN,
+                ROWID_AMD
+            )
+            SELECT valdn.amendment_id,
+                   valdn.ROWID,
+                   amd.ROWID
+            FROM AMENDMENT_VALIDATIONS valdn
+            JOIN LDM_TB_AMD amd
+              ON amd.ma_id = valdn.agreement_id
+             AND amd.amd_id = valdn.amendment_id
+            WHERE amd.ma_id = Eachma.ma_id
+              AND amd.amd_id > 0
+              AND amd.amd_d_term IS NULL
+              AND valdn.validator IS NOT NULL;
 
-        NegotiationDocument negotiationDocument =
-                getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
+            -------------------------------------------------------------------
+            -- Calculate a temporary amendment-ID range above the current
+            -- maximum ID.
+            -------------------------------------------------------------------
+            SELECT NVL(MAX(ABS(amd.amd_id)), 0) + 1000
+            INTO v_temp_base
+            FROM LDM_TB_AMD amd
+            WHERE amd.ma_id = Eachma.ma_id;
 
-        String negotiator = negotiationDocument.getNegotiator().getFullName();
-        emailComments = negotiationDocument.getEmailNotificationsComments();
+            -------------------------------------------------------------------
+            -- Phase 1:
+            -- Assign temporary IDs using bulk DML.
+            --
+            -- This frees the original amendment-ID range and prevents
+            -- ORA-00001 when IDs need to be exchanged.
+            -------------------------------------------------------------------
+            FORALL i IN 1 .. V_Amd_Rowids.COUNT
+                UPDATE LDM_TB_AMD
+                SET amd_id     = v_temp_base + i,
+                    date_modif = SYSDATE,
+                    user_modif = Cuser
+                WHERE ROWID = V_Amd_Rowids(i);
 
-        // Create audit log entry (Audit_User / Date_AUDIT + SegmentId)
-        collateralOpsService.createAuditLogForRedirectChase(
-                negotiationDocument,
-                getUser(),
-                masterAgreement,
-                collateralDocStatusDetails,
-                "",
-                "chase");
+            -------------------------------------------------------------------
+            -- Phase 2:
+            -- Assign final chronologically sorted amendment IDs.
+            -------------------------------------------------------------------
+            FORALL i IN 1 .. V_Amd_Rowids.COUNT
+                UPDATE LDM_TB_AMD
+                SET amd_id     = V_New_Amd_Ids(i),
+                    date_modif = SYSDATE,
+                    user_modif = Cuser
+                WHERE ROWID = V_Amd_Rowids(i);
 
-        // Persist chase info on the status object
-        collateralDocStatusDetails.setChasedUser(getUser().getFullname());
-        collateralDocStatusDetails.setChasedDate(
-                BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
+            -------------------------------------------------------------------
+            -- Update individual executed-document references using the saved
+            -- amendment ROWID.
+            -------------------------------------------------------------------
+            MERGE INTO NEGO_TB_ROW_EXEC_DOC exec_doc
+            USING
+            (
+                SELECT reft.row_id AS ref_row_id,
+                       amd.amd_id AS new_amd_id
+                FROM EXEC_DOC_REF_TABLE reft
+                JOIN LDM_TB_AMD amd
+                  ON amd.ROWID = reft.rowid_amd
+                WHERE amd.ma_id = Eachma.ma_id
+            ) data_t
+            ON
+            (
+                exec_doc.row_id = data_t.ref_row_id
+                AND exec_doc.ma_id = Eachma.ma_id
+            )
+            WHEN MATCHED THEN
+                UPDATE SET
+                    exec_doc.amd_id     = data_t.new_amd_id,
+                    exec_doc.user_modif = Cuser,
+                    exec_doc.date_modif = SYSDATE
+                WHERE NVL(exec_doc.amd_id, -1)
+                      <> NVL(data_t.new_amd_id, -1);
 
-        // Direct persistence via repository (same pattern as RedirectCmoLocation)
-        repository.save(collateralDocStatusDetails);
+            -------------------------------------------------------------------
+            -- Retrieve validation rows and their final amendment IDs.
+            -------------------------------------------------------------------
+            SELECT ref.rowid_valdn,
+                   amd.amd_id
+            BULK COLLECT INTO
+                   V_Validation_Rowids,
+                   V_Validation_Ids
+            FROM AMD_VALDN_REF_TABLE ref
+            JOIN LDM_TB_AMD amd
+              ON amd.ROWID = ref.rowid_amd
+            ORDER BY ref.rowid_valdn;
 
-        // Send chase email
-        super.sendRedirectMail(
-                buildMailBody(negotiator, collateralSegmentId).toString(),
-                negotiationDocument,
-                collateralDocStatusDetails,
-                "");
+            -------------------------------------------------------------------
+            -- Update validation references only when validation rows exist.
+            -------------------------------------------------------------------
+            IF V_Validation_Rowids.COUNT > 0 THEN
 
-        // Reindex master agreement so search / dashboard reflect latest state
-        collateralOpsService.reindexMA(masterAgreement);
-    }
+                ---------------------------------------------------------------
+                -- Calculate a temporary amendment-ID range for validation rows.
+                ---------------------------------------------------------------
+                SELECT NVL(MAX(ABS(valdn.amendment_id)), 0) + 1000
+                INTO v_validation_temp_base
+                FROM AMENDMENT_VALIDATIONS valdn
+                WHERE valdn.agreement_id = Eachma.ma_id;
 
-    @Override
-    public StringBuilder buildMailBody(String negotiator, String collateralSegmentId) {
-        StringBuilder mailBody = new StringBuilder();
-        mailBody.append("All,\n\n")
-                .append(super.buildMailBody(negotiator, collateralSegmentId));
-        return mailBody;
-    }
+                ---------------------------------------------------------------
+                -- Phase 1:
+                -- Assign temporary IDs to validation rows.
+                ---------------------------------------------------------------
+                FORALL i IN 1 .. V_Validation_Rowids.COUNT
+                    UPDATE AMENDMENT_VALIDATIONS
+                    SET amendment_id =
+                            v_validation_temp_base + i
+                    WHERE ROWID = V_Validation_Rowids(i);
 
-    private void writeJsonResponse() {
-        try {
-            HttpServletResponse response = ServletActionContext.getResponse();
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+                ---------------------------------------------------------------
+                -- Phase 2:
+                -- Assign final IDs obtained from the corresponding amendment
+                -- ROWID.
+                ---------------------------------------------------------------
+                FORALL i IN 1 .. V_Validation_Rowids.COUNT
+                    UPDATE AMENDMENT_VALIDATIONS
+                    SET amendment_id = V_Validation_Ids(i)
+                    WHERE ROWID = V_Validation_Rowids(i);
 
-            JSONObject json = new JSONObject();
+            END IF;
 
-            String formattedDate = new SimpleDateFormat("dd-MMM-yyyy").format(new Date());
-            String userFullName = getUser().getFullname();
+        END IF;
 
-            CollateralDocStatusDetails cds =
-                    getCollateralDocStatusDetails(collateralSegmentId, documentId);
+        -----------------------------------------------------------------------
+        -- Clear current MA reference data
+        -----------------------------------------------------------------------
+        DELETE FROM EXEC_DOC_REF_TABLE;
+        DELETE FROM AMD_VALDN_REF_TABLE;
 
-            String cmoLocationName = "";
-            if (cds != null && cds.getCmoLocation() != null) {
-                cmoLocationName = cds.getCmoLocation().toString().toUpperCase(Locale.ROOT);
-            }
+        V_Amd_Rowids.DELETE;
+        V_Old_Amd_Ids.DELETE;
+        V_New_Amd_Ids.DELETE;
 
-            String cmoLocationText = cmoLocationName
-                    + "<br/>Last Chased By : " + userFullName
-                    + "<br/>On : " + formattedDate;
+        V_Validation_Rowids.DELETE;
+        V_Validation_Ids.DELETE;
 
-            // Clean things like [LON] / [NYK] prefixes if present
-            cmoLocationText = cmoLocationText.replaceAll("\\[[A-Z]{3}\\]\\s*", "");
+    END LOOP;
 
-            json.put("cmoLocationText", cmoLocationText);
-            json.put("chasedUser", userFullName);
-            json.put("chasedDate", formattedDate);
+    ---------------------------------------------------------------------------
+    -- Update group executed-document references using the amendment ROWID
+    -- retained before amendment sorting.
+    ---------------------------------------------------------------------------
+    MERGE INTO NEGO_TB_ROW_EXEC_DOC_FOR_GRP exec_doc_grp
+    USING
+    (
+        SELECT ref_row_id,
+               new_amd_id
+        FROM
+        (
+            SELECT reft.row_id AS ref_row_id,
+                   amd.amd_id AS new_amd_id,
+                   ROW_NUMBER() OVER
+                   (
+                       PARTITION BY reft.row_id
+                       ORDER BY amd.amd_id,
+                                amd.ROWID
+                   ) AS rn
+            FROM EXEC_DOC_GRP_REF_TABLE reft
+            JOIN LDM_TB_AMD amd
+              ON amd.ROWID = reft.rowid_amd
+            WHERE amd.amd_d_term IS NULL
+        )
+        WHERE rn = 1
+    ) data_t
+    ON
+    (
+        exec_doc_grp.row_id = data_t.ref_row_id
+        AND exec_doc_grp.grp_id = grpId
+    )
+    WHEN MATCHED THEN
+        UPDATE SET
+            exec_doc_grp.amd_id     = data_t.new_amd_id,
+            exec_doc_grp.user_modif = Cuser,
+            exec_doc_grp.date_modif = SYSDATE
+        WHERE NVL(exec_doc_grp.amd_id, -1)
+              <> NVL(data_t.new_amd_id, -1);
 
-            response.getWriter().write(json.toString());
-            response.getWriter().flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
+    ---------------------------------------------------------------------------
+    -- Final cleanup
+    ---------------------------------------------------------------------------
+    DELETE FROM AMD_REF_TABLE;
+    DELETE FROM EXEC_DOC_REF_TABLE;
+    DELETE FROM AMD_VALDN_REF_TABLE;
+    DELETE FROM EXEC_DOC_GRP_REF_TABLE;
+
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK TO before_sort_amendments_group;
+        RAISE;
+
+END SORT_AMENDMENTS_GROUP;
+/
