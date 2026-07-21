@@ -1,37 +1,14 @@
- var table = j('#PendingFinalApprovalTable').DataTable();
-                                    var rowFound = null;
+Hi Team,
 
-                                    table.rows().every(function () {
-                                        var d = this.data();
-                                        if (String(d[12]).trim() === String(doc_id).trim()) {
-                                            rowFound = this;
-                                        }
-                                    });
+The issue was caused by inconsistent data in the "LDM_TB_AMD" table.
 
-                                    if (rowFound) {
-                                        var rowData = rowFound.data();
+During the initial deployment of this Jira, some data was modified for testing. The procedure was later updated and redeployed, but the previously modified data remained inconsistent, which resulted in the reported error.
 
-                                        if (resp && resp.cmoLocationText) {
-                                            var locText = resp.cmoLocationText.replace(/\[[A-Z]{3}\]\s*/g, '');
-                                            rowData[10] = locText; // CMO Location column
-                                        }
+To validate the latest fix, I refreshed the DEV database and deployed the latest script. After the refresh, the issue could no longer be reproduced and the functionality worked as expected.
 
-                                        // use explicit fields if sent, else parse / fallback
-                                        var chasedUser = resp && resp.chasedUser ? resp.chasedUser : "";
-                                        var chasedDate = resp && resp.chasedDate ? resp.chasedDate : "";
+For testing in UAT2, we can proceed with a database refresh and then deploy the latest script for verification.
 
-                                        if (!chasedUser && resp && resp.cmoLocationText) {
-                                            var userMatch = resp.cmoLocationText.match(/Last Chased By\s*:\s*([^<]+)/i);
-                                            if (userMatch) chasedUser = j.trim(userMatch[1]);
-                                        }
-                                        if (!chasedDate && resp && resp.cmoLocationText) {
-                                            var dateMatch = resp.cmoLocationText.match(/On\s*:\s*([^<]+)/i);
-                                            if (dateMatch) chasedDate = j.trim(dateMatch[1]);
-                                        }
+Please let me know if we can go ahead with the UAT2 database refresh.
 
-                                        rowData[13] = chasedUser;
-                                        rowData[14] = chasedDate;
-
-                                        rowFound.data(rowData).invalidate().draw(false);
-                                    }
-                                
+Regards,
+Areeb
