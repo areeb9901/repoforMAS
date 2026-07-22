@@ -1,14 +1,11 @@
-Hi Team,
+Hi Yoan,
 
-The issue was caused by inconsistent data in the "LDM_TB_AMD" table.
+The issue you highlighted is related to dates that already exist in the database. The current procedure is not designed to modify or synchronize historical amendment dates that are already stored.
 
-During the initial deployment of this Jira, some data was modified for testing. The procedure was later updated and redeployed, but the previously modified data remained inconsistent, which resulted in the reported error.
+Existing dates within a group cannot be updated retrospectively by the procedure.
 
-To validate the latest fix, I refreshed the DEV database and deployed the latest script. After the refresh, the issue could no longer be reproduced and the functionality worked as expected.
+If, however, you update an amendment date in a group and that change is not propagated to the corresponding MAs within the group, then that would be considered a defect. The scenario you pointed out is different, as it concerns pre-existing data.
 
-For testing in UAT2, we can proceed with a database refresh and then deploy the latest script for verification.
+For example, in Group 127 that you mentioned, the amendment dates were already different before the procedure was executed.
 
-Please let me know if we can go ahead with the UAT2 database refresh.
-
-Regards,
-Areeb
+Please let me know if you would like us to investigate any scenario where a newly updated amendment date is not being reflected across the group.
