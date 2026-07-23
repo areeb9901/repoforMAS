@@ -1,47 +1,22 @@
-CollateralDocStatusDetails collateralDocStatusDetails =
-            getCollateralDocStatusDetails(collateralSegmentId, documentId);
+Hi <BA Name>,
 
-    NegotiationDocument negotiationDocument =
-            getNegotiationDoc(masterAgreement, collateralDocStatusDetails);
+I investigated the observations reported for Groups **58** and **127**.
 
-    // ✅ Strong guarantee: status details always have a segment id
-    String segmentIdFromDoc = negotiationDocument != null ? negotiationDocument.getSegmentId() : null;
-    if (collateralDocStatusDetails != null) {
-        if (collateralDocStatusDetails.getCollateralSegmentId() == null
-                || collateralDocStatusDetails.getCollateralSegmentId().trim().isEmpty()) {
-            // Prefer the request param, otherwise fall back to doc
-            String seg = (collateralSegmentId != null && !collateralSegmentId.trim().isEmpty())
-                    ? collateralSegmentId
-                    : segmentIdFromDoc;
-            collateralDocStatusDetails.setCollateralSegmentId(seg);
-        }
-    }
+From the analysis, it appears that the amendment dates currently displayed for each Master Agreement are based on the amendment records available for that specific MA in the `LDM_TB_AMD` table. For the affected historical groups, the amendment dates are not identical across all MAs within the same group. For example:
 
-    String negotiator = negotiationDocument.getNegotiator().getFullName();
-    emailComments = negotiationDocument.getEmailNotificationsComments();
+* **Group 58:** MA **22778** contains the amendment date **06-Mar-2015**, whereas MA **506800** does not have this amendment date in its corresponding `LDM_TB_AMD` records.
+* **Group 127:** Similarly, the amendment dates differ between the MAs based on the data present for each individual MA.
 
-    // Audit log (will use segmentId from status details)
-    collateralOpsService.createAuditLogForRedirectChase(
-            negotiationDocument,
-            getUser(),
-            masterAgreement,
-            collateralDocStatusDetails,
-            "",
-            "chase");
+The current implementation displays the amendment list according to the data available in `LDM_TB_AMD` for the respective Master Agreement and does not derive or populate amendment dates from other MAs within the same group.
 
-    // Persist chase info in status details
-    collateralDocStatusDetails.setChasedUser(getUser().getFullname());
-    collateralDocStatusDetails.setChasedDate(
-            BeagleDateFormat.format(new java.util.Date(), BeagleDateFormat.FORMAT));
+Could you please confirm whether the expected behaviour is to:
 
-    repository.save(collateralDocStatusDetails);
+* display amendment dates strictly based on the records available for the selected MA, or
+* display the complete set of amendment dates across the entire group, even if a particular MA does not have corresponding records in `LDM_TB_AMD`?
 
-    // Email
-    super.sendRedirectMail(
-            buildMailBody(negotiator, collateralSegmentId).toString(),
-            negotiationDocument,
-            collateralDocStatusDetails,
-            "");
+This will help us determine whether the reported behaviour is expected for historical data or if it represents a new functional requirement.
 
-    // Reindex
-    collateralOpsService.reindexMA(masterAgreement);
+Please let us know your thoughts.
+
+Regards,
+Areeb
