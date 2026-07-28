@@ -4,11 +4,11 @@ Thank you for your detailed analysis and for sharing your observations.
 
 I have taken note of the increase in the number of agreements with duplicate amendments in UAT2, as well as the examples you have provided for Groups 442, 9 and 1177.
 
-From my initial analysis, the current implementation sorts the amendment records that exist in "LDM_TB_AMD" for each Master Agreement. However, I will further investigate the duplicate amendment scenarios you have highlighted to understand whether they are caused by existing data inconsistencies, the current sorting logic, or another process that is generating duplicate amendment records.
+During our earlier testing, we had specifically validated the scenario for Group 4160, where the updated procedure worked as expected and duplicate amendments were not generated. However, based on the groups you have highlighted, it appears that duplicate amendments are still being generated in certain scenarios.
 
-I will also review your comments regarding the current implementation of "SORT_AMENDMENTS_GROUP", specifically the handling of amendment dates across a group and its impact on duplicate amendments and the resulting ouch screens.
+I will investigate these cases further to understand the root cause and determine why the behaviour differs from the scenarios already validated. I will also review the current implementation of "SORT_AMENDMENTS_GROUP", including the handling of amendment dates across a group and its impact on duplicate amendments and the resulting ouch screens.
 
-Let me investigate these points in detail, and I'll get back to you with my findings and the proposed approach.
+I'll get back to you with my findings and the proposed approach once the analysis is complete.
 
 Best regards,
 Areeb
