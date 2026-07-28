@@ -1,22 +1,11 @@
-Hi <BA Name>,
 
-I investigated the observations reported for Groups **58** and **127**.
+Hi Yoan,
 
-From the analysis, it appears that the amendment dates currently displayed for each Master Agreement are based on the amendment records available for that specific MA in the `LDM_TB_AMD` table. For the affected historical groups, the amendment dates are not identical across all MAs within the same group. For example:
+Following the delivery of the updated procedure, the UAT2 database has not been refreshed. Since testing was carried out prior to the deployment of the updated procedure, the current data may contain inconsistencies, which could lead to confusion during validation.
 
-* **Group 58:** MA **22778** contains the amendment date **06-Mar-2015**, whereas MA **506800** does not have this amendment date in its corresponding `LDM_TB_AMD` records.
-* **Group 127:** Similarly, the amendment dates differ between the MAs based on the data present for each individual MA.
+To eliminate this possibility, could we please perform a UAT2 database refresh?
 
-The current implementation displays the amendment list according to the data available in `LDM_TB_AMD` for the respective Master Agreement and does not derive or populate amendment dates from other MAs within the same group.
+If the issue still persists after the refresh, I will investigate the procedure further and make any necessary modifications.
 
-Could you please confirm whether the expected behaviour is to:
-
-* display amendment dates strictly based on the records available for the selected MA, or
-* display the complete set of amendment dates across the entire group, even if a particular MA does not have corresponding records in `LDM_TB_AMD`?
-
-This will help us determine whether the reported behaviour is expected for historical data or if it represents a new functional requirement.
-
-Please let us know your thoughts.
-
-Regards,
-Areeb
+Best regards,
+Areeb Faiz
