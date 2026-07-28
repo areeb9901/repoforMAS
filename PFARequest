@@ -1,11 +1,14 @@
-
 Hi Yoan,
 
-Following the delivery of the updated procedure, the UAT2 database has not been refreshed. Since testing was carried out prior to the deployment of the updated procedure, the current data may contain inconsistencies, which could lead to confusion during validation.
+Thank you for your detailed analysis and for sharing your observations.
 
-To eliminate this possibility, could we please perform a UAT2 database refresh?
+I have taken note of the increase in the number of agreements with duplicate amendments in UAT2, as well as the examples you have provided for Groups 442, 9 and 1177.
 
-If the issue still persists after the refresh, I will investigate the procedure further and make any necessary modifications.
+From my initial analysis, the current implementation sorts the amendment records that exist in "LDM_TB_AMD" for each Master Agreement. However, I will further investigate the duplicate amendment scenarios you have highlighted to understand whether they are caused by existing data inconsistencies, the current sorting logic, or another process that is generating duplicate amendment records.
+
+I will also review your comments regarding the current implementation of "SORT_AMENDMENTS_GROUP", specifically the handling of amendment dates across a group and its impact on duplicate amendments and the resulting ouch screens.
+
+Let me investigate these points in detail, and I'll get back to you with my findings and the proposed approach.
 
 Best regards,
-Areeb Faiz
+Areeb
