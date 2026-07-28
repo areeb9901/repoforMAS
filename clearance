@@ -1,15 +1,83 @@
-Hi,
-
-We investigated the issue and identified the root cause.
-
-The issue is related to the recent migration from IV1 to IV2 for the Beagle UAT platforms. During the migration, the new Beagle Support application was not included, which has resulted in the Support application's Tomcat service being unavailable.
-
-Action taken:
-
-- An RITM has been raised to mount the new NAS on the new Support application servers.
-- Once the mounting activity is completed, we will validate the application and update you accordingly.
-
-We will keep you informed of the progress.
-
-Regards,
-Areeb
+WITH Eligible_Mas AS
+(
+    SELECT ma_id
+    FROM ldm_tb_ma
+    WHERE grp_id = 1177
+      AND in_nego_flg = 'N'
+      AND NVL(status_id, -1) <> 8
+),
+Ma_Amendments AS
+(
+    SELECT amd.ma_id,
+           amd.amd_id AS actual_amd_id,
+           amd.amd_d_sign,
+           amd.date_creat,
+           amd.ROWID AS rowid_amd,
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.ma_id,
+                            amd.amd_d_sign
+               ORDER BY amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM ldm_tb_amd amd
+    JOIN Eligible_Mas ma
+      ON ma.ma_id = amd.ma_id
+    WHERE amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+      AND amd.amd_d_term IS NULL
+),
+Date_Requirements AS
+(
+    SELECT amd_d_sign,
+           MAX(date_occurrence) AS maximum_occurrence
+    FROM Ma_Amendments
+    GROUP BY amd_d_sign
+),
+Numbers AS
+(
+    SELECT LEVEL AS occurrence_no
+    FROM dual
+    CONNECT BY LEVEL <=
+    (
+        SELECT NVL(MAX(maximum_occurrence), 1)
+        FROM Date_Requirements
+    )
+),
+Group_Slots_Unnumbered AS
+(
+    SELECT dates.amd_d_sign,
+           numbers.occurrence_no
+    FROM Date_Requirements dates
+    JOIN Numbers numbers
+      ON numbers.occurrence_no <= dates.maximum_occurrence
+),
+Group_Slots AS
+(
+    SELECT amd_d_sign,
+           occurrence_no,
+           ROW_NUMBER() OVER
+           (
+               ORDER BY amd_d_sign,
+                        occurrence_no
+           ) AS expected_amd_id
+    FROM Group_Slots_Unnumbered
+)
+SELECT ma.ma_id,
+       ma.actual_amd_id,
+       slot.expected_amd_id,
+       TO_CHAR(ma.amd_d_sign, 'DD-MON-YYYY HH24:MI:SS')
+           AS amendment_date,
+       ma.date_occurrence,
+       TO_CHAR(ma.date_creat, 'DD-MON-YYYY HH24:MI:SS')
+           AS creation_date,
+       ma.rowid_amd
+FROM Ma_Amendments ma
+LEFT JOIN Group_Slots slot
+  ON slot.amd_d_sign = ma.amd_d_sign
+ AND slot.occurrence_no = ma.date_occurrence
+WHERE slot.expected_amd_id IS NULL
+   OR ma.actual_amd_id <> slot.expected_amd_id
+ORDER BY ma.ma_id,
+         ma.amd_d_sign,
+         ma.date_occurrence;
