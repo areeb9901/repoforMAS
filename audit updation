@@ -1,72 +1,246 @@
-public void createAuditLogForRedirectChase(NegotiationDocument negotiationDocument,
-                                           User user,
-                                           MasterAgreement ma,
-                                           CollateralDocStatusDetails collateralDocStatusDetails,
-                                           String previousLocation,
-                                           String action) {
-    NegotiationDocument negoDoc = negotiationDocument;
-    StringBuilder fileName = new StringBuilder();
-    int count = 0;
-    if (negoDoc.getFileName() != null) {
-        count++;
-        fileName = fileName.append(negoDoc.getFileName());
-        if (count > 0) {
-            fileName.append("<BR>");
-        }
-    }
 
-    CollateralDocAudit collateralDocAudit = new CollateralDocAudit();
-    collateralDocAudit.setMasterAgreementId(ma.getId());
-    collateralDocAudit.setDocGroupId(negoDoc.getDocumentGroupId());
-    collateralDocAudit.setDocStatus(getCollDocStatus(collateralDocStatusDetails.getStatus()));
+SELECT COUNT(*) AS amendment_row_count
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND amd.amd_id > 0;
 
-    Date uploadDate = new Date();
-    try {
-        uploadDate = BeagleDateFormat.parse(
-                BeagleDateFormat.format(negoDoc.getDocumentDate(), BeagleDateFormat.FORMAT));
-    } catch (ParseException e) {
-        LOGGER.error(e.getCause());
-    }
-    collateralDocAudit.setDocUploadDate(uploadDate);
-    collateralDocAudit.setCmoUser(user.getFullname());
 
-    if (negoDoc.getDocumentCatagory() != null) {
-        collateralDocAudit.setDocCategory(negoDoc.getDocumentCatagory().getText());
-    }
-    if (negoDoc.getIsStandard() != null) {
-        String docClass = negoDoc.getIsStandard() ? "Standard" : "Non Standard";
-        collateralDocAudit.setDocClass(docClass);
-    }
-    if (negoDoc.getNegotiator() != null) {
-        collateralDocAudit.setDocNegotiator(negoDoc.getNegotiator().getFullName());
-    }
-    collateralDocAudit.setCmoLocation(
-            collateralDocStatusDetails.getCmoLocation() != null
-                    ? collateralDocStatusDetails.getCmoLocation().getName()
-                    : "");
+WITH Eligible_Amendments AS
+(
+    SELECT amd.ma_id,
+           amd.amd_d_sign,
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.ma_id,
+                            amd.amd_d_sign
+               ORDER BY amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND NVL(ma.status_id, -1) <> 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+),
+Date_Requirements AS
+(
+    SELECT amd_d_sign,
+           MAX(date_occurrence) AS required_occurrences
+    FROM Eligible_Amendments
+    GROUP BY amd_d_sign
+)
+SELECT SUM(required_occurrences) AS signed_group_slot_count
+FROM Date_Requirements;
 
-    collateralDocAudit.setDocFileName(fileName.toString());
 
-    if ("redirect".equals(action)) {
-        collateralDocAudit.setComments("Redirected from "
-                + ("".equals(previousLocation) ? "No Location" : previousLocation)
-                + " to " + collateralDocStatusDetails.getCmoLocation().getName());
-    } else if ("chase".equals(action)) {
-        collateralDocAudit.setComments("Chased - "
-                + getAuditLogComments(collateralDocStatusDetails,
-                                       collateralDocStatusDetails.getStatus(),
-                                       negoDoc.getDetail()));
-    }
 
-    collateralDocAudit.setAuditDate(new Date());
-    collateralDocAudit.setAuditUser(user.getFullname());
 
-    // ✅ Ensure segmentId is never null in audit
-    String segId = collateralDocStatusDetails.getCollateralSegmentId();
-    if (segId == null || segId.trim().isEmpty()) {
-        segId = negoDoc.getSegmentId();   // fallback
-    }
-    collateralDocAudit.setSegmentId(segId);
 
-    repository.save("CollateralDocAudit", collateralDocAudit);
-}
+
+
+SELECT amd.ma_id,
+       COUNT(*) AS amendment_rows,
+       COUNT(
+           CASE
+               WHEN amd.amd_d_sign IS NOT NULL THEN 1
+           END
+       ) AS signed_rows,
+       COUNT(
+           CASE
+               WHEN amd.amd_d_sign IS NULL THEN 1
+           END
+       ) AS unsigned_rows
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND ma.in_nego_flg = 'N'
+  AND NVL(ma.status_id, -1) <> 8
+  AND amd.amd_id > 0
+GROUP BY amd.ma_id
+ORDER BY amd.ma_id;
+
+
+
+
+WITH Eligible_Amendments AS
+(
+    SELECT amd.ma_id,
+           amd.amd_d_sign,
+
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.ma_id,
+                            amd.amd_d_sign
+               ORDER BY amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND NVL(ma.status_id, -1) <> 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+),
+Date_Requirements AS
+(
+    SELECT amd_d_sign,
+           MAX(date_occurrence) AS required_occurrences
+    FROM Eligible_Amendments
+    GROUP BY amd_d_sign
+),
+Numbers AS
+(
+    SELECT LEVEL AS occurrence_no
+    FROM dual
+    CONNECT BY LEVEL <=
+    (
+        SELECT NVL(
+                   MAX(required_occurrences),
+                   0
+               )
+        FROM Date_Requirements
+    )
+),
+Group_Reference AS
+(
+    SELECT ROW_NUMBER() OVER
+           (
+               ORDER BY dates.amd_d_sign,
+                        numbers.occurrence_no
+           ) AS expected_amd_id,
+
+           dates.amd_d_sign,
+           numbers.occurrence_no
+    FROM Date_Requirements dates
+    JOIN Numbers numbers
+      ON numbers.occurrence_no <=
+         dates.required_occurrences
+),
+Selected_Ma AS
+(
+    SELECT amd.amd_id AS current_amd_id,
+           amd.amd_d_sign,
+           amd.date_creat,
+           amd.ROWID AS rowid_amd,
+
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.amd_d_sign
+               ORDER BY amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM LDM_TB_AMD amd
+    WHERE amd.ma_id = 204746
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+)
+SELECT ma.current_amd_id,
+       ref.expected_amd_id,
+       TO_CHAR(
+           ma.amd_d_sign,
+           'DD-MON-YYYY HH24:MI:SS'
+       ) AS signing_date,
+       ma.date_occurrence
+FROM Selected_Ma ma
+JOIN Group_Reference ref
+  ON ref.amd_d_sign = ma.amd_d_sign
+ AND ref.occurrence_no = ma.date_occurrence
+ORDER BY ref.expected_amd_id;
+
+
+
+
+
+‐---------------
+
+
+SELECT COUNT(*) AS amendment_row_count
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND amd.amd_id > 0;
+
+
+
+
+
+SELECT amd.ma_id,
+       amd.amd_id,
+       COUNT(*) AS duplicate_count
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND amd.amd_id > 0
+GROUP BY amd.ma_id,
+         amd.amd_id
+HAVING COUNT(*) > 1
+ORDER BY amd.ma_id,
+         amd.amd_id;
+
+
+
+
+
+WITH Sorted_Amendments AS
+(
+    SELECT amd.ma_id,
+           amd.amd_id,
+           amd.amd_d_sign,
+
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.ma_id,
+                            amd.amd_d_sign
+               ORDER BY amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND NVL(ma.status_id, -1) <> 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+)
+SELECT amd_d_sign,
+       date_occurrence,
+       COUNT(DISTINCT amd_id) AS distinct_amd_ids,
+       MIN(amd_id) AS minimum_amd_id,
+       MAX(amd_id) AS maximum_amd_id
+FROM Sorted_Amendments
+GROUP BY amd_d_sign,
+         date_occurrence
+HAVING COUNT(DISTINCT amd_id) > 1
+ORDER BY amd_d_sign,
+         date_occurrence;
+
+
+
+
+
+
+
+SELECT amd.ma_id,
+       COUNT(*) AS physical_rows,
+       MIN(amd.amd_id) AS minimum_amd_id,
+       MAX(amd.amd_id) AS maximum_amd_id
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND ma.in_nego_flg = 'N'
+  AND NVL(ma.status_id, -1) <> 8
+  AND amd.amd_id > 0
+GROUP BY amd.ma_id
+ORDER BY amd.ma_id;
