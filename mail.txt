@@ -1,18 +1,12 @@
-Here’s a clean and professional mail you can send to the Refog team:
-Subject: Issue While Accessing Refog Staging URL from UAT Environment
-Hi Team,
-I hope you are doing well.
-We are currently trying to access the Refog staging URL (URL) from our UAT environment, but the request is returning a status code 900 instead of the expected 200.
-Could you please help us understand what might be causing this issue and how we can resolve it?
-Additionally, we would like to check whether there is a separate Refog URL specifically for the UAT environment. If such an endpoint exists, could you please share the details with us?
-Looking forward to your guidance.
+Hi Yoan,
+
+We have implemented a workaround for the duplicate issues in the groups you mentioned.
+
+To deploy the changes and validate the fix correctly, we require a UAT2 database refresh.
+
+Could you please confirm if we can proceed with the UAT2 DB refresh?
+
+Looking forward to your confirmation.
+
 Best regards,
-Areeb
-
-p1.add(Projections.property("responseFile"));
-p1.add(Projections.property("errorFile"));
-p1.add(Projections.property("dataFileId"));
-
-if (UploadIsdaPRDRAudit.class.equals(className)) {
-    p1.add(Projections.property("dataFile"));
-}
+Areeb Faiz
