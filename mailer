@@ -1,11 +1,12 @@
-Hi Team,
+Hi Yoan,
 
-Just an update regarding the R34 build deployment.
+We have implemented a workaround for the duplicate issues in the groups you mentioned.
 
-We have not created the R33 tag yet. Although the Jiras are ready, the pseudo branch has not yet been merged into the master branch, which is causing a delay in the R34 build deployment.
+As you have other groups to test, we are not proceeding with a UAT2 database refresh at this time, as it may impact ongoing testing by other users.
 
-The reason for waiting for the merge is to avoid the issue we encountered in the previous release. At that time, deploying directly from the pseudo branch to UAT resulted in the latest changes from the master branch being missed, which caused confusion and led to pseudo-related defects being raised.
+Instead, we have deployed the updated procedure on UAT2 for you to continue your validation. Please proceed with your testing using the current environment.
 
-To avoid a repeat of that situation, we will first merge the pseudo branch into the master branch, create the R33 tag, and then proceed with the R34 build deployment.
+If you still encounter any issues after testing with the updated procedure, please let us know and we will investigate them further.
 
-Thank you for your understanding.
+Best regards,
+Areeb Faiz
