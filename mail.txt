@@ -1,12 +1,12 @@
 Hi Yoan,
 
-We have implemented a workaround for the duplicate issues in the groups you mentioned.
+Thank you for your feedback and for sharing the results of your testing.
 
-To deploy the changes and validate the fix correctly, we require a UAT2 database refresh.
+I have updated the procedure to handle the issue related to the broken groups that you highlighted in your earlier email for BEADEV-13571.
 
-Could you please confirm if we can proceed with the UAT2 DB refresh?
+Regarding the point you have raised about displaying all amendment dates consistently across the group, I am currently looking into how to include all amendment dates across every MA in the group while maintaining the expected sorting behavior.
 
-Looking forward to your confirmation.
+Once the solution is finalized and validated, we will deliver the fix for BEADEV-13571 and share it with you for testing.
 
 Best regards,
 Areeb Faiz
