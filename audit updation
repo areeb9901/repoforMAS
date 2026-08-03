@@ -29,3 +29,35 @@ Date_Requirements AS
 )
 SELECT SUM(required_occurrences) AS signed_group_slot_count
 FROM Date_Requirements;
+
+
+‐----------------
+
+
+WITH Eligible_Amendments AS
+(
+    SELECT amd.ma_id,
+           amd.amd_d_sign,
+           ROW_NUMBER() OVER
+           (
+               PARTITION BY amd.ma_id,
+                            amd.amd_d_sign
+               ORDER BY NVL(amd.term_id, -1),
+                        amd.date_creat,
+                        amd.ROWID
+           ) AS date_occurrence
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND NVL(ma.status_id, -1) <> 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+      AND amd.amd_d_term IS NULL
+)
+SELECT amd_d_sign,
+       MAX(date_occurrence) AS required_occurrences
+FROM Eligible_Amendments
+GROUP BY amd_d_sign
+ORDER BY amd_d_sign;
