@@ -1,117 +1,30 @@
-THE CONCEPT OF SUSTAINABLE DEVELOPMENT WAS INTRODUCED IN 1987 AND REFERS TO:
+Clarification Required on Group Amendment Sorting Rules
 
-Select the correct answer.
+Hi Yoan,
 
-The need to promote the economic development of our society without compromising the future of generations to come
+While analysing the amendment sorting behaviour, we identified a few data scenarios for which the expected functional rule needs to be confirmed before finalising the procedure.
 
-The fact that the effects of development policy take time to be realised
+The original procedure identifies one amendment date per existing AMD_ID. This can ignore valid additional dates, as observed for Group 4160.
 
-The notion of viable growth over time
+However, some groups also contain repeated identical dates within the same MA. For example, in Group 1177, MAs 205603 and 205596 each contain twenty amendment rows dated 01-Jul-2015, whereas other MAs contain the date only once. Based on this data, we need to confirm how such repeated rows should participate in the group amendment sequence.
 
+Could you please confirm the following points:
 
+Should the group amendment sequence be based on the existing AMD_IDs, or rebuilt entirely from amendment dates across the group?
+When the same date occurs multiple times in one MA, should each row represent a separate amendment position, only one position, or one additional duplicate position as in the proposed query?
+Should the same amendment date always carry the same AMD_ID across every MA in the group?
+If an amendment date exists on one MA but no corresponding row exists on another MA, should the missing MA have:
+a gap in its amendment IDs,
+a “Not Applicable” entry,
+or a new row created in LDM_TB_AMD?
+When an amendment date is updated, our understanding is that the date should also be updated for terminated MAs, but terminated MAs should not be renumbered. Please confirm.
+When a terminated MA is unterminated, should it be sorted against the existing group sequence without increasing the total number of group amendment positions?
+Should amendment rows with AMD_D_TERM IS NOT NULL be excluded from the live group sorting sequence?
+Should lower AMD_IDs correspond to earlier amendment dates, as currently displayed on the UI?
 
-THE CONCEPT OF SUSTAINABLE DEVELOPMENT WAS INTRODUCED IN 1987 AND REFERS TO:
+For the repeated-date scenario, it would be especially helpful if you could confirm the expected final amendment IDs for MA 205603 in Group 1177, where 01-Jul-2015 currently appears twenty times.
 
-The need to promote the economic development of our society without compromising the future of generations to come
+Once these rules are confirmed, we can implement the procedure consistently without risking duplicate IDs or an unexpected increase in the amendment sequence.
 
-The fact that the effects of development policy take time to be realised
-
-The notion of viable growth over timeWHAT ARE THE 3 MAIN PILLARS OF SUSTAINABLE DEVELOPMENT ?
-
-2/10
-
-Select the correct answer(s).
-
-Environmental
-
-Policy
-
-Health
-
-Social
-
-Financial
-
-EconomicWHAT ARE THE MAIN ASPECTS OF A CSR APPROACH?
-
-Select the correct answer(s).
-
-Promoting employee well-being and quality of life at work
-
-Maximising the company's profitability
-
-Integrating sustainable development issues into the company's strategy, products and services
-
-Reducing the company's workforce
-
-Managing environmental and social impactsWHAT WAS THE FIRST INTERNATIONAL INITIATIVE TO ENCOURAGE COMPANIES TO ADOPT A CSR APPROACH?
-
-Select the correct answer.
-
-The Brundtland Commission
-
-The United Nations Global Compact
-
-The Sustainable Development Goals
-
-The "Net Zero" movementSUSTAINABLE FINANCE AIMS TO:
-
-/10
-
-Select the correct answer(s).
-
-Maximise economic profitability over the long term
-
-Take environmental and social impacts into account in financial activitiesWHAT ROLE DO FINANCIAL PLAYERS PLAY IN RELATION TO SUSTAINABLE DEVELOPMENT?
-
-Select the correct answer(s).
-
-Encouraging responsible companies and promoting sustainable investment
-
-Using their position and expertise to accelerate their customers' transition to a more sustainable economy
-
-Innovating to raise the capital needed to finance energy, environmental and social transitionsHOW LONG HAS BNP PARIBAS BEEN DEPLOYING A STRATEGY IN TERMS OF SUSTAINABLE DEVELOPMENT?
-
-Select the correct answer.
-
-For more than 10 years
-
-Since 2020, with the inclusion of the contribution to Sustainable Development in the Group's Mission Statement
-
-Since early 2022, with the launch of the GTS 2025 planWHAT ARE THE PRIORITIES OF THE SUSTAINABILITY PILLAR OF THE GTS 2025 STRATEGIC PLAN?
-
-Select the correct answer(s).
-
-Transition to carbon neutrality
-
-Natural Capital and Biodiversity
-
-Social Inclusion
-
-Circular Economy
-
-Savings, Investment and Sustainable Financing
-
-Anti-corruption/10
-
-BY 2025, WHAT ARE BNP PARIBAS' OBJECTIVES TO SUPPORT ITS CUSTOMERS IN TRANSITIONING THEIR ACTIVITIES?
-
-Select the correct answer(s).
-
-Continuing to develop sustainable financing and responsible investment solutions
-
-Equity investment in innovative companies committed to sustainable development
-
-Applying the expertise of BNP Paribas' employees to the transition
-
-Using its influence and dialogue with businesses and public authorities to promote a low-carbon and inclusive economyWHAT INITIATIVES THAT PROMOTE SUSTAINABLE DEVELOPMENT IS THE GROUP INVOLVED IN?
-
-Select the correct answer(s).
-
-Net-Zero Banking Alliance (NZBA)
-
-Taskforce on Climate-related Financial Disclosures (TCFD)
-
-Taskforce on Nature-related Financial Disclosures (TNFD)
-
-Just Institute
+Regards,
+Areeb
