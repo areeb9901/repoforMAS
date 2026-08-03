@@ -1,3 +1,76 @@
+
+1)
+
+
+SELECT amd.ma_id,
+       COUNT(*) AS occurrence_count
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND ma.in_nego_flg = 'N'
+  AND NVL(ma.status_id, -1) <> 8
+  AND amd.amd_id > 0
+  AND amd.amd_d_sign = DATE '2015-07-01'
+  AND amd.amd_d_term IS NULL
+GROUP BY amd.ma_id
+ORDER BY occurrence_count DESC,
+         amd.ma_id;
+
+
+2)
+
+
+SELECT ma.ma_id,
+       ma.status_id,
+       ma.in_nego_flg,
+       amd.amd_id,
+       TO_CHAR(
+           amd.amd_d_sign,
+           'DD-MON-YYYY HH24:MI:SS'
+       ) AS signing_date,
+       TO_CHAR(
+           amd.amd_d_term,
+           'DD-MON-YYYY HH24:MI:SS'
+       ) AS amendment_termination_date,
+       amd.term_id,
+       TO_CHAR(
+           amd.date_creat,
+           'DD-MON-YYYY HH24:MI:SS'
+       ) AS creation_date,
+       amd.ROWID AS amd_rowid
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND amd.amd_id > 0
+  AND amd.amd_d_sign = DATE '2015-07-01'
+ORDER BY ma.ma_id,
+         amd.amd_id,
+         amd.date_creat,
+         amd.ROWID;
+
+
+3)
+
+SELECT NVL(TO_CHAR(amd.term_id), 'NULL') AS term_id,
+       COUNT(*) AS row_count,
+       COUNT(DISTINCT amd.ma_id) AS ma_count
+FROM LDM_TB_AMD amd
+JOIN LDM_TB_MA ma
+  ON ma.ma_id = amd.ma_id
+WHERE ma.grp_id = 1177
+  AND ma.in_nego_flg = 'N'
+  AND NVL(ma.status_id, -1) <> 8
+  AND amd.amd_id > 0
+  AND amd.amd_d_sign = DATE '2015-07-01'
+  AND amd.amd_d_term IS NULL
+GROUP BY amd.term_id
+ORDER BY term_id;
+
+
+4)
+
 WITH Eligible_Amendments AS
 (
     SELECT amd.ma_id,
@@ -6,8 +79,7 @@ WITH Eligible_Amendments AS
            (
                PARTITION BY amd.ma_id,
                             amd.amd_d_sign
-               ORDER BY NVL(amd.term_id, -1),
-                        amd.date_creat,
+               ORDER BY amd.date_creat,
                         amd.ROWID
            ) AS date_occurrence
     FROM LDM_TB_AMD amd
@@ -19,6 +91,7 @@ WITH Eligible_Amendments AS
       AND amd.amd_id > 0
       AND amd.amd_d_sign IS NOT NULL
       AND amd.amd_d_term IS NULL
+      AND amd.term_id IS NULL
 ),
 Date_Requirements AS
 (
@@ -27,37 +100,5 @@ Date_Requirements AS
     FROM Eligible_Amendments
     GROUP BY amd_d_sign
 )
-SELECT SUM(required_occurrences) AS signed_group_slot_count
+SELECT SUM(required_occurrences) AS group_slot_count
 FROM Date_Requirements;
-
-
-‐----------------
-
-
-WITH Eligible_Amendments AS
-(
-    SELECT amd.ma_id,
-           amd.amd_d_sign,
-           ROW_NUMBER() OVER
-           (
-               PARTITION BY amd.ma_id,
-                            amd.amd_d_sign
-               ORDER BY NVL(amd.term_id, -1),
-                        amd.date_creat,
-                        amd.ROWID
-           ) AS date_occurrence
-    FROM LDM_TB_AMD amd
-    JOIN LDM_TB_MA ma
-      ON ma.ma_id = amd.ma_id
-    WHERE ma.grp_id = 1177
-      AND ma.in_nego_flg = 'N'
-      AND NVL(ma.status_id, -1) <> 8
-      AND amd.amd_id > 0
-      AND amd.amd_d_sign IS NOT NULL
-      AND amd.amd_d_term IS NULL
-)
-SELECT amd_d_sign,
-       MAX(date_occurrence) AS required_occurrences
-FROM Eligible_Amendments
-GROUP BY amd_d_sign
-ORDER BY amd_d_sign;
