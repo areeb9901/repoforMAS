@@ -102,3 +102,66 @@ Date_Requirements AS
 )
 SELECT SUM(required_occurrences) AS group_slot_count
 FROM Date_Requirements;
+
+
+
+-‐---------'xxx
+
+
+
+WITH Active_Date_Count AS
+(
+    SELECT amd.amd_d_sign,
+           amd.ma_id,
+           COUNT(*) AS occurrence_count
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND NVL(ma.status_id, -1) <> 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+      AND amd.amd_d_term IS NULL
+    GROUP BY amd.amd_d_sign,
+             amd.ma_id
+),
+Active_Max AS
+(
+    SELECT amd_d_sign,
+           MAX(occurrence_count) AS active_max_occurrence
+    FROM Active_Date_Count
+    GROUP BY amd_d_sign
+),
+Terminated_Date_Count AS
+(
+    SELECT amd.amd_d_sign,
+           amd.ma_id,
+           COUNT(*) AS occurrence_count
+    FROM LDM_TB_AMD amd
+    JOIN LDM_TB_MA ma
+      ON ma.ma_id = amd.ma_id
+    WHERE ma.grp_id = 1177
+      AND ma.in_nego_flg = 'N'
+      AND ma.status_id = 8
+      AND amd.amd_id > 0
+      AND amd.amd_d_sign IS NOT NULL
+      AND amd.amd_d_term IS NULL
+    GROUP BY amd.amd_d_sign,
+             amd.ma_id
+)
+SELECT terminated.ma_id,
+       terminated.amd_d_sign,
+       terminated.occurrence_count
+           AS terminated_ma_occurrences,
+       NVL(active.active_max_occurrence, 0)
+           AS current_active_max
+FROM Terminated_Date_Count terminated
+LEFT JOIN Active_Max active
+  ON active.amd_d_sign = terminated.amd_d_sign
+WHERE terminated.occurrence_count
+      > NVL(active.active_max_occurrence, 0)
+ORDER BY terminated.ma_id,
+         terminated.amd_d_sign;
+
+
