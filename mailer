@@ -1,30 +1,71 @@
-Clarification Required on Group Amendment Sorting Rules
+I have one remaining issue in the Agreement Retriever filter screen related to the new filter:
 
-Hi Yoan,
+Has Derivative MA linked to Execution MA (ISDA/CDEA)
 
-While analysing the amendment sorting behaviour, we identified a few data scenarios for which the expected functional rule needs to be confirmed before finalising the procedure.
+This filter has three radio options:
 
-The original procedure identifies one amendment date per existing AMD_ID. This can ignore valid additional dates, as observed for Group 4160.
+- Yes
+- No
+- Either
 
-However, some groups also contain repeated identical dates within the same MA. For example, in Group 1177, MAs 205603 and 205596 each contain twenty amendment rows dated 01-Jul-2015, whereas other MAs contain the date only once. Based on this data, we need to confirm how such repeated rows should participate in the group amendment sequence.
+The filtering logic itself is working correctly. If I select Yes or No, the expected MAs are retrieved properly.
 
-Could you please confirm the following points:
+However, there are two UI/state issues that need to be fixed.
 
-Should the group amendment sequence be based on the existing AMD_IDs, or rebuilt entirely from amendment dates across the group?
-When the same date occurs multiple times in one MA, should each row represent a separate amendment position, only one position, or one additional duplicate position as in the proposed query?
-Should the same amendment date always carry the same AMD_ID across every MA in the group?
-If an amendment date exists on one MA but no corresponding row exists on another MA, should the missing MA have:
-a gap in its amendment IDs,
-a “Not Applicable” entry,
-or a new row created in LDM_TB_AMD?
-When an amendment date is updated, our understanding is that the date should also be updated for terminated MAs, but terminated MAs should not be renumbered. Please confirm.
-When a terminated MA is unterminated, should it be sorted against the existing group sequence without increasing the total number of group amendment positions?
-Should amendment rows with AMD_D_TERM IS NOT NULL be excluded from the live group sorting sequence?
-Should lower AMD_IDs correspond to earlier amendment dates, as currently displayed on the UI?
+1. Default selection should be "Either"
 
-For the repeated-date scenario, it would be especially helpful if you could confirm the expected final amendment IDs for MA 205603 in Group 1177, where 01-Jul-2015 currently appears twenty times.
+When the Agreement Retriever screen is opened for the first time, the existing filters under the Miscellaneous section have Either selected by default, and the corresponding radio button is visibly filled.
 
-Once these rules are confirmed, we can implement the procedure consistently without risking duplicate IDs or an unexpected increase in the amendment sequence.
+The new filter:
 
-Regards,
-Areeb
+Has Derivative MA linked to Execution MA (ISDA/CDEA)
+
+should behave in exactly the same way.
+
+Currently, when the screen is opened initially, all three radio buttons — Yes, No, and Either — appear unselected.
+
+Expected behaviour:
+
+On the initial opening of the Agreement Retriever screen:
+
+"Has Derivative MA linked to Execution MA (ISDA/CDEA) = Either"
+
+and the Either radio button should be visibly selected/filled.
+
+2. Selected value should persist when reopening the filter panel
+
+Currently, if I select:
+
+"Has Derivative MA linked to Execution MA (ISDA/CDEA) = Yes"
+
+and perform the search, the search results are correct.
+
+However, when I open the filter screen/panel again, all three radio buttons for this filter appear empty.
+
+The same issue occurs when No is selected.
+
+Expected behaviour:
+
+The filter UI should retain and display the currently applied value.
+
+For example:
+
+- If the user selected Yes, reopening the filter screen should show the Yes radio button selected.
+- If the user selected No, reopening the filter screen should show the No radio button selected.
+- If the user selected Either, reopening the filter screen should show the Either radio button selected.
+
+Important
+
+Please compare the implementation of this new filter with the existing Yes / No / Either radio filters under the Miscellaneous section and follow the same mechanism for:
+
+1. Default initialization
+2. Request/filter parameter binding
+3. Radio button "checked" state
+4. Retaining the selected value after search/filter submission
+5. Reset/default-filter behaviour
+
+Do not change the existing search/filtering logic because Yes and No are already retrieving the correct MAs.
+
+The required fix is specifically for the UI selection state and persistence of the radio buttons.
+
+Please identify the relevant Velocity/VM, Java/filter model/action, JavaScript, or request parameter handling involved and implement the fix consistently with the existing Miscellaneous filters.
