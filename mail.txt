@@ -1,12 +1,45 @@
-Hi Yoan,
+Hi,
 
-Thank you for your feedback and for sharing the results of your testing.
+We have reviewed the issues highlighted regarding the overlap check while adding/modifying an Office Covered.
 
-I have updated the procedure to handle the issue related to the broken groups that you highlighted in your earlier email for BEADEV-13571.
+The initial issue reported for MA 458358, where the user was blocked while adding an Office Covered and the Save button became grey without completing the action, has now been fixed.
 
-Regarding the point you have raised about displaying all amendment dates consistently across the group, I am currently looking into how to include all amendment dates across every MA in the group while maintaining the expected sorting behavior.
+Regarding the other scenarios mentioned in the Jira, we have reviewed the existing implementation to understand why different behaviours are observed across MAs.
 
-Once the solution is finalized and validated, we will deliver the fix for BEADEV-13571 and share it with you for testing.
+Currently, the application follows the below rules:
+
+1. Green informational message
+   
+   - This message is displayed by default when editing the Office Covered information.
+
+2. Red overlap warning
+   
+   - The red warning is displayed when an overlapping MA is identified and the overlapping MA has an eligible status.
+   - The statuses currently considered eligible are Executed, PreExecuted and Signed.
+
+3. Comment and acknowledgement
+   
+   - Comment and acknowledgement are displayed only when the overlap conditions are satisfied and the current MA is in one of the eligible statuses: Executed, PreExecuted or Signed.
+   - When displayed, the comment and acknowledgement are mandatory.
+
+Therefore, the different behaviours observed in the examples are consistent with the current implementation:
+
+- MA 415368 – GMSLA-HK Securities PB: An overlap exists and the relevant status conditions are satisfied. Therefore, the red warning and mandatory Comment/Acknowledgement are displayed.
+- MA 517051 – EMAD: An overlap exists, so the red warning is displayed. However, the current MA is In Negotiation, which is not one of the eligible statuses. Therefore, Comment/Acknowledgement is not displayed.
+- MA 517059 – MAA: No qualifying product overlap is identified with the compared MA(s). Therefore, only the green informational message is displayed, without the red warning or Comment/Acknowledgement.
+
+Based on our analysis, these behaviours are therefore coming from the existing overlap rules rather than from a display issue.
+
+However, the Jira mentions the expected business rule as:
+
+- Cross Family → Warning only
+- Same Family → Warning + mandatory Comment and Acknowledgement
+
+The current implementation also takes into account factors such as MA status and whether a qualifying overlap exists, which can result in the different behaviours described above.
+
+Could you please confirm how you would like these scenarios to behave going forward? In particular, should the Cross Family / Same Family rule take precedence irrespective of the current MA status, or should the existing status conditions continue to be considered?
+
+Once confirmed, we can align the implementation with the expected business behaviour.
 
 Best regards,
 Areeb Faiz
