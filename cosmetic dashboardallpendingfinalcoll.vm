@@ -1,21 +1,365 @@
-<style>
-/* Target the real table */
-#PendingFinalApprovalTable thead th {
-  /* Bring icon close to the header text */
-  background-position: center right 2px !important;
-  padding-right: 14px !important;
+Intern Graduation Panel — Moderator Script
 
-  /* Align better with text baseline */
-  vertical-align: middle !important;
+OPENING
 
-  /* Darken header + arrow (inherits color) */
-  color: #222 !important;
-}
+[Walk on stage, smile, pause for a moment before starting.]
 
-/* Optional: make DataTables icons inherit header color */
-#PendingFinalApprovalTable thead th.sorting,
-#PendingFinalApprovalTable thead th.sorting_asc,
-#PendingFinalApprovalTable thead th.sorting_desc {
-  filter: brightness(0.4) contrast(1.3); /* makes gray icons darker */
-}
-</style>
+«“Success is not only about how far you’ve come, but also about remembering where you started.”»
+
+Good evening, everyone!
+
+And firstly, congratulations to all our graduates sitting here today.
+
+Today is obviously a special day for our interns who are making that transition from being interns to becoming full-time employees.
+
+But I have to admit—this panel is slightly personal for me as well.
+
+Because not too long ago, I was sitting exactly where they are today.
+
+My own journey here started through Innoversite, with a 24-hour hackathon.
+
+And anyone who has participated in a 24-hour hackathon knows that after a certain point, you’re not really sure whether your solution is getting better…
+
+or the lack of sleep is simply making it look better.
+
+[Pause for laughter.]
+
+That hackathon eventually led to a six-month internship, and the internship led to a full-time role.
+
+And today, almost a year later, I get to sit on the other side and moderate a conversation with people who have just completed a very similar journey.
+
+So I promise this is not going to be an interview.
+
+You’ve already cleared enough of those.
+
+Today, I want to talk about the things that usually don’t make it onto a résumé—
+
+the nervous first days, the mistakes, the people who helped, the moments when something finally clicked, and those experiences where you suddenly realized:
+
+“Okay… college definitely did not prepare me for this.”
+
+So let's hear the story behind the conversion, and not just the conversion itself.
+
+---
+
+1. LAXMI — THE HACKATHON
+
+Laxmi, I think it’s fitting that we start right where the journey started for many of us—the hackathon.
+
+I remember during my Innoversite experience, those 24 hours felt like a strange combination of coding competition, brainstorming session, caffeine experiment and survival challenge.
+
+So take us back to your experience.
+
+What was the hackathon like for you?
+
+And more importantly, was there any particular moment during those 24 hours when you thought:
+
+“Okay, this might actually work!”
+
+—or perhaps—
+
+“What have I gotten myself into?”
+
+[After her answer]
+
+That’s the interesting thing about hackathons.
+
+We usually remember the final presentation and the result, but behind that are probably 20 ideas that didn't work, three last-minute fixes and at least one moment of complete panic.
+
+QUICK AUDIENCE CONNECT
+
+Actually, quick show of hands—
+
+How many people here have participated in a hackathon before?
+
+[Look around / acknowledge hands.]
+
+And keep your hands up if at some point during that hackathon you seriously questioned your life choices.
+
+[Pause for reaction.]
+
+There we go. Now we have an honest audience.
+
+---
+
+2. DEEPSHITHA — CAMPUS TO CORPORATE: ONBOARDING & TRAINING
+
+The hackathon may get you through the door, but then comes a completely different challenge:
+
+Campus to Corporate.
+
+Deepshitha, when you're in college, you know your professors, your timetable, your exams, and roughly what is expected from you.
+
+Then suddenly you enter corporate life and start hearing terms, acronyms, processes and meeting invitations that you have absolutely no context for.
+
+And for the first few weeks, sometimes you just nod confidently and make a mental note:
+
+“I need to Google this later.”
+
+[Pause.]
+
+So, how was that transition for you?
+
+How did the onboarding and training help you move from being a student to actually feeling comfortable in a professional environment?
+
+OPTIONAL FOLLOW-UP
+
+And do you remember the point when you stopped feeling like:
+
+“I'm the new intern here…”
+
+and started feeling:
+
+“Okay, I actually belong here and know what I'm doing.”
+
+---
+
+3. LAXMI — CAMPUS TO CORPORATE
+
+Laxmi, let me bring you back in here.
+
+Deepshitha has spoken about onboarding and training, but everyone experiences this transition differently.
+
+So from your perspective:
+
+What was the biggest adjustment you personally had to make while moving from campus life to corporate life?
+
+Was it communication? Ownership? Time management? Working with different people?
+
+Or simply realizing that unlike college…
+
+there is no professor announcing that the deadline has been extended by two days?
+
+[Pause for laughter.]
+
+AUDIENCE MOMENT
+
+Actually, I want the graduates in the audience to think about this too.
+
+Think back to your first week here.
+
+Now compare that person with who you are today.
+
+Same person…
+
+probably much better Outlook calendar management.
+
+[Smile.]
+
+That difference is probably one of the best ways to measure what this internship has actually taught you.
+
+---
+
+4. SHRAVYA — EYE-OPENING MOMENTS ABOUT IT
+
+Now let's talk about something I find particularly interesting.
+
+We study technology for years before entering the industry.
+
+But understanding technology academically and seeing how technology works inside a large organization can be two very different things.
+
+Shravya, during your internship, what was your biggest eye-opening moment about working in IT?
+
+Was there something you encountered where you thought:
+
+“Wow, I had absolutely no idea this is how things work in the real world.”
+
+AFTER HER ANSWER
+
+I think that's something almost everyone in technology eventually discovers.
+
+In college:
+
+“It works on my laptop.”
+
+Sounds like a perfectly reasonable argument.
+
+In production…
+
+not quite as convincing.
+
+[Pause for laughter.]
+
+And you start realizing that writing the code is sometimes only one part of solving the actual problem.
+
+---
+
+5. BHAVYA — SUPPORT FROM MANAGER
+
+One thing we haven't spoken about yet is the people who make this transition easier.
+
+Because internships aren't shaped only by projects or technology.
+
+Very often, they're shaped by people.
+
+Bhavya, I'd like to talk about the support you received from your manager.
+
+When you're an intern, asking questions can sometimes be intimidating.
+
+You don't want to ask too many questions because you want to look independent…
+
+but you also don't want to ask too few questions and spend three hours confidently solving the wrong problem.
+
+[Smile.]
+
+So how did the support and guidance from your manager help you during your internship?
+
+And was there any particular advice or feedback that has stayed with you?
+
+AUDIENCE / MANAGER ACKNOWLEDGEMENT
+
+And I think this is also a good moment to acknowledge something.
+
+Behind many of the graduates sitting here today, there are managers, mentors, buddies and teammates who took time to answer questions, review work, give feedback and sometimes simply say:
+
+“Don't worry. Try again.”
+
+So I think they deserve a round of applause as well.
+
+[Gesture toward managers/mentors and lead applause.]
+
+---
+
+6. SHRAVYA — CROSS-FUNCTIONAL CONNECTIONS
+
+Shravya, coming back to you—
+
+One thing that changes very quickly after college is the kind of people you work with.
+
+In college, most of the people around you are studying roughly the same subjects and are at roughly the same stage.
+
+At work, suddenly you're collaborating with developers, business teams, managers, support teams, people from different functions—and sometimes different countries and cultures.
+
+So how important were those cross-functional connections during your internship?
+
+Did interacting with people outside your immediate team change the way you understood either the organization or your own role?
+
+FOLLOW-UP / QUIRK
+
+And most importantly—
+
+how long did it take before you realized that half of corporate communication is figuring out who exactly needs to be CC'd?
+
+[Pause.]
+
+I'm still learning that one.
+
+---
+
+7. BHAVYA — REAL-WORLD PROJECTS
+
+And Bhavya, let's finish the main discussion with perhaps the biggest difference between college and corporate life:
+
+Real-world projects.
+
+In college, if your project doesn't work, worst case scenario…
+
+you lose some marks.
+
+In the corporate world, suddenly there are users, deadlines, dependencies and actual consequences attached to what you're building.
+
+So tell us about the experience of working on a real-world project.
+
+What changed when you realized:
+
+“Someone is actually going to use what I'm working on”?
+
+Did that change the way you approached responsibility, quality or problem-solving?
+
+---
+
+RAPID-FIRE ROUND
+
+Before we finish, I think we've been far too serious.
+
+So let's do a quick rapid-fire round.
+
+No corporate answers allowed.
+
+I'll ask each of you one. First thing that comes to mind.
+
+One word to describe your internship?
+
+One thing you wish somebody had told you on Day 1?
+
+One skill you discovered was far more important than you expected?
+
+One person—or one type of person—you would definitely recommend every intern connects with?
+
+And finally:
+
+If you could send one WhatsApp message to yourself on the night before your internship started, what would it say?
+
+[Let the answers breathe—this section can generate some of the best spontaneous moments.]
+
+---
+
+AUDIENCE ENGAGEMENT
+
+Before we close, I want to involve everyone here.
+
+Especially those who have completed their internship journey today.
+
+I want you to think of one person who made your internship easier.
+
+It could be your manager.
+
+Your mentor.
+
+Your buddy.
+
+A teammate.
+
+Or maybe another intern who was equally confused as you were during Week 1.
+
+[Pause.]
+
+You don't have to say their name out loud.
+
+But sometime after this ceremony, go and tell them.
+
+Because while today celebrates your achievement, journeys like these are very rarely completed alone.
+
+---
+
+CLOSING
+
+I want to end with something that I think connects my journey with theirs.
+
+A year ago, I was on their side of this journey.
+
+Today, I'm moderating their graduation panel.
+
+And perhaps a year from now, one of them will be standing here having this conversation with the next batch.
+
+That's what makes today interesting.
+
+Graduation sounds like an ending.
+
+But professionally, this is almost exactly the opposite.
+
+The word “intern” disappears from your designation.
+
+But hopefully, the curiosity that came with being an intern doesn't disappear with it.
+
+Keep asking questions.
+
+Keep volunteering for things you don't completely know how to do yet.
+
+Keep making connections outside your comfort zone.
+
+And keep that little bit of nervousness you had on your first day—because it usually means you're still doing something that challenges you.
+
+To Laxmi, Deepshitha, Shravya and Bhavya, congratulations on completing this chapter and beginning the next one.
+
+And to everyone graduating today—
+
+Welcome to the other side.
+
+Trust me…
+
+the learning has only just begun.
+
+Thank you, everyone.
+
+[Applause / transition to next segment.]
