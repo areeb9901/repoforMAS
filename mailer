@@ -1,71 +1,165 @@
-I have one remaining issue in the Agreement Retriever filter screen related to the new filter:
+Grad Day Panel Discussion Script
+OPENING
+Good evening, everyone!
+And first of all, congratulations to all our graduates here today.
+I have to admit, this panel feels a little personal for me.
+Because not too long ago, I was sitting exactly where they are today.
+My own journey here started through Innoversite, with a 24-hour hackathon, which eventually led to a six-month internship and then to a full-time role.
+And anyone who has participated in a 24-hour hackathon knows that somewhere around Hour 18, you stop knowing whether your solution is actually getting better…
+or whether the lack of sleep is simply making it look better.
 
-Has Derivative MA linked to Execution MA (ISDA/CDEA)
+So being here today, almost a year later, moderating a conversation with people who have lived a very similar journey feels a little like life coming full circle.
+And that’s really what I want this conversation to be about.
+Not just the conversion from intern to full-time employee, but everything that happened in between—
+the challenges, the learning, the people, the moments of realization, and perhaps a few things college never quite prepared us for.
+So rather than making this feel like an interview, let’s just have a conversation.
+And I think there’s only one place we can really begin…
+right at the beginning.
+________________________________________
+1. THE HACKATHON — LAXMI
+For all of us here, that journey started with a hackathon.
+Twenty-four hours, one problem statement, a team of people who may barely know each other, and somehow by the end of it you’re expected to have something working.
+So I’ll throw this one open first—
+Who would like to take us back to that experience and tell us what the hackathon actually taught you beyond just the technical side of it?
+[Look across the panel. Allow a tiny pause. Laxmi takes it.]
+AFTER LAXMI’S ANSWER
+[Her answer ends on collective accountability / achieving the objective as a team.]
+That’s a really interesting distinction—
+not just asking “Have I finished my part?”, but asking “Have we actually achieved what we set out to do?”
+And I think anyone who has worked on integration knows that this is usually where teamwork becomes very real.
+Everyone’s individual component can be working perfectly…
+and somehow when you put everything together—
+nothing works.
+And perhaps that is actually a very early introduction to corporate life as well.
+Because once the hackathon ends and you actually enter the organisation, the challenge changes completely.
+________________________________________
+2. CAMPUS TO CORPORATE — DEEPSHITHA
+One day you’re in college, surrounded by people and systems you’re completely familiar with.
+And then suddenly you’re entering a global organisation—with new people, new processes, new terminology, training sessions, meetings…
+and probably a lot of acronyms you pretend to understand initially.
 
-This filter has three radio options:
+Deepshitha, let me bring you in here.
+For you, how did the onboarding and initial training help make that transition from campus to corporate easier?
+AFTER DEEPSHITHA’S ANSWER
+I like the point you made about the transition being more than just technical training.
+Because when you’re entering an organisation this large, you’re also learning how the organisation works, how people interact, and where you fit into that larger picture.
+And meeting people coming from different universities probably helps too.
+Because very quickly you realise—
+everyone is new, everyone is figuring things out, and you’re probably not the only person who doesn’t understand that acronym.
+But getting comfortable in the environment is one part of the transition.
+The other is changing the way you actually approach your work.
+________________________________________
+3. CAMPUS TO CORPORATE — LAXMI
+Laxmi, coming back to you—
+you’ve spoken about teamwork during the hackathon.
+Once you entered the corporate environment, what changed in the way you personally approached work compared with college?
+AFTER LAXMI’S ANSWER
+I think the phrase you used there—“from waiting for direction to taking ownership”—really captures the transition well.
+In college, we’re often rewarded for giving the correct answer to a clearly defined question.
+At work, sometimes figuring out what the right question is becomes part of the job itself.
+And there’s also that shift you mentioned from completing a task to being accountable for the outcome.
+Because unfortunately—
+“But I completed my part”
+doesn’t always make the problem disappear.
+And that brings us nicely to another realization many of us have once we actually enter the technology industry.
+________________________________________
+4. SHRAVYA — EYE-OPENING MOMENTS ABOUT IT
+Throughout college, a lot of our understanding of technology revolves around building things—
+writing code, creating applications, implementing features.
+But once you start working in a real organisation, you discover this entire world that exists after the application has been built.
+So what was the biggest eye-opening moment for you about working in IT during your internship?
+Shravya, would you like to take answer that :
+AFTER SHRAVYA’S ANSWER
+That’s such an important perspective.
+Because college teaches us a lot about building technology.
+But production teaches you about responsibility for technology.
+Servers, networking, monitoring, incidents, impact analysis, escalation—
+suddenly there is an entire ecosystem behind that application we casually ran on localhost in college.
+And perhaps the biggest change is exactly what you said:
+in production, you can’t really follow the strategy of—
+“Let’s change it and see what happens.”
+That sentence becomes significantly less exciting when real users are involved.
+And Shravya also mentioned learning by watching experienced engineers around her.
+Which leads perfectly into something that’s probably been critical for every person on this panel—
+the people who guide you while you’re learning.
+________________________________________
+5. BHAVYA — SUPPORT FROM MANAGERS & MENTORS
+When you’re starting your career, there are naturally going to be moments when you don’t know the answer.
+And there’s always that internal debate—
+“Should I ask?”
+versus
+“Can I somehow figure this out myself without anyone discovering that I have no idea what’s happening?”
+How important was the support from your managers and mentors during your internship and after becoming an FTE?
 
-- Yes
-- No
-- Either
-
-The filtering logic itself is working correctly. If I select Yes or No, the expected MAs are retrieved properly.
-
-However, there are two UI/state issues that need to be fixed.
-
-1. Default selection should be "Either"
-
-When the Agreement Retriever screen is opened for the first time, the existing filters under the Miscellaneous section have Either selected by default, and the corresponding radio button is visibly filled.
-
-The new filter:
-
-Has Derivative MA linked to Execution MA (ISDA/CDEA)
-
-should behave in exactly the same way.
-
-Currently, when the screen is opened initially, all three radio buttons — Yes, No, and Either — appear unselected.
-
-Expected behaviour:
-
-On the initial opening of the Agreement Retriever screen:
-
-"Has Derivative MA linked to Execution MA (ISDA/CDEA) = Either"
-
-and the Either radio button should be visibly selected/filled.
-
-2. Selected value should persist when reopening the filter panel
-
-Currently, if I select:
-
-"Has Derivative MA linked to Execution MA (ISDA/CDEA) = Yes"
-
-and perform the search, the search results are correct.
-
-However, when I open the filter screen/panel again, all three radio buttons for this filter appear empty.
-
-The same issue occurs when No is selected.
-
-Expected behaviour:
-
-The filter UI should retain and display the currently applied value.
-
-For example:
-
-- If the user selected Yes, reopening the filter screen should show the Yes radio button selected.
-- If the user selected No, reopening the filter screen should show the No radio button selected.
-- If the user selected Either, reopening the filter screen should show the Either radio button selected.
-
-Important
-
-Please compare the implementation of this new filter with the existing Yes / No / Either radio filters under the Miscellaneous section and follow the same mechanism for:
-
-1. Default initialization
-2. Request/filter parameter binding
-3. Radio button "checked" state
-4. Retaining the selected value after search/filter submission
-5. Reset/default-filter behaviour
-
-Do not change the existing search/filtering logic because Yes and No are already retrieving the correct MAs.
-
-The required fix is specifically for the UI selection state and persistence of the radio buttons.
-
-Please identify the relevant Velocity/VM, Java/filter model/action, JavaScript, or request parameter handling involved and implement the fix consistently with the existing Miscellaneous filters.
+AFTER BHAVYA’S ANSWER
+I think there’s something very valuable in what you said—
+that they didn’t simply give you the answer.
+They gave you enough direction to help you find the answer yourself.
+And that’s probably one of the best forms of mentorship because eventually the goal isn’t to create someone who always knows whom to ask.
+It’s to create someone who becomes confident enough to take ownership herself.
+And since we’re talking about the people we learn from, that learning isn’t always restricted to our immediate teams either.
+________________________________________
+6. SHRAVYA — CROSS-FUNCTIONAL CONNECTS / LEARNING FROM LEADERS
+You all had  several opportunities during your internship to attend town halls, leadership sessions and interact with people beyond your immediate team.
+When you’re a fresher in a huge organisation, it’s very easy to feel like you’re one small person somewhere inside a very large machine.
+So how did those interactions with leaders and people across the organisation influence your perspective?
+Shravya would you like to answer that:
+AFTER SHRAVYA’S ANSWER
+I really like that point about the organisation becoming more approachable.
+When you’re new, you sometimes look at someone who’s been in the industry for 15 or 20 years and imagine that they somehow started their career already knowing everything.
+Then you hear their journeys and realise—
+they also had a first day.
+They also made mistakes.
+They also had things they didn’t understand.
+They’ve just had a little more time to figure them out.
+And I think that’s reassuring for anyone who’s just starting out.
+Now we’ve spoken about the hackathon, training, mentorship and learning from others.
+But eventually, all of that has to come together when you’re trusted with something real.
+________________________________________
+7. BHAVYA — REAL-WORLD PROJECTS
+ Let’s close the main discussion with that.
+In college projects and hackathons, there’s usually a very clear beginning and end.
+You build something, present it, submit it…
+and then, for better or worse, you’re done with it.
+But real-world projects aren’t quite like that.
+So what changed for you when you started working on projects that actual teams and users depend upon?
+AFTER BHAVYA’S ANSWER
+I think that really completes the journey we’ve been talking about.
+You begin by asking:
+“Can I build this?”
+And gradually the questions become:
+“Why are we building this?”
+“What will this affect?”
+“Who will depend on it?”
+and
+“Will the next person who has to maintain this hate me?”
+That shift—from simply making something work to understanding its purpose, impact and long-term responsibility—is probably one of the clearest signs of moving from a student mindset into a professional one.
+________________________________________
+SHORT ACKNOWLEDGEMENT BEFORE CLOSING
+And before we conclude, there’s one common thread I’ve heard throughout almost every answer today.
+Whether it was a teammate during a hackathon, friends during training, an experienced engineer during an incident, a manager, a mentor or a leader—
+none of these journeys happen completely alone.
+So to all the managers, mentors, buddies and teammates who helped this batch through their journey—
+I think they deserve a round of applause as well.
+________________________________________
+CLOSING
+I want to end with something that I think connects my journey with theirs.
+A year ago, I was on their side of this journey.
+Today, I’m moderating their graduation panel.
+And perhaps a year from now, one of them will be standing here having this conversation with the next batch.
+And that’s what makes today interesting.
+Graduation sounds like an ending.
+But professionally, this is almost exactly the opposite.
+The word “intern” disappears from your designation.
+But hopefully, the curiosity that came with being an intern doesn’t disappear with it.
+Keep asking questions.
+Keep volunteering for things you don’t completely know how to do yet.
+Keep learning from the people around you.
+And keep that little bit of nervousness you had on your first day—
+because it usually means you’re still doing something that challenges you.
+To Laxmi, Deepshitha, Shravya and Bhavya, congratulations on completing this chapter and beginning the next one.
+And to everyone graduating today—
+welcome to the other side.
+Trust me…
+the learning has only just begun.
+Thank you, everyone.
