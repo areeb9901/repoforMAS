@@ -1,16 +1,12 @@
-Hi Team,
+Hi [Name],
 
-We have reviewed the SQL error encountered while approving the collateral document for Master Agreement 513871.
+Thank you for highlighting this.
 
-The issue is occurring because the value being inserted into the "COMMENTS" column of "LDM_TB_COLL_DOC_STATUS" is 262 bytes, whereas the column is currently defined as "VARCHAR2(250 BYTE)".
+I am applying the requested change to move the new column so that the five columns introduced in R34 remain grouped together in the Excel export.
 
-We encountered a similar issue previously for the Executed Documentation functionality under BEADEV-12833.
+However, I believe this should not be classified as a bug. In Jira BEADEV-13304, the specific position of the newly added column in the Excel export was not defined as part of the requirement. The current positioning therefore does not deviate from the agreed requirement.
 
-To unblock the user, we propose increasing the size of the "COMMENTS" column from 250 bytes to 500 bytes.
-
-Before proceeding with the database change, I would like to seek confirmation/approval from the BA team. Once approved, I can provide the required DB script for implementation.
-
-Please confirm if we can proceed with this change.
+Could you please remove the Bug classification for this Jira? We will proceed with the requested column repositioning as an adjustment.
 
 Best regards,
 Areeb Faiz
