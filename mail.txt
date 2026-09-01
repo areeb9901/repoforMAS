@@ -1,12 +1,10 @@
-Hi [Name],
+Hi Eva,
 
-Thank you for highlighting this.
+As discussed regarding Jira BEADEV-13655, you will check with the users and confirm the list of users who belong to Legal and are currently set up as Negotiators.
 
-I am applying the requested change to move the new column so that the five columns introduced in R34 remain grouped together in the Excel export.
+Once we receive this confirmation, we will proceed further with the Jira accordingly.
 
-However, I believe this should not be classified as a bug. In Jira BEADEV-13304, the specific position of the newly added column in the Excel export was not defined as part of the requirement. The current positioning therefore does not deviate from the agreed requirement.
-
-Could you please remove the Bug classification for this Jira? We will proceed with the requested column repositioning as an adjustment.
+Please let us know once the validation is completed.
 
 Best regards,
 Areeb Faiz
