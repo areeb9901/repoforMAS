@@ -1,10 +1,165 @@
-Hi Eva,
+Hello everyone,
 
-As discussed regarding Jira BEADEV-13655, you will check with the users and confirm the list of users who belong to Legal and are currently set up as Negotiators.
+I’m Areeb, from Manipal University Jaipur, 2025 batch.
 
-Once we receive this confirmation, we will proceed further with the Jira accordingly.
+My journey with BNP Paribas actually started exactly where many of you are standing right now — with the hackathon.
 
-Please let us know once the validation is completed.
+That hackathon led to a six-month internship, and that internship eventually converted into the full-time role that I’m currently in.
 
-Best regards,
-Areeb Faiz
+So when I look at all of you today, I can very easily relate to what you might be feeling right now.
+
+Some of you are probably excited.
+
+Some of you are probably a little nervous.
+
+And some of you are probably thinking:
+
+“Okay… but what exactly is going to happen for 24 hours?”
+
+And trust me, I had the same questions.
+
+The good news is — you are going to have a blast.
+
+Yes, it is going to be intense.
+
+Yes, there will probably be a point somewhere in the night when your code stops making sense.
+
+And yes, at some point, coffee might start feeling less like a beverage and more like a project dependency.
+
+But that is also what makes the whole experience memorable.
+
+For me, the hackathon was much more than just building a solution in 24 hours.
+
+It was one of the first times where everything we had learned in college suddenly had to come together.
+
+You have to understand a problem quickly, discuss ideas with your team, decide what is actually feasible, divide the work, build something, integrate everything, fix whatever inevitably breaks, and then finally present it.
+
+And that entire experience teaches you a lot — not just technically, but also about teamwork, communication, decision-making, and working under pressure.
+
+Since I have been on the participant side myself, I also want to share a few practical things that I genuinely wish participants think about before coming.
+
+The first one is very simple:
+
+**Please come rested.**
+
+If you are travelling from far away, especially if your commute to Bengaluru is going to take three hours or more, I would genuinely recommend coming a day earlier if that is possible for you.
+
+Because although we casually call it a “24-hour hackathon”, your actual day is much longer than that.
+
+You have registration, settling in, the hackathon itself, final preparation and then presentations.
+
+So realistically, you could easily be active for more than 30 hours.
+
+And you definitely don’t want your biggest technical challenge at Hour 20 to be keeping your eyes open.
+
+So please get some proper sleep beforehand.
+
+Second — and this is a very important one —
+
+you do not need to arrive after having a huge meal as if you are preparing for hibernation.
+
+The company takes very good care of you.
+
+Food, snacks, caffeine — all of that is properly arranged.
+
+So your survival requirements are covered.
+
+You just need to focus on surviving your own bugs.
+
+Another thing I would strongly recommend:
+
+**please make sure your laptop is working properly.**
+
+Check your charger.
+
+Check your development environment.
+
+Make sure your software is installed.
+
+Make sure you can run the things you normally work with.
+
+Because for those 24 hours, your laptop is pretty much going to be your best friend.
+
+And if it decides to update itself in the middle of the hackathon…
+
+that friendship can become complicated very quickly.
+
+Now, I know one common question everyone has before a hackathon is:
+
+**“What skills should I prepare?”**
+
+And my answer would be — don’t overcomplicate it.
+
+Whatever you have learned during your four years of college, this is your chance to actually put it into practice.
+
+If you know web development, use it.
+
+If you have worked with machine learning algorithms, use them where they make sense.
+
+If someone in your team is strong in frontend, someone is comfortable with backend, someone understands data or ML — combine those strengths.
+
+The hackathon is not necessarily about knowing every technology.
+
+It is about knowing how to use what you already know to solve a problem.
+
+If there is one thing you want to learn quickly before coming, I would recommend understanding the basics of **deploying an application**.
+
+Because sometimes teams build something really good, but the final few hours become stressful because they suddenly realise they also need to show it working properly.
+
+Even a basic understanding of deployment can make your life much easier.
+
+And one final piece of advice from my side:
+
+**don’t try to build everything.**
+
+A simple idea that works properly and solves the problem is far better than an extremely ambitious idea where only 40% of it works by presentation time.
+
+Prioritise.
+
+Build your core solution first.
+
+Then, if you have time, add the fancy things.
+
+And throughout the hackathon, keep talking to your teammates.
+
+Because one of the biggest mistakes you can make is four people working brilliantly for ten hours…
+
+only to realise at the end that none of their components work together.
+
+Most importantly, don’t put too much pressure on yourself.
+
+Of course, everyone wants to perform well, and that is completely natural.
+
+But don't spend those 24 hours only thinking about the outcome.
+
+Enjoy the experience.
+
+Talk to people.
+
+Experiment.
+
+Build something you’re excited about.
+
+Make mistakes.
+
+Fix them.
+
+And learn as much as you can.
+
+Because I can tell you from my own experience — you never really know where these 24 hours might lead.
+
+For me, they led to an internship, and eventually to the full-time role I’m in today.
+
+So come with curiosity, come with energy, and come ready to innovate.
+
+Don’t stress too much.
+
+Just give it your best shot.
+
+And I can assure you —
+
+**you’re going to have a blast.**
+
+All the very best to each one of you, and I hope to see some amazing ideas coming out of this edition of the hackathon.
+
+Thank you, everyone.
