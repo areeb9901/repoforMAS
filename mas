@@ -1,43 +1,190 @@
-Mid-Year Review
+INNOVERSITE 3.0 — EMCEE AUDITION SCRIPT
+1. OPENING SEGMENT
+[Walk to centre. Smile. Don’t immediately start speaking. Look around the room for 2–3 seconds.]
+There are some rooms you walk into and forget.
+And then there are some rooms where one idea, one team, and maybe one slightly sleep-deprived night can change the direction of your life.
+For me...
+Innoversite was that room.
+Good morning, everyone!
+[If response is average]
+Okay...
+That sounded less like a hackathon and more like an 8 AM college lecture.
+We can definitely do better than that.
+Good morning, Innoversite!
+[Wait for response.]
+Much better!
+My name is Areeb, and this event is particularly special for me because my journey with BNP Paribas actually began right here—with Innoversite.
+A hackathon led to a six-month internship...
+the internship led to a full-time role...
+and somehow, I've now gone from standing here with a laptop and questionable confidence...
+to standing here with a microphone.
+So yes, be careful.
+These 24 hours can have consequences.
+[Pause for laughter.]
+And welcome to Innoversite 3.0 — the Universe of Innovation!
+Now, I know we have participants joining us from different colleges and different parts of the country.
+And for everyone who has travelled to Bengaluru for this—
+first of all, congratulations.
+You've already completed your first challenge.
+You reached the venue through Bengaluru traffic.
+[Pause.]
+Christopher Nolan gave us The Odyssey this year...
+Bengaluru gives us one every time we have to travel 12 kilometres.
+[Pause for laughter.]
+But you made it.
+And now, over the next 24 hours, this room is going to be filled with ideas, code, conversations, caffeine...
+and at some point around 3 AM—
+someone confidently saying:
+“Guys, I think I know what the issue is.”
+They usually don't.
+But we support the confidence.
+[Smile.]
+On a more serious note, every one of you has earned the opportunity to be here.
+So don't spend today wondering whether everybody else in this room knows more than you do.
+Somebody will be better at frontend.
+Somebody will know ML better.
+Somebody will be a brilliant presenter.
+And somebody's greatest contribution at 4 AM might simply be saying:
+“Guys... have we tried restarting it?”
+Every team needs that person too.
+Innoversite isn't about knowing everything.
+It's about bringing what you know to the table, combining it with what the person next to you knows, and creating something neither of you could have created alone.
+So for the next 24 hours—
+be curious.
+Be ambitious.
+Ask questions.
+Break things...
+preferably only in your development environment.
+And most importantly—
+have fun doing it.
+Welcome once again to Innoversite 3.0!
+________________________________________
+2. ICE-BREAKING SEGMENT
+[Come forward slightly / more conversational tone.]
+Before we get serious, let's find out who exactly we've brought into this room.
+I'm going to make a few statements.
+If it applies to you, I want you to make some noise.
+Simple?
+Let's test it.
+ROUND 1
+How many of you are not from Bengaluru?
+[Reaction.]
+Welcome!
+By tomorrow, you'll either leave with a prototype...
+or an extremely strong opinion about Bengaluru traffic.
+Possibly both.
+ROUND 2
+How many of you have already discussed your hackathon idea with your team?
+[Reaction.]
+Nice.
+And how many teams have already changed that idea...
+more than three times?
+[Reaction/laughter.]
+There we go.
+That's not confusion.
+That's called agile development.
+Welcome to corporate life.
+ROUND 3
+Now I need complete honesty.
+How many of you have said this sentence at least once during a college project:
+“Bro, it was working yesterday.”
+[Hands/reaction.]
+Perfect.
+These are our engineers.
+FINAL ICE-BREAKER
+Alright, one last thing.
+Turn to somebody sitting near you who is not from your team.
+You have five seconds.
+Tell them your name, your college, and the one skill you are betting on during this hackathon.
+Frontend, backend, ML, design, presenting, debugging—anything.
+Go!
+[Give them 15–20 seconds. Let the noise build.]
+Alright, alright!
+Hopefully you've just met either—
+a future friend,
+a future colleague,
+or the person you'll be desperately looking for at 2 AM because they said they knew Docker.
+[Pause.]
+And that's exactly the point.
+Don't spend these 24 hours only talking to your own team.
+Look around.
+There is an incredible amount of talent in this room.
+Meet people. Learn from them.
+Because the code might live in your repository...
+but some of the connections you make here can stay with you much longer.
 
-Achievements
 
-- Developed and implemented shell scripts for the automatic restart of all Beagle, Beagle Support, and Beagle API non-production servers. This eliminated the need for manual server restarts after the weekly Monday patching activity and ensured environment availability even when Monday was a holiday in India.
 
-- Successfully completed the IV2 migration from IV1 independently, including planning, execution, validation, and coordination with relevant teams.
 
-- Provided knowledge transfer (KT) sessions to the new intern, Rahim, covering the Beagle application, support activities, and technical topics within my area of expertise.
 
-- Delivered all assigned Jira stories and production support tasks within the expected timelines while maintaining quality.
 
-- Worked on a critical production issue related to downstream email delivery and collaborated with the APS team to identify the actual root cause, contributing to the resolution of the issue.
 
-- Participated in the CSR tree plantation initiative organized by the company.
-
-- Created and maintained an internal team holiday calendar to improve visibility of holidays and resource availability, addressing a gap that previously existed.
-
-- Actively supported production incidents, environment-related activities, deployments, and release management whenever required.
-
-Learnings
-
-- Started learning Angular 18 as part of the Beagle migration initiative and developed a few application screens to gain hands-on experience with the framework.
-
-- Through production issue investigations and the IV2 migration, gained experience in working closely with onshore teams, which improved my confidence in independently handling complex technical tasks.
-
-- Improved my understanding of the Beagle application architecture, deployment processes, server administration, and production support activities.
-
-Areas for Improvement
-
-- Continue enhancing my Angular development skills to contribute more effectively to the Beagle migration project.
-
-- Learn Spring Boot and actively contribute to backend development as part of the Beagle modernization initiative.
-
-- Deepen my understanding of system design and application architecture to independently handle larger and more complex features.
-
-Expectations
-
-- I am interested in taking up more analytical and problem-solving responsibilities, particularly roles involving AI-assisted development, automation, and technical analysis.
-
-- I would like to gain greater exposure to the functional aspects of the Beagle application to better understand business requirements and deliver more effective technical solutions.
-
-- I look forward to working on more end-to-end features and challenging assignments that help me grow both technically and functionally.
+4. CLOSING SEGMENT — END OF THE HACKATHON
+[Much calmer than the opening. Let the room settle before beginning.]
+Twenty-four hours ago...
+this room was full of ideas.
+Today, it's full of things that actually exist.
+Prototypes.
+Presentations.
+Lessons.
+New friendships.
+A worrying amount of caffeine...
+and probably a few Git repositories nobody wants to open again for at least a week.
+[Pause.]
+But look at what you managed to do.
+In an incredibly short span of time, you took a problem—
+something that initially existed only as a thought—
+and tried to turn it into something real.
+Some things worked.
+Some probably didn't.
+Some of you changed your approach halfway through.
+Some of you discovered bugs five minutes before presenting.
+And I'm reasonably certain at least one team experienced the five stages of grief during integration.
+[Smile.]
+But that's a hackathon.
+The objective was never to spend 24 hours proving that you already know everything.
+It was to discover what you can do when you don't.
+And I want to say something to you today not just as your host...
+but as someone who was once a participant at Innoversite.
+When I came here for my hackathon, I didn't know exactly where those 24 hours were going to take me.
+I was simply a student coming in to build something, compete, learn and hopefully do well.
+Those 24 hours eventually opened the door to my six-month internship at BNP Paribas.
+That internship became a full-time opportunity.
+And today, I'm standing here hosting the third edition of the same hackathon.
+So when I tell you that you don't always know where one opportunity might lead...
+I genuinely mean it.
+Now, of course, there will be winners today.
+And they absolutely deserve to celebrate.
+But whether your name gets announced or not, don't reduce everything you've done here to one result.
+Take the experience with you.
+Take the mistakes with you.
+Take the people you've met with you.
+Take that idea which didn't quite work and maybe build it again.
+Because innovation isn't really about having a perfect answer on your first attempt.
+It starts with being curious enough to ask—
+“What if?”
+And being brave enough to actually try.
+So Innoversite 3.0 may be coming to an end...
+but hopefully your odyssey is only just beginning.
+[Small pause.]
+And after the last 24 hours...
+I promise that is my final Odyssey reference.
+[Smile.]
+To every participant—
+thank you for bringing your ideas, your energy and your enthusiasm into this room.
+To the mentors, jury, organisers, volunteers and everyone working behind the scenes—
+a huge round of applause.
+[Lead applause.]
+And to all of you...
+go home.
+Get some sleep.
+And when you wake up...
+please check whether your code still works.
+[Pause for laughter.]
+It's been an absolute pleasure being your host.
+I'm Areeb...
+and this has been Innoversite 3.0 — the Universe of Innovation.
+Keep building.
+Keep questioning.
+Keep innovating.
+Thank you, everyone!
