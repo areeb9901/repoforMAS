@@ -1,8 +1,14 @@
-Subject: Clarification Required – Audit Entry Scenario
-Hi <BA Name>,
-We have received an issue raised by a user regarding an incorrect entry being captured in the audit after performing certain actions.
-To help us analyze and identify the root cause, could you please help us with the exact sequence of functional steps/actions performed that led to this audit entry being generated? This will allow us to try to replicate the scenario on our end and investigate further.
-Your assistance in outlining the series of actions from a functional perspective would be very helpful.
-Please let us know if any additional information is required from our side.
+Hi,
+
+We have reviewed the issue encountered while changing the Agreement Type for MA 31176 from ISDA 1992 to ISDA 2002.
+
+The error occurs because MA 31176 is currently linked to a Synthetic Repo Master Agreement through its "masterNettingId". As per the existing business validation, only specific agreement types are allowed to be linked to a Synthetic Repo Master Agreement.
+
+This validation and the corresponding error message were introduced as part of BEADEV-12748.
+
+Therefore, in order to change the Agreement Type of MA 31176 to ISDA 2002, the MA would first need to be unlinked from the Synthetic Repo Master Agreement. Once the linkage is removed, the Agreement Type change can be performed.
+
+Please let us know if you need any further clarification.
+
 Best regards,
 Areeb Faiz
