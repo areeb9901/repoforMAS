@@ -1,11 +1,1511 @@
-Hi Yoan,
+# INNOVERSITE 3.0 — FULL EMCEE SCRIPT
 
-The issue you highlighted is related to dates that already exist in the database. The current procedure is not designed to modify or synchronize historical amendment dates that are already stored.
+### The Universe of Innovation
 
-Existing dates within a group cannot be updated retrospectively by the procedure.
+---
 
-If, however, you update an amendment date in a group and that change is not propagated to the corresponding MAs within the group, then that would be considered a defect. The scenario you pointed out is different, as it concerns pre-existing data.
+# DAY 1 — PRE-OPENING / PARTICIPANTS SETTLING IN
 
-For example, in Group 127 that you mentioned, the amendment dates were already different before the procedure was executed.
+**[9:00 AM onwards. Ambient/upbeat music. Participants registering and having breakfast.]**
 
-Please let me know if you would like us to investigate any scenario where a newly updated amendment date is not being reflected across the group.
+**[Around 10:25 AM — soft announcement]**
+
+Good morning, everyone!
+
+We’ll be beginning the opening ceremony for **Innoversite 3.0** in just a few minutes.
+
+May I request everyone to gradually make their way towards the main area and take your seats.
+
+If you're still finishing breakfast, I completely understand.
+
+For the next 24 hours, **food and caffeine are going to be strategic resources**, so please plan accordingly.
+
+**[Smile.]**
+
+We begin shortly.
+
+---
+
+# 10:30 AM — GRAND OPENING
+
+**[Music fades. Walk to centre. Pause. Look around.]**
+
+There are some rooms you walk into and forget.
+
+And then there are some rooms where **one idea, one team and one slightly sleep-deprived night can change the direction of your life.**
+
+For me...
+
+**Innoversite was that room.**
+
+Good morning, everyone!
+
+**[Gauge response.]**
+
+Hmm.
+
+That sounded slightly less like a hackathon...
+
+and slightly more like an **8 AM college lecture.**
+
+Let's try that one more time.
+
+**GOOD MORNING, INNOVERSITE!**
+
+**[Let crowd respond.]**
+
+Now that's more like it!
+
+My name is **Areeb**, and it is an absolute pleasure to welcome all of you to the **third edition of Innoversite — the Universe of Innovation!**
+
+And this event is particularly special for me.
+
+Because a couple of years ago, I wasn't standing here with this microphone.
+
+I was sitting **where you are.**
+
+My own journey with BNP Paribas started through Innoversite.
+
+Those 24 hours led to a six-month internship...
+
+that internship eventually led to a full-time role...
+
+and somehow I've now gone from arriving here with a **laptop and questionable confidence**...
+
+to standing here hosting the next edition.
+
+So yes—
+
+be careful.
+
+**These 24 hours can have consequences.**
+
+**[Pause for laughter.]**
+
+---
+
+# QUICK CROWD WARM-UP
+
+Before we get into everything we have planned, I want to understand who exactly we've brought into this room today.
+
+Quick show of hands—
+
+**How many of you are participating in a 24-hour hackathon for the first time?**
+
+**[React.]**
+
+Fantastic.
+
+By tomorrow morning, you'll have new skills, new friends...
+
+and possibly a completely different relationship with caffeine.
+
+Now—
+
+**how many of you have already finalised what you're planning to build?**
+
+**[Hands.]**
+
+Excellent.
+
+Keep your hands up if you're **100% confident that idea will still look exactly the same six hours from now.**
+
+**[Pause as hands fall / laughter.]**
+
+Exactly.
+
+That's not indecision.
+
+We've entered the corporate world now.
+
+We call that...
+
+**iterative development.**
+
+**[Smile.]**
+
+Another honesty check.
+
+How many people here have ever fixed a bug...
+
+**without actually knowing what fixed it?**
+
+**[Hands / laughter.]**
+
+Beautiful.
+
+We clearly have experienced engineers in the room already.
+
+And one final one—
+
+who here has ever said:
+
+**“But it was working yesterday!”**
+
+**[Reaction.]**
+
+Perfect.
+
+You'll fit right in.
+
+---
+
+# BENGALURU CONNECT
+
+And I know a lot of you have travelled from different cities to be with us here in Bengaluru.
+
+So to everyone who has come from outside the city—
+
+welcome!
+
+You've already completed your **first challenge of the hackathon.**
+
+You successfully reached the venue through Bengaluru traffic.
+
+**[Pause.]**
+
+Christopher Nolan gave us *The Odyssey* this year...
+
+Bengaluru gives us one every time Maps says—
+
+**“12 kilometres — 58 minutes.”**
+
+**[Pause for laughter.]**
+
+But one advantage is that Bengaluru weather will convince you to forgive almost anything.
+
+Traffic for two hours?
+
+Step outside.
+
+Nice breeze.
+
+And suddenly you're like—
+
+**“Okay fine... we'll circle back on this tomorrow.”**
+
+Congratulations.
+
+You've already learnt your first corporate phrase.
+
+---
+
+# PURPOSE OF THE NEXT 24 HOURS
+
+Jokes apart, take a moment and look around this room.
+
+You're surrounded by students coming from different campuses, different disciplines, different strengths and different ways of thinking.
+
+Someone here will be excellent at frontend.
+
+Someone will understand machine learning.
+
+Someone will be brilliant at solving the business problem.
+
+Someone will be an excellent storyteller.
+
+And somewhere around 3 AM, someone's entire contribution may simply be:
+
+**“Guys... have we tried restarting it?”**
+
+Every team needs that person too.
+
+Because Innoversite isn't about knowing everything.
+
+It is about bringing **what you know**, combining it with what the people around you know, and creating something none of you could have created individually.
+
+So over the next 24 hours—
+
+be curious.
+
+Be ambitious.
+
+Ask questions.
+
+Experiment.
+
+Break things...
+
+**preferably only in your development environment.**
+
+And most importantly—
+
+enjoy the experience.
+
+---
+
+# SECURITY & SAFETY BRIEFING
+
+Now before innovation takes over the room, there is something that comes before everything else—
+
+**your safety and security.**
+
+Because the only things we would like crashing over the next 24 hours are—
+
+occasionally your code...
+
+and absolutely nothing else.
+
+**[Smile.]**
+
+To take us through the security and safety guidelines for the event, I would now like to invite **[NAME / SECURITY REPRESENTATIVE]**.
+
+**[Name], over to you.**
+
+---
+
+## AFTER SECURITY BRIEFING
+
+Thank you, **[Name]**, for taking us through that.
+
+Everyone, please keep those guidelines in mind throughout the event.
+
+A brilliant solution is great.
+
+A brilliant solution developed in a **safe and respectful environment** is much better.
+
+---
+
+# DOS, DON'TS & CODE OF CONDUCT
+
+**[Dos & Don'ts slide appears.]**
+
+Before we officially unleash all of you onto your laptops, a few important things.
+
+The detailed Dos and Don'ts are available on the screen, so I won't turn this into another Terms & Conditions page that everybody scrolls through and clicks **“I Agree.”**
+
+But there are a few things that genuinely matter.
+
+**[Deliver conversationally while following final event deck.]**
+
+Please treat every participant, volunteer, mentor and member of the organising team with respect.
+
+This is a collaborative environment, and there is zero tolerance for inappropriate, hostile or unwelcome behaviour.
+
+If you're unsure about anything at any point, please reach out to the volunteers, the helpdesk or your mentors.
+
+Medical assistance is also available should you require it.
+
+Please follow all the applicable hackathon rules communicated to you.
+
+And please be mindful that the venue is under CCTV surveillance and the event may be photographed and recorded in accordance with the notice displayed at the venue.
+
+**[Adjust exact wording once final legal/safety slide is received.]**
+
+---
+
+# FACILITIES / REST / FOOD
+
+Now for equally important survival information.
+
+Food and beverages will be available as per the schedule.
+
+We also have designated areas where you can take a break and rest.
+
+And yes—
+
+**sleep is allowed.**
+
+It is not mandatory to treat sleep deprivation as a technical skill.
+
+**[Smile.]**
+
+If you need assistance finding any of these facilities, reach out to one of our volunteers.
+
+---
+
+# THE MOST IMPORTANT RULE
+
+And now we come to perhaps the most important rule of Innoversite.
+
+In fact, I want you to tell me.
+
+What is the one thing you absolutely **must** do during the next 24 hours?
+
+**[Take random answers: code, innovate, win, sleep, etc.]**
+
+All valid.
+
+But there's one more.
+
+**HAVE FUN.**
+
+Because yes, this is a competition.
+
+But years later, you may not remember every line of code you wrote tonight.
+
+You **will** remember the people, the chaos, the conversations and that one bug that nearly destroyed your team at 4 AM.
+
+---
+
+# RECREATIONAL ACTIVITIES
+
+And to make sure the next 24 hours aren't *only* about your IDE, we have a few things planned for you as well.
+
+You will have recreational spaces available during the event, along with **[photo booth / doodle board / gaming zone — confirm from final deck].**
+
+And for our night owls, between **1:30 AM and 3:30 AM**, we also have our **Chess and Table Tennis tournaments.**
+
+Participation is completely voluntary.
+
+For the chess players—
+
+this is your opportunity to prove that after twelve hours of debugging, you can still think **five moves ahead.**
+
+And for Table Tennis—
+
+if the code refuses to cooperate, at least the ball might.
+
+Registration details will be shared with you during the event.
+
+---
+
+# ENTERTAINMENT TEASER
+
+And that's not all.
+
+At **10:30 tonight**, we're going to temporarily ask you to close—or at least minimise—the code and join us for an entertainment session.
+
+Consider it a scheduled system restart...
+
+**for the humans.**
+
+Details on that shortly.
+
+---
+
+# CURRENT / AI QUIRK
+
+And since this is a technology hackathon, we obviously have to acknowledge the elephant—or perhaps the chatbot—in the room.
+
+**AI.**
+
+Apparently, the latest conversation in the AI world is that perhaps AI itself needs to **slow down a little.**
+
+Unfortunately...
+
+**your submission deadline has received no such instruction.**
+
+**[Pause.]**
+
+So use technology intelligently, use whatever tools are permitted under the hackathon guidelines—
+
+but remember:
+
+AI might give you an answer.
+
+**You still have to understand the problem.**
+
+---
+
+# QUICK BNP PARIBAS QUIZ — MENTIMETER
+
+Alright.
+
+We've introduced Innoversite.
+
+We've discussed safety.
+
+We've discussed how you're going to survive tonight.
+
+So perhaps we should also introduce the organisation behind this entire experience.
+
+Some of you may have noticed the BNP Paribas content playing while you were arriving and registering.
+
+Which means...
+
+hopefully someone was paying attention.
+
+Because we're about to find out.
+
+Please take out your phones.
+
+**[QR / Mentimeter code appears.]**
+
+Scan the QR code displayed on the screen and join us on Mentimeter.
+
+We're going to have a quick quiz around **BNP Paribas and Innoversite.**
+
+And yes—
+
+there are prizes.
+
+Amazing how quickly that sentence makes people unlock their phones.
+
+**[Run quiz.]**
+
+### BETWEEN QUESTIONS — OPTIONAL BANTER
+
+Interesting.
+
+Some of you are answering very quickly.
+
+Either you did your research...
+
+or Gen-Z has officially evolved beyond reading the entire question.
+
+**[Later question.]**
+
+Okay, leaderboard check!
+
+We have some serious competition here.
+
+Remember these names.
+
+At 3 AM, these may also be the people you ask when your application stops deploying.
+
+### END OF QUIZ
+
+And there we have it!
+
+Congratulations to our top performers.
+
+A round of applause for them!
+
+And to everybody else—
+
+don't worry.
+
+This was merely the warm-up.
+
+You still have the next 24 hours to make your comeback arc.
+
+---
+
+# LEADERSHIP ADDRESS
+
+Now that we've tested the knowledge levels—and the Wi-Fi—
+
+it's time to move towards what Innoversite is really here to enable.
+
+Ideas need talented people.
+
+But talented people also need an environment where they're encouraged to experiment, collaborate and occasionally challenge the obvious answer.
+
+And programmes such as Innoversite become possible because there are leaders who believe in creating those opportunities.
+
+Today, we're privileged to have with us leaders who continuously champion innovation, technology and young talent at BNP Paribas.
+
+It is therefore my pleasure to invite **[LEADER NAME, DESIGNATION]** to address all of you and officially set the tone for the next 24 hours.
+
+**[Leader Name], may I invite you to the stage.**
+
+---
+
+## AFTER LEADERSHIP ADDRESS
+
+Thank you, **[Name]**, for those words and for setting the tone beautifully for what lies ahead.
+
+**[If multiple leaders speak, acknowledge all.]**
+
+A huge thank you to all our leaders for being here today and for continuing to support platforms like Innoversite.
+
+---
+
+# OFFICIAL HACKATHON COUNTDOWN
+
+Alright.
+
+You've heard from us.
+
+You've heard from our leaders.
+
+You've understood the rules.
+
+And I think there is only one thing left to do.
+
+Innoversite...
+
+**ARE YOU READY?**
+
+**[Reaction.]**
+
+I said—
+
+**ARE YOU READY TO BUILD?**
+
+**[Reaction.]**
+
+Then let's make it official.
+
+Everyone, count down with me.
+
+**10...
+9...
+8...
+7...
+6...
+5...
+4...
+3...
+2...
+1...**
+
+## LET INNOVERSITE 3.0 BEGIN!
+
+**[Music / graphics.]**
+
+---
+
+# 11:00 AM — USE CASE BRIEFING
+
+Before you sprint towards your laptops—
+
+one final instruction.
+
+Your teams and assigned use cases will be available on the **HackerEarth platform / as per the final instructions.**
+
+You will now move to your respective Use Case Briefing sessions, where the Use Case Owners will walk you through the problem statements and clarify your initial questions.
+
+The respective locations and Use Case Owners are displayed on screen.
+
+Our volunteers will help guide you.
+
+Once your briefing concludes, return to your assigned work areas.
+
+And remember—
+
+don't rush immediately into building.
+
+Understand the problem before falling in love with the solution.
+
+Your 24-hour clock is running.
+
+## Let the hacking begin!
+
+---
+
+# 1:00 PM — LUNCH ANNOUNCEMENT
+
+**[Brief announcement, do not interrupt heavily.]**
+
+Innovators, quick service announcement!
+
+Lunch is now open.
+
+I know some of you have entered that phase where you're telling your teammates—
+
+**“Just five more minutes.”**
+
+We both know those five minutes can become forty-five.
+
+Please take a break, have lunch and come back recharged.
+
+Your code needs CPU.
+
+**You need carbohydrates.**
+
+Lunch is available at **[location].**
+
+Enjoy your meal, and hacking resumes at **1:30 PM.**
+
+---
+
+# 4:00 PM — PRESENTATION SKILLS SESSION
+
+**[Participants gathered / attention called.]**
+
+Innovators, may I steal you away from your screens for just a little while?
+
+I know some of you are now deeply attached to your solutions.
+
+Some of you are excited.
+
+Some of you are debugging.
+
+And some teams have probably reached that beautiful stage of development called—
+
+**“Nobody touch anything. It's working.”**
+
+**[Pause.]**
+
+But I want you to think about tomorrow.
+
+You will have spent nearly 24 hours understanding your use case, designing, building and refining your solution.
+
+And then you'll have to do something surprisingly difficult.
+
+You'll have to explain all of that...
+
+**in just a few minutes.**
+
+Because building a great solution is one part of the challenge.
+
+Communicating it with clarity and impact is the other.
+
+You could spend the entire night building the **Iron Man suit**...
+
+but if tomorrow you walk into the jury room and begin with—
+
+**“So basically... our project has three modules...”**
+
+Tony Stark is going to be disappointed.
+
+**[Pause.]**
+
+A strong pitch is not about making something sound complicated.
+
+It's almost the opposite.
+
+It is about answering three questions very clearly:
+
+**What problem did you understand?**
+
+**What did you build?**
+
+And—
+
+**why should the person sitting in front of you care?**
+
+Tomorrow, after being awake for most of the night, clear communication may itself feel like the final use case.
+
+Which is exactly why this next session matters.
+
+It is going to help you structure your story, communicate your idea effectively and make those precious presentation minutes count.
+
+So for the next session—
+
+temporarily take off your **developer hat**...
+
+and put on your **storyteller hat.**
+
+It is my pleasure to invite **[TRAINER NAME] from [TEAM / L&D]** for our session on **Presentation Skills / Tips & Tricks to Ace Your Pitch.**
+
+**[Name], over to you.**
+
+---
+
+## AFTER PRESENTATION SKILLS SESSION
+
+Thank you so much, **[Name]**.
+
+I hope everyone was taking notes.
+
+Because tomorrow—
+
+when the jury asks you a question—
+
+**“ChatGPT said so” is unlikely to be the winning answer.**
+
+**[Smile.]**
+
+You have the tools now.
+
+Build like engineers today...
+
+and present like storytellers tomorrow.
+
+---
+
+# 4:30 PM — SESSION WITH INNOVERSITE GRADUATES
+
+And speaking of tomorrow...
+
+sometimes the best person to tell you what this experience can lead to is someone who was sitting exactly where you're sitting today.
+
+We have with us a few colleagues whose own journeys began through **Innoversite**.
+
+They've gone from participants...
+
+to interns...
+
+to professionals within BNP Paribas.
+
+And I can personally tell you—
+
+that's a journey I relate to very strongly.
+
+So this next conversation isn't really about giving you another formal presentation.
+
+It's about hearing from people who were recently asking exactly the questions you're probably asking now.
+
+What was their hackathon experience like?
+
+What happened afterwards?
+
+What did they learn?
+
+And what do they wish they had known during these 24 hours?
+
+Please join me in welcoming **[GRADUATE NAMES]**.
+
+**[Graduate session.]**
+
+---
+
+## AFTER GRADUATE SESSION / HIGH TEA
+
+Thank you, **[names]**.
+
+I think that's a wonderful reminder that you never quite know where one opportunity might take you.
+
+For now, though, we know exactly where we're taking you.
+
+**High tea.**
+
+**[Pause.]**
+
+Snacks and refreshments are now available.
+
+Take a short break, refuel and meet someone new while you're at it.
+
+And then—
+
+back to building.
+
+---
+
+# OPTIONAL ’80s TREND CALLBACK DURING HIGH TEA
+
+**[Use ONLY if crowd is responsive / visuals or photo booth make it relevant.]**
+
+And if anyone is using the photo booth—
+
+I know the internet currently wants everyone to look like they walked straight out of the 1980s.
+
+Feel free.
+
+Just please don't take the trend too literally and decide your hackathon also needs a **1980s tech stack.**
+
+**[Smile.]**
+
+Retro photographs—
+
+yes.
+
+Retro deployment infrastructure—
+
+perhaps not today.
+
+---
+
+# 8:00 PM — DINNER
+
+Good evening, innovators!
+
+A quick reminder that dinner is now open.
+
+Those of you saying—
+
+**“I'll eat after I fix this bug”**—
+
+please reconsider.
+
+The bug has nowhere to go.
+
+It will still be waiting for you after dinner.
+
+**[Pause.]**
+
+Take a proper break, hydrate and recharge.
+
+Hacking resumes at **8:30 PM.**
+
+---
+
+# 10:20 PM — BUILD-UP TO ENTERTAINMENT SESSION
+
+Alright, innovators!
+
+How are we doing?
+
+**[Reaction.]**
+
+We're approaching the part of the night where your Git history starts becoming increasingly emotional.
+
+9 PM:
+
+**“Implemented authentication.”**
+
+10 PM:
+
+**“Fixed authentication.”**
+
+11 PM:
+
+**“FINAL FIX.”**
+
+1 AM:
+
+**“PLEASE WORK.”**
+
+**[Laugh.]**
+
+You've been working incredibly hard, so it's time to give your brains a brief reset.
+
+In a few minutes, we begin our **Entertainment Session.**
+
+Consider the next thirty minutes a mandatory software update...
+
+except this one should actually make you feel better afterwards.
+
+---
+
+# 10:30 PM — ENTERTAINMENT SESSION INTRODUCTION
+
+**[Adjust this section once the entertainment act is confirmed.]**
+
+For the last several hours, you've been solving problems, chasing bugs and probably negotiating with your laptops.
+
+Now it's time to switch modes.
+
+Sit back.
+
+Relax.
+
+And for the next few minutes, let somebody else do the processing.
+
+Before we begin, a reminder regarding photography and recording:
+
+**[Insert exact approved event/legal announcement from final deck.]**
+
+And now, please put your hands together and welcome **[PERFORMER / ACT NAME]**!
+
+---
+
+## AFTER ENTERTAINMENT
+
+That was exactly the system restart we needed!
+
+A huge thank you to **[Name]**.
+
+Give them another round of applause!
+
+Alright—
+
+brains refreshed...
+
+mood upgraded...
+
+back to innovation.
+
+---
+
+# 11:00 PM — OVERNIGHT HACKING BEGINS
+
+We now officially enter the **overnight stretch** of Innoversite.
+
+This is usually where great ideas become prototypes...
+
+prototypes become bugs...
+
+and bugs become **team bonding exercises.**
+
+**[Smile.]**
+
+Remember to pace yourselves.
+
+Hydrate.
+
+Take breaks.
+
+Use the rest areas if you need them.
+
+And reach out to mentors whenever you're stuck.
+
+Sometimes fifteen minutes with the right person can save you two hours of trying random things from Stack Overflow.
+
+Or, in 2026—
+
+asking five AI models until one finally agrees with you.
+
+**[Smile.]**
+
+Happy hacking!
+
+---
+
+# AROUND 12:30 / 1:00 AM — TOURNAMENT REMINDER
+
+Night owls—
+
+quick reminder!
+
+Our voluntary **Chess and Table Tennis tournaments** begin at **1:30 AM** and continue until **3:30 AM.**
+
+If you've registered, please report to **[location]** at the appropriate time.
+
+Chess players—
+
+your opportunity to prove that you can still plan ahead after fourteen hours awake.
+
+Table Tennis players—
+
+your chance to hit something legally after your code refuses to compile.
+
+Good luck!
+
+---
+
+# OPTIONAL 2–3 AM CHECK-IN
+
+**[Keep short. Do not unnecessarily interrupt working teams.]**
+
+Innoversite—
+
+quick energy check!
+
+If your solution is working, give me a thumbs up.
+
+**[Look around.]**
+
+If it was working twenty minutes ago but you've now somehow broken it...
+
+don't worry.
+
+That's what we call—
+
+**progress with character development.**
+
+**[Smile.]**
+
+And remember:
+
+even AI is apparently being told to slow down these days.
+
+You are allowed a five-minute break too.
+
+Stretch.
+
+Hydrate.
+
+Then get back to it.
+
+---
+
+# 7:30 AM — BREAKFAST ANNOUNCEMENT
+
+**[More energetic but empathetic.]**
+
+Good morning...
+
+again!
+
+**[Pause.]**
+
+Some of you look like you've experienced all five stages of debugging overnight.
+
+But you've made it to morning!
+
+Breakfast is now open.
+
+Please eat.
+
+Please hydrate.
+
+And please resist the temptation to tell yourself—
+
+**“I'll have breakfast after submission.”**
+
+We need both—
+
+a functioning application...
+
+and functioning participants.
+
+---
+
+# 8:00 AM — PITCH SUBMISSIONS OPEN
+
+Alright everyone—
+
+we've officially entered the **final stretch.**
+
+Pitch submissions on the HackerEarth platform are now open.
+
+Please do not leave this until the final thirty seconds.
+
+I know college assignments have trained an entire generation to believe that the ideal submission time is—
+
+**11:59:57.**
+
+Today is an excellent opportunity to break that habit.
+
+**[Pause.]**
+
+Check your files.
+
+Check your pitch.
+
+Check that you've uploaded the correct version.
+
+And perhaps most importantly—
+
+check that **“final_final_v7_ACTUALFINAL.pptx”** is actually the final one.
+
+Submission instructions are available on **[screen/platform]**, and volunteers are available if you need assistance.
+
+---
+
+# 8:30 AM — SUBMISSION REMINDER
+
+Innovators—
+
+**30 minutes remaining** until the submission deadline.
+
+**[Change timing to final approved cutoff.]**
+
+If you're still adding a completely new feature right now...
+
+I admire the optimism.
+
+But perhaps ask yourself—
+
+**“Is this innovation... or is this delusion?”**
+
+**[Smile.]**
+
+Prioritise stability.
+
+Check your core solution.
+
+Check your pitch.
+
+And submit on time.
+
+---
+
+# 8:50 AM — 10-MINUTE WARNING
+
+Ten minutes remaining!
+
+This is not the moment for a complete UI redesign.
+
+This is not the moment to migrate your backend.
+
+And this is definitely not the moment for someone to say—
+
+**“Guys, I have another idea.”**
+
+**[Pause.]**
+
+Final checks.
+
+Final uploads.
+
+Let's get those submissions in.
+
+---
+
+# FINAL MINUTE / COUNTDOWN
+
+Innoversite!
+
+**ONE MINUTE REMAINING!**
+
+Make sure your submission is complete.
+
+Once we reach the deadline, the platform will close as per the communicated rules.
+
+Alright—
+
+everyone together.
+
+**10...
+9...
+8...
+7...
+6...
+5...
+4...
+3...
+2...
+1...**
+
+## AND STOP!
+
+**[Music sting.]**
+
+---
+
+# 9:00–10:00 AM — VALIDATION / BREAKFAST / FRESHENING UP
+
+Aaaand...
+
+**breathe.**
+
+That's it.
+
+You've completed the 24-hour build sprint!
+
+Give yourselves a massive round of applause!
+
+**[Lead applause.]**
+
+Your laptops deserve one as well.
+
+They have seen things over the last 24 hours.
+
+**[Smile.]**
+
+Our team will now validate the submissions received.
+
+You have some time to freshen up, have breakfast if you haven't already, stretch, and perhaps remember what daylight looks like.
+
+Please be back and ready for the closing ceremony at **10:00 AM.**
+
+---
+
+# 10:00 AM — CLOSING CEREMONY
+
+**[Walk to centre. Tone initially fun, then gradually sincere.]**
+
+Twenty-four hours ago...
+
+this room was full of **ideas.**
+
+Today...
+
+it's full of things that actually exist.
+
+Prototypes.
+
+Pitches.
+
+Lessons.
+
+New friendships.
+
+A concerning amount of caffeine...
+
+and probably several Git repositories nobody wants to open again for at least a week.
+
+**[Pause.]**
+
+But look at what you've achieved.
+
+In an incredibly short amount of time, you took a problem—
+
+something that initially existed only as a brief—
+
+and tried to turn it into something real.
+
+Some things worked.
+
+Some didn't.
+
+Some teams changed direction halfway through.
+
+Some of you discovered bugs five minutes before submission.
+
+And I'm reasonably certain at least one team experienced all five stages of grief during integration.
+
+But that's exactly what a hackathon is.
+
+The objective was never to spend 24 hours proving that you already know everything.
+
+It was to discover—
+
+**what you can do when you don't.**
+
+---
+
+# CLOSING ENERGISER
+
+But before I become too philosophical—
+
+you've all been awake for a very long time.
+
+So everybody—
+
+stand up for just a moment.
+
+Yes, everyone.
+
+Stretch your arms upwards.
+
+**[Demonstrate.]**
+
+Now shake your hands out.
+
+Get twenty-four hours of coding out of those wrists.
+
+And let's do one quick check.
+
+Raise your hand if you pulled an all-nighter.
+
+**[Reaction.]**
+
+Keep it up if you regret absolutely nothing.
+
+**[Laugh.]**
+
+Clap once if you participated in Chess or Table Tennis.
+
+**[Clap.]**
+
+Give the person next to you a quick high-five if you've made at least **one new friend or connection** here.
+
+**[Allow moment.]**
+
+And finally—
+
+raise one hand if your solution is working.
+
+**[Reaction.]**
+
+Raise both hands if you're simply trusting that it will work when the jury sees it.
+
+**[Laughter.]**
+
+Perfect.
+
+You are ready.
+
+Have a seat.
+
+---
+
+# OPTIONAL CLOSING MENTIMETER
+
+Before we wrap up, take out your phones one more time.
+
+Don't worry—
+
+there is no quiz this time.
+
+We want just **one word** from you.
+
+When you think about the last 24 hours...
+
+how would you describe your Innoversite experience?
+
+**[Mentimeter word cloud appears.]**
+
+Let's see what we've got...
+
+**[Read interesting responses organically.]**
+
+“Exciting.”
+
+“Exhausting.”
+
+“Learning.”
+
+“Chaos.”
+
+Whoever wrote **“sleep”**—
+
+I respect the honesty.
+
+**[React based on actual answers.]**
+
+And this word cloud right here is probably a better summary of Innoversite than anything I could give you.
+
+---
+
+# TOURNAMENT WINNERS
+
+We also have some unfinished business from last night.
+
+While most teams were battling bugs, a few people were battling each other—
+
+on the chessboard and at the Table Tennis table.
+
+It is time to recognise our Night Owl champions.
+
+The winner of our **Chess Tournament** is...
+
+**[NAME / TEAM].**
+
+**[Applause / prize.]**
+
+And our **Table Tennis Champion** is...
+
+**[NAME].**
+
+**[Applause / prize.]**
+
+Congratulations!
+
+After staying awake all night and still having enough hand-eye coordination for Table Tennis...
+
+you deserve the award purely on scientific grounds.
+
+---
+
+# PERSONAL CLOSING — YOUR STRONGEST SECTION
+
+Before we conclude, I want to say something to all of you—
+
+not just as your host...
+
+but as someone who was once a participant at **Innoversite.**
+
+When I came here for my hackathon, I didn't know exactly where those 24 hours were going to take me.
+
+I was simply a college student coming in to build something, compete, learn...
+
+and hopefully do well.
+
+Those 24 hours eventually opened the door to my six-month internship at BNP Paribas.
+
+That internship became a full-time opportunity.
+
+And today...
+
+I'm standing on this side of the room, hosting the third edition of the same hackathon.
+
+So when I tell you—
+
+**you genuinely don't know where one opportunity might lead...**
+
+I mean it.
+
+Of course there will eventually be winners.
+
+And they absolutely deserve to celebrate.
+
+But whether your name gets announced or not—
+
+don't reduce everything you've done here to one result.
+
+Take the experience with you.
+
+Take the mistakes with you.
+
+Take the people you've met with you.
+
+Take that idea which didn't quite work...
+
+and perhaps build it again.
+
+Because innovation isn't really about having the perfect answer on your first attempt.
+
+It begins with being curious enough to ask—
+
+**“What if?”**
+
+And being brave enough to actually try.
+
+---
+
+# ODYSSEY CALLBACK
+
+So Innoversite 3.0 may be reaching its closing ceremony...
+
+but hopefully—
+
+**your Odyssey is only just beginning.**
+
+**[Pause.]**
+
+And after the last 24 hours...
+
+I promise that's my **final Odyssey reference.**
+
+**[Smile.]**
+
+---
+
+# ACKNOWLEDGEMENTS / VOTE OF THANKS
+
+Before we move towards the jury presentations, a huge thank you is due.
+
+To our mentors who stayed with the teams and guided them throughout the day and night—
+
+thank you.
+
+To our Use Case Owners, buddies and jury members—
+
+thank you for your time and expertise.
+
+To our leadership team—
+
+thank you for continuing to support opportunities like Innoversite.
+
+And to the organising team and volunteers working behind the scenes—
+
+events like this appear seamless only because a lot of people are working extremely hard where the audience cannot see them.
+
+Please give all of them a huge round of applause.
+
+**[Applause.]**
+
+**[If a formal Vote of Thanks speaker is scheduled:]**
+
+And to formally deliver the Vote of Thanks, may I now invite **[NAME, DESIGNATION]**.
+
+**[Vote of Thanks.]**
+
+Thank you, **[Name].**
+
+---
+
+# GROUP PHOTOGRAPH
+
+Before anyone disappears towards the jury rooms—
+
+we need proof that all of this actually happened.
+
+And fortunately, in 2026, we don't even need AI to turn this into a memory.
+
+Although given the current trend, somebody will probably make the entire group look like we attended **Innoversite in 1987** by tonight.
+
+**[Smile.]**
+
+May I request everyone to please gather for our **group photograph.**
+
+**[Photo.]**
+
+---
+
+# 10:30–11:00 AM — JURY ROOM INSTRUCTIONS
+
+Alright, participants—
+
+we're now moving into the final phase.
+
+The jury teams will be settling into their respective rooms.
+
+Please check your assigned presentation room and sequence as communicated by the organising team.
+
+Keep your team ready well ahead of your slot.
+
+Once called, please proceed promptly.
+
+While waiting, you're welcome to use the designated recreational spaces, photo booth and other available facilities without disturbing teams that are presenting.
+
+Once your presentation and all required formalities are complete, you may leave as per the instructions communicated by the organising team.
+
+---
+
+# FINAL HANDOFF TO JURY PRESENTATIONS
+
+You've built.
+
+You've debugged.
+
+You've submitted.
+
+Now there is only one thing left to do.
+
+**Tell your story.**
+
+Walk into that jury room knowing that whatever the outcome—
+
+you created something today that did not exist yesterday.
+
+And that itself is worth being proud of.
+
+I'm **Areeb**...
+
+and it's been an absolute pleasure being part of your Innoversite journey.
+
+To every one of you—
+
+all the very best for your presentations.
+
+Keep questioning.
+
+Keep building.
+
+Keep innovating.
+
+And welcome once again to—
+
+## INNOVERSITE 3.0 — THE UNIVERSE OF INNOVATION.
+
+Thank you...
+
+and **go ace those pitches!**
