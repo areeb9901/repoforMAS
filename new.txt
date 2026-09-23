@@ -1,3 +1,131 @@
-private String buildSearchConditionsForDownloadHistory() {
-    return " where Lower(user_id) like :search or Lower(user_name) like :search or Lower(GetRole(user_role)) like :search or Lower(ma_id) like :search or Lower(group_id) like :search or Lower(doc_id) like :search or Lower(file_downloaded) like :search or Lower(tab_selected) like :search or Lower(to_char(created_date , 'dd-MON-yyyy HH24:mi:ss')) like :search ";
-}
+## 10:30 PM — MENTALIST ENTERTAINMENT SESSION
+
+**AREEB:** Alright, Innoversite — you've been staring at screens, chasing bugs and reading code for hours now.
+
+**DHRITI:** So we thought it was time for a little change.
+
+For the next few minutes, no debugging.
+
+No deployments.
+
+No staring at error messages hoping they'll somehow explain themselves.
+
+**AREEB:** Because we have someone here tonight who works a little differently.
+
+While all of you have spent the day trying to **read your code...**
+
+he apparently spends his time trying to **read people.**
+
+**DHRITI:** Your expressions.
+
+Your reactions.
+
+Your body language.
+
+Maybe even that look you gave your teammate when they said—
+
+**“Guys, I made one small change.”**
+
+**[Pause for laughter.]**
+
+**AREEB:** And honestly, after almost twelve hours of hacking, if he can figure out what any of us are thinking right now...
+
+that's already a very impressive trick.
+
+**DHRITI:** Although if he looks at someone and says—
+
+**“You're thinking about coffee...”**
+
+we're not counting that as mentalism.
+
+That's just statistics.
+
+**[Pause.]**
+
+**AREEB:** Now, we're surrounded by AI tonight, but for once, this next act requires no prompt...
+
+no API...
+
+and hopefully—
+
+no hallucinations.
+
+**DHRITI:** So Innoversite, for the next few minutes, put the laptops aside, sit back...
+
+and whatever you do—
+
+**try not to think about anything embarrassing.**
+
+**AREEB:** Because apparently...
+
+he might know.
+
+**[Beat.]**
+
+**DHRITI:** Known for his sharp wit, impossible predictions and some seriously mind-bending reads—
+
+**AREEB:** Please put your hands together and give a huge Innoversite welcome to—
+
+# AZAR THE MENTALIST!
+
+**[Music up. Azar enters.]**
+
+---
+
+## <MENTALIST PERFORMANCE>
+
+**[Music OUT immediately after final trick. Hosts return.]**
+
+---
+
+## AFTER THE PERFORMANCE
+
+**AREEB:** Okay...
+
+I think I speak for everyone when I say—
+
+**I suddenly have several privacy concerns.**
+
+**[Pause for laughter.]**
+
+**DHRITI:** Seriously!
+
+Azar, that was incredible.
+
+We've spent the whole day trying to understand code...
+
+and you just spent the last few minutes proving that apparently **people are easier to debug.**
+
+**AREEB:** And to anyone whose thoughts were successfully read tonight—
+
+good luck sleeping after that.
+
+**DHRITI:** A huge thank you to **Azar** for that absolutely mind-bending session.
+
+Everyone, one more massive round of applause for him!
+
+**[Applause.]**
+
+**AREEB:** Alright.
+
+Minds blown?
+
+**DHRITI:** Definitely.
+
+**AREEB:** Brains reset?
+
+**DHRITI:** Hopefully.
+
+**AREEB:** Then there is only one thing left to do.
+
+**BOTH:** Back to hacking!
+
+**DHRITI:** And please remember—
+
+if your code starts behaving strangely tonight...
+
+**AREEB:** ...don't ask Azar what it's thinking.
+
+Ask your mentor.
+
+**[Smile / transition back to hacking.]**
