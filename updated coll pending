@@ -1,131 +1,219 @@
-## 10:30 PM — MENTALIST ENTERTAINMENT SESSION
+DO'S & DON'TS — QUICK WALKTHROUGH
 
-**AREEB:** Alright, Innoversite — you've been staring at screens, chasing bugs and reading code for hours now.
+AREEB: Alright, before everyone disappears into code, we have one very important slide for you.
 
-**DHRITI:** So we thought it was time for a little change.
+And don’t worry—
 
-For the next few minutes, no debugging.
+we’re not going to read every bullet word-for-word.
 
-No deployments.
+If we wanted to do that, we could have just emailed you the slide.
 
-No staring at error messages hoping they'll somehow explain themselves.
+DHRITI: But there are a few things here that can genuinely save you a lot of pain over the next 24 hours.
 
-**AREEB:** Because we have someone here tonight who works a little differently.
+So think of this as—
 
-While all of you have spent the day trying to **read your code...**
-
-he apparently spends his time trying to **read people.**
-
-**DHRITI:** Your expressions.
-
-Your reactions.
-
-Your body language.
-
-Maybe even that look you gave your teammate when they said—
-
-**“Guys, I made one small change.”**
-
-**[Pause for laughter.]**
-
-**AREEB:** And honestly, after almost twelve hours of hacking, if he can figure out what any of us are thinking right now...
-
-that's already a very impressive trick.
-
-**DHRITI:** Although if he looks at someone and says—
-
-**“You're thinking about coffee...”**
-
-we're not counting that as mentalism.
-
-That's just statistics.
-
-**[Pause.]**
-
-**AREEB:** Now, we're surrounded by AI tonight, but for once, this next act requires no prompt...
-
-no API...
-
-and hopefully—
-
-no hallucinations.
-
-**DHRITI:** So Innoversite, for the next few minutes, put the laptops aside, sit back...
-
-and whatever you do—
-
-**try not to think about anything embarrassing.**
-
-**AREEB:** Because apparently...
-
-he might know.
-
-**[Beat.]**
-
-**DHRITI:** Known for his sharp wit, impossible predictions and some seriously mind-bending reads—
-
-**AREEB:** Please put your hands together and give a huge Innoversite welcome to—
-
-# AZAR THE MENTALIST!
-
-**[Music up. Azar enters.]**
+things we wish someone had very clearly reminded us of when we were participants.
 
 ---
 
-## <MENTALIST PERFORMANCE>
+1. PLAN BEFORE YOU BUILD
 
-**[Music OUT immediately after final trick. Hosts return.]**
+AREEB: First one—
+
+please read the problem statement properly before jumping straight into coding.
+
+I know the instinct is:
+
+“We understood 60% of it… let’s start building.”
+
+Maybe don’t.
+
+DHRITI: Take a little time to research, discuss your approach, and divide responsibilities clearly.
+
+Frontend, backend, model, presentation—
+
+know who owns what.
+
+AREEB: Basically—
+
+divide and conquer.
+
+Not—
+
+divide and discover at 2 AM that nobody did the integration.
 
 ---
 
-## AFTER THE PERFORMANCE
+2. BUILD THE CORE FIRST
 
-**AREEB:** Okay...
+DHRITI: Next—
 
-I think I speak for everyone when I say—
+please don’t spend three hours making your UI look like the next Apple launch...
 
-**I suddenly have several privacy concerns.**
+while the actual model still doesn’t work.
 
-**[Pause for laughter.]**
+AREEB: Beautiful gradients are great.
 
-**DHRITI:** Seriously!
+A functioning solution is greater.
 
-Azar, that was incredible.
+Get the core working first.
 
-We've spent the whole day trying to understand code...
+Then make it pretty.
 
-and you just spent the last few minutes proving that apparently **people are easier to debug.**
+DHRITI: And don’t overcommit.
 
-**AREEB:** And to anyone whose thoughts were successfully read tonight—
+You don’t need seventeen features.
 
-good luck sleeping after that.
+A smaller solution that actually works will always beat an ambitious one that exists mostly in your imagination.
 
-**DHRITI:** A huge thank you to **Azar** for that absolutely mind-bending session.
+---
 
-Everyone, one more massive round of applause for him!
+3. SAVE. BACK UP. DOCUMENT.
 
-**[Applause.]**
+AREEB: This one is simple, but very important.
 
-**AREEB:** Alright.
+Keep saving your work.
 
-Minds blown?
+Back it up.
 
-**DHRITI:** Definitely.
+And please—
 
-**AREEB:** Brains reset?
+document what you’re doing.
 
-**DHRITI:** Hopefully.
+DHRITI: Because there is no character development quite like losing three hours of work...
 
-**AREEB:** Then there is only one thing left to do.
+and realising your last save was before lunch.
 
-**BOTH:** Back to hacking!
+AREEB: Save early.
 
-**DHRITI:** And please remember—
+Save often.
 
-if your code starts behaving strangely tonight...
+Back up.
 
-**AREEB:** ...don't ask Azar what it's thinking.
+Your future self will thank you.
 
-Ask your mentor.
+---
 
-**[Smile / transition back to hacking.]**
+4. TEST WHILE YOU BUILD
+
+DHRITI: Please don’t leave testing for Hour 22.
+
+If you can, test as you build.
+
+AREEB: Because at Hour 22, you should ideally be polishing your pitch...
+
+not discovering that the feature you’ve been confidently talking about all day has never worked end-to-end.
+
+DHRITI: Catch problems early.
+
+Future-you deserves that kindness.
+
+---
+
+5. ASK FOR HELP
+
+AREEB: And please use the mentors.
+
+Don’t sit stuck for two hours because you think asking a question somehow means you know less.
+
+DHRITI: Sometimes a ten-minute conversation can save you from going in a completely wrong direction.
+
+Ask questions.
+
+Take feedback.
+
+Use the expertise in the room.
+
+AREEB: And network as well.
+
+Don’t spend all 24 hours speaking only to the three people sitting at your table.
+
+---
+
+6. TAKE CARE OF YOURSELF
+
+DHRITI: Also—
+
+eat.
+
+Hydrate.
+
+Stretch.
+
+Take short breaks.
+
+AREEB: Coffee is useful.
+
+Coffee is not a personality, a meal plan, and a hydration strategy combined.
+
+[Pause.]
+
+Your solution needs to survive the hackathon.
+
+So do you.
+
+---
+
+7. SUBMISSION & PRESENTATION
+
+DHRITI: And now, possibly the most important operational point—
+
+submit on time.
+
+AREEB: Not—
+
+“It's uploading.”
+
+Not—
+
+“Just one final change.”
+
+Not—
+
+“We thought the deadline was flexible.”
+
+DHRITI: On. Time.
+
+And make the submission stand out.
+
+You’ve spent nearly 24 hours building it—
+
+do justice to it when you present it.
+
+AREEB: One very important instruction for your final pitch:
+
+please use Microsoft PowerPoint only.
+
+No Google Slides.
+
+No last-minute format adventures.
+
+DHRITI: And make sure your required software is installed and ready well in advance.
+
+The middle of a 24-hour hackathon is not the ideal moment to discover—
+
+“Oh... I don’t actually have this installed.”
+
+---
+
+WRAP-UP
+
+AREEB: So if we had to compress this entire slide into one sentence—
+
+DHRITI: Understand before you build.
+
+AREEB: Build before you decorate.
+
+DHRITI: Save before you regret.
+
+AREEB: Ask before you get stuck.
+
+DHRITI: Test before Hour 22.
+
+AREEB: And—
+
+BOTH: Submit on time.
+
+AREEB: Do that...
+
+and you’ve already avoided half the drama of a hackathon.
