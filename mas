@@ -1,14 +1,12 @@
 Hi Team,
 
-While analyzing the procedure and scheduler, I could not identify any discrepancies, and the MA is present in the database.
+While analysing BEADEV-13846, I identified a similar issue where the MA was not visible on the dashboard due to an existing 2-day grace period filter based on "OVERLAP_CREAT_DATE".
 
-However, on the UI, I noticed that only 3,440 entries are displayed out of 16,649 total entries due to an existing 10-day grace period filter. The same filter is applied to the dashboard and its Excel export.
+To investigate this, I created and executed an MA with an overlap. Although the entry was present in the database table, it was not visible on the UI. However, after updating "OVERLAP_CREAT_DATE" to a date three days in the past, the MA became visible on the dashboard. The MA reported in the Jira is also now visible on the UI.
 
-Upon updating the "DATE_CREAT" value from the backend, I was able to see the MA on the UI, confirming that the issue is related to the existing UI filtering logic rather than the procedure or scheduler.
+Since this 2-day grace period has been in place for a long time, could the BA team please confirm whether this behaviour should remain unchanged or if the filter needs to be modified to display MAs earlier?
 
-Since this 10-day grace period has been in place for a long time, could the BA team please confirm whether this behaviour should remain unchanged or if the requirement is to modify the filter?
-
-Based on the clarification, we can determine the appropriate course of action. As the current behaviour is consistent with the existing functionality, this may not be classified as a defect unless a change in the expected behaviour is confirmed.
+If the existing behaviour is confirmed as expected, the Jira can be closed, as no defect has been identified in the current functionality.
 
 Best regards,
 Areeb Faiz
