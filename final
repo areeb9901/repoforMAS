@@ -1,12 +1,17 @@
-Hi [Name],
+Hi,
 
-I have analysed and fixed the EMIR indexing issue.
+While investigating the issue, I found that MA 197701 satisfies all the criteria specified in the SQL query, except for the status-change condition, as the agreement was executed back in 2013.
 
-While implementing the filters functionality for the new EMIR dashboard feature (BEADEV-12171), Mamta introduced additional logic in the EMIR indexing routine to fetch the perimeter comment, action, and last-user values. This resulted in three separate database lookups for every master agreement, along with unnecessary memory rescans during the read-only indexing process.
+Following a discussion with Eva, we clarified the expected behaviour of the report:
 
-As part of BEADEV-13904, I optimised this logic by consolidating the three lookups into a single query and eliminating the unnecessary memory rescans.
+- If an agreement is Executed and Terminated on the same day, the extract should contain both the Executed and Terminated dates.
+- The report should be sent every day, even when no agreements meet the specified criteria. In such cases, an empty report may be sent, ensuring that no daily report is missed.
 
-The fix was deployed on Friday, and the indexing process appears to be working fine following the deployment.
+Since MA 197701 was executed in 2013, simply adding an Office Covered entry will not make it appear in the report, as it does not satisfy the status-change condition.
+
+Therefore, based on the clarified business requirements, the report is behaving as expected, and the absence of MA 197701 does not indicate a defect.
+
+Please let me know if you have any further observations.
 
 Best regards,
-Areeb
+Areeb Faiz
