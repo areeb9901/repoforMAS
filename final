@@ -1,39 +1,12 @@
-// --- BEGIN: Chase Info Mapping from Audit ---
-private void setChasedInfoFromAudit(MasterAgreement ma, org.apache.lucene.document.Document document) {
-    try {
-        if (ma == null || ma.getCollateralDocAudit() == null) return;
+Hi [Name],
 
-        List<CollateralDocAudit> audits = ma.getCollateralDocAudit();
-        CollateralDocAudit latestChase = null;
+I have analysed and fixed the EMIR indexing issue.
 
-        for (CollateralDocAudit audit : audits) {
-            if (audit.getComments() != null && audit.getComments().trim().toLowerCase().startsWith("chased")) {
-                if (latestChase == null || audit.getAuditDate().after(latestChase.getAuditDate())) {
-                    latestChase = audit;
-                }
-            }
-        }
+While implementing the filters functionality for the new EMIR dashboard feature (BEADEV-12171), Mamta introduced additional logic in the EMIR indexing routine to fetch the perimeter comment, action, and last-user values. This resulted in three separate database lookups for every master agreement, along with unnecessary memory rescans during the read-only indexing process.
 
-        if (latestChase != null) {
-            String auditUser = latestChase.getAuditUser();
-            String auditDate = new java.text.SimpleDateFormat("dd-MMM-yyyy").format(latestChase.getAuditDate());
+As part of BEADEV-13904, I optimised this logic by consolidating the three lookups into a single query and eliminating the unnecessary memory rescans.
 
-            document.add(new org.apache.lucene.document.Field(
-                MasterAgreementFields.CHASED_USER,
-                auditUser != null ? auditUser : "",
-                org.apache.lucene.document.Field.Store.YES,
-                org.apache.lucene.document.Field.Index.ANALYZED
-            ));
+The fix was deployed on Friday, and the indexing process appears to be working fine following the deployment.
 
-            document.add(new org.apache.lucene.document.Field(
-                MasterAgreementFields.CHASED_DATE,
-                auditDate != null ? auditDate : "",
-                org.apache.lucene.document.Field.Store.YES,
-                org.apache.lucene.document.Field.Index.ANALYZED
-            ));
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-}
-
+Best regards,
+Areeb
