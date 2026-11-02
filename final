@@ -1,17 +1,18 @@
-Hi,
+Hi DONICA Yoan and NATALE Dimitri,
 
-While investigating the issue, I found that MA 197701 satisfies all the criteria specified in the SQL query, except for the status-change condition, as the agreement was executed back in 2013.
+I have investigated the issue by replicating the scenario and reviewing the application logs.
 
-Following a discussion with Eva, we clarified the expected behaviour of the report:
+Based on the analysis, this scenario is entirely different from the issue addressed under BEADEV-13693 and is not related to the fix delivered as part of that ticket.
 
-- If an agreement is Executed and Terminated on the same day, the extract should contain both the Executed and Terminated dates.
-- The report should be sent every day, even when no agreements meet the specified criteria. In such cases, an empty report may be sent, ensuring that no daily report is missed.
+Additionally, I was able to reproduce the same behaviour in UAT1, which confirms that this is an existing issue and not a recent regression.
 
-Since MA 197701 was executed in 2013, simply adding an Office Covered entry will not make it appear in the report, as it does not satisfy the status-change condition.
+Root Cause:
 
-Therefore, based on the clarified business requirements, the report is behaving as expected, and the absence of MA 197701 does not indicate a defect.
+The issue occurs when Collateral Ops clicks Save without selecting a Validation Status. Although the application displays a warning asking the user to select a status, the form still proceeds with the submission.
 
-Please let me know if you have any further observations.
+As a result, the application attempts to save the collateral document without a Validation Status, leading to an error and displaying the Ouch screen.
+
+To summarise, this is a separate, pre-existing issue concerning the validation of the Validation Status field during submission. It is independent of BEADEV-13693.
 
 Best regards,
 Areeb Faiz
